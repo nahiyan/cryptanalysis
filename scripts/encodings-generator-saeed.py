@@ -9,7 +9,6 @@ import sys
 
 xor_options = [True, False]
 
-# TODO: Implement passing the hashes to the encoder
 hashes = ["ffffffffffffffffffffffffffffffff",
           "00000000000000000000000000000000"]
 adder_types = ["counter_chain", "dot_matrix"]
