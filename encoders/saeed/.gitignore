@@ -42,3 +42,4 @@
 .vscode
 .*.swp
 crypto/main
+crypto/verify*
