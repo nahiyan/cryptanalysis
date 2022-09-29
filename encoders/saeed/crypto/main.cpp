@@ -27,6 +27,7 @@ int cfg_use_xor_clauses;
 Formula::MultiAdderType cfg_multi_adder_type;
 int cfg_rand_target;
 int cfg_print_target;
+char cfg_target[32];
 FuncType cfg_function;
 AnalysisType cfg_analysis;
 int fixed_bits;
@@ -80,16 +81,8 @@ void preimage(int rounds)
             return;
         }
     } else {
-        /* Read the input/target from stdin */
-        int rcnt = 0;
-        for (int i = 0; i < f->inputSize; i++)
-            rcnt += scanf("%x", &w[i]);
-        assert(rcnt == f->inputSize);
-
-        rcnt = 0;
         for (int i = 0; i < f->outputSize; i++)
-            rcnt += scanf("%x", &hash[i]);
-        assert(rcnt == f->outputSize);
+            sscanf(cfg_target, "%08x", &hash[i]);
     }
 
     /* Set hash target bits */
@@ -211,11 +204,14 @@ int main(int argc, char** argv)
             break;
 
         case 't':
-            cfg_rand_target = strcmp(optarg, "random") == 0 ? 1 : strcmp(optarg, "stdin") == 0 ? 0
-                                                                                               : -1;
-            if (cfg_rand_target == -1) {
-                fprintf(stderr, "Invalid or missing target type!\nUse -t or --target with random or stdin\n");
-                return 1;
+            cfg_rand_target = strcmp(optarg, "random") == 0 ? 1 : 0;
+            if (!cfg_rand_target) {
+                if (strlen(optarg) == 32) {
+                    strcpy(cfg_target, optarg);
+                } else {
+                    fprintf(stderr, "Invalid target - it should be exactly 32 characters long");
+                    return 1;
+                }
             }
             break;
 
