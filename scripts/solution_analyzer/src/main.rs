@@ -1,16 +1,16 @@
-use std::collections::btree_map::Range;
 use std::env;
 use std::fs;
-use std::str::Bytes;
 use std::str::FromStr;
 use std::vec;
 
+// Definition of the context
 struct Context<'a> {
     variable_ranges: &'a mut Vec<(u32, u32)>,
     variable_bytes: &'a mut Vec<u8>,
 }
 
 impl Context<'_> {
+    // Analyze the line
     fn analyze_line(&mut self, line: &str) {
         // Ensure that the line starts with 'v'
         if !line.starts_with('v') {
@@ -32,6 +32,7 @@ impl Context<'_> {
         }
     }
 
+    // Generic analysis of the entire solution, invoking the line analyzer
     fn analyze(&mut self, content: String) {
         let mut line: String = String::from("");
         for c in content.chars() {
@@ -47,11 +48,13 @@ impl Context<'_> {
 }
 
 fn main() {
+    // Initialize the context
     let mut context = Context {
         variable_bytes: &mut vec![],
         variable_ranges: &mut vec![],
     };
 
+    // Process the CLI arguments
     let args: Vec<String> = env::args().collect();
     if args.len() == 1 {
         panic!("Missing argument: The solutions file, which holds the output of the SAT solver.");
@@ -77,6 +80,7 @@ fn main() {
         }
     }
 
+    // Analyze the solution
     let encodings_file = &args[1];
     match fs::read_to_string(encodings_file) {
         Err(_) => {
@@ -87,6 +91,7 @@ fn main() {
         }
     }
 
+    // Output the analysis
     let mut i = 0;
     for (start, end) in context.variable_ranges.iter() {
         println!("Range: {} - {}", start, end);
@@ -100,4 +105,12 @@ fn main() {
         }
         println!()
     }
+
+    // TODO: Output in hex
+    // println!();
+    // for i in 0..context.variable_ranges.len() + 1 {
+    //     println!("Range");
+    //     let value = &context.variable_bytes[(8 * i)..(8 * i + 8)];
+    //     println!("{}", hex::encode(value));
+    // }
 }
