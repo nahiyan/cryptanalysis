@@ -89,9 +89,15 @@ fn main() {
 
     let mut i = 0;
     for (start, end) in context.variable_ranges.iter() {
-        for j in *start..*end + 1 {
-            println!("{} -> {}", j, context.variable_bytes[i]);
-            i += 1
+        println!("Range: {} - {}", start, end);
+        for (j, _) in (*start..*end + 1).enumerate() {
+            print!("{}", context.variable_bytes[i]);
+            i += 1;
+
+            if (j + 1) % 8 == 0 {
+                println!()
+            }
         }
+        println!()
     }
 }
