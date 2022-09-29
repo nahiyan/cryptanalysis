@@ -41,4 +41,4 @@
 # Dev files
 .vscode
 .*.swp
-**/main
+crypto/main
