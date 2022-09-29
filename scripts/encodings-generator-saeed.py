@@ -4,7 +4,7 @@ import sys
 # Goal 1: Generate the encoding with and without XOR clauses
 # Goal 2: Try variants with the adders: counter_chain and dot_matrix
 # Goal 3: Try various rounds from 16-48
-# TODO: Goal 4: Try various hashes for the inversion
+# Goal 4: Try various hashes for the inversion
 # TODO: Add options to pick the encoder: Saeed, Oleg, etc.
 
 xor_options = [True, False]
