@@ -21,12 +21,12 @@ if not os.path.exists(encoder_path):
 
 for hash in hashes:
     for xor_option in xor_options:
-        xor_flag = xor_option
+        xor_flag = "--xor" if xor_flag else None
         for adder_type in adder_types:
             for steps in step_variations:
                 os.system("{} {} -A {} -r {} -f md4 -a preimage -t {} > encodings/saeed/md4_{}_{}_xor{}_{}.cnf".format(
                     encoder_path,
-                    "--xor" if xor_flag else None,
+                    xor_flag,
                     adder_type,
                     steps,
                     hash,
