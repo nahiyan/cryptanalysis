@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"time"
 )
 
@@ -15,61 +16,73 @@ const (
 	MAPLESAT                = "maplesat"
 	MAX_TIME                = 5000
 	BENCHMARK_LOG_FILE_NAME = "benchmark.log"
+	BASE_PATH               = "../../"
+	SOLUTIONS_DIR_PATH      = BASE_PATH + "solutions/saeed/"
+	ENCODINGS_DIR_PATH      = BASE_PATH + "encodings/saeed/"
 )
 
 type Context struct {
 	completionTimes map[string][]*time.Duration
 }
 
-func cryptoMiniSat(filepath string, context *Context, instanceIndex uint, startTime time.Time) {
-	// cmd := exec.Command("cryptominisat5", "--verb 0", filepath)
-	cmd := exec.Command("cryptominisat5", filepath)
+func invokeSatSolver(command string, satSolver string, context *Context, filepath string, startTime time.Time, instanceIndex uint) {
+	cmd := exec.Command("bash", "-c", command)
 	// fmt.Println(cmd.String())
-	_, err := cmd.Output()
-	if err != nil && err.Error() != "exit status 10" && err.Error() != "exit status 20" {
+	if err := cmd.Start(); err != nil && err.Error() != "exit status 10" && err.Error() != "exit status 20" {
 		fmt.Println("Failed to run the command: ", err.Error())
 	}
 
-	// fmt.Printf("Solved instance of index %d\n", instanceIndex)
-
-	// fmt.Println(string(output))
-
-	// TODO: Gather the output
+	// TODO: Aggregate the logs
+	if err := cmd.Wait(); err != nil {
+		exiterr, _ := err.(*exec.ExitError)
+		exitcode := exiterr.ExitCode()
+		if exitcode != 10 && exitcode != 20 {
+			// TODO: Take action
+		}
+	}
 
 	duration := time.Now().Sub(startTime)
-	context.completionTimes[CRYPTOMINISAT][instanceIndex] = &duration
+	context.completionTimes[satSolver][instanceIndex] = &duration
+}
+
+func cryptoMiniSat(filepath string, context *Context, instanceIndex uint, startTime time.Time) {
+	baseFileName := path.Base(filepath)
+	solutionFilePath := baseFileName[:len(baseFileName)-3]
+	command := fmt.Sprintf("cryptominisat5 --verb 0 %s > %s%ssol", filepath, SOLUTIONS_DIR_PATH, solutionFilePath)
+
+	invokeSatSolver(command, CRYPTOMINISAT, context, filepath, startTime, instanceIndex)
 }
 
 func kissat(filepath string, context *Context, instanceIndex uint, startTime time.Time) {
-	cmd := exec.Command("kissat", "-q", filepath)
-	fmt.Println(cmd.String())
-	output, err := cmd.Output()
-	if err != nil {
-		fmt.Println("Failed to run the command: ", err.Error())
-	}
+	baseFileName := path.Base(filepath)
+	solutionFilePath := baseFileName[:len(baseFileName)-3]
+	command := fmt.Sprintf("kissat -q %s > %s%ssol", filepath, SOLUTIONS_DIR_PATH, solutionFilePath)
 
-	fmt.Println(string(output))
+	invokeSatSolver(command, KISSAT, context, filepath, startTime, instanceIndex)
+}
 
-	// TODO: Gather the output
+func cadical(filepath string, context *Context, instanceIndex uint, startTime time.Time) {
+	baseFileName := path.Base(filepath)
+	solutionFilePath := baseFileName[:len(baseFileName)-3]
+	command := fmt.Sprintf("cadical -q %s > %s%ssol", filepath, SOLUTIONS_DIR_PATH, solutionFilePath)
 
-	duration := time.Now().Sub(startTime)
-	context.completionTimes[KISSAT][instanceIndex] = &duration
+	invokeSatSolver(command, CADICAL, context, filepath, startTime, instanceIndex)
 }
 
 func mapleSat(filepath string, context *Context, instanceIndex uint, startTime time.Time) {
-	cmd := exec.Command("maplesat", "-verb=0", filepath)
-	fmt.Println(cmd.String())
-	_, err := cmd.Output()
-	if err != nil {
-		fmt.Println("Failed to run the command: ", err.Error())
-	}
+	baseFileName := path.Base(filepath)
+	solutionFilePath := baseFileName[:len(baseFileName)-3]
+	command := fmt.Sprintf("maplesat -verb=0 %s %s%ssol", filepath, SOLUTIONS_DIR_PATH, solutionFilePath)
 
-	// fmt.Println(string(output))
+	invokeSatSolver(command, MAPLESAT, context, filepath, startTime, instanceIndex)
+}
 
-	// TODO: Gather the output
+func glucose(filepath string, context *Context, instanceIndex uint, startTime time.Time) {
+	baseFileName := path.Base(filepath)
+	solutionFilePath := baseFileName[:len(baseFileName)-3]
+	command := fmt.Sprintf("glucose -verb=0 %s %s%ssol", filepath, SOLUTIONS_DIR_PATH, solutionFilePath)
 
-	duration := time.Now().Sub(startTime)
-	context.completionTimes[MAPLESAT][instanceIndex] = &duration
+	invokeSatSolver(command, GLUCOSE, context, filepath, startTime, instanceIndex)
 }
 
 func areInstancesCompleted(context *Context, satSolver string) bool {
@@ -109,7 +122,7 @@ func main() {
 	stepVariations := makeRange(16, 32)
 
 	// sat_solvers = ["cryptominisat", "kissat", "cadical", "glucose", "maplesat"]
-	satSolvers := []string{"cryptominisat"}
+	satSolvers := []string{CRYPTOMINISAT, KISSAT, CADICAL, GLUCOSE, MAPLESAT}
 
 	// Should be 264 for all the possible variations
 	instancesCount := len(xorOptions) * len(hashes) * len(adderTypes) * len(stepVariations)
@@ -135,16 +148,20 @@ func main() {
 			for _, hash := range hashes {
 				for _, xorOption := range xorOptions {
 					for _, adderType := range adderTypes {
-						filepath := fmt.Sprintf("../../encodings/saeed/md4_%d_%s_xor%d_%s.cnf",
-							steps, adderType, xorOption, hash)
+						filepath := fmt.Sprintf("%smd4_%d_%s_xor%d_%s.cnf",
+							ENCODINGS_DIR_PATH, steps, adderType, xorOption, hash)
 
 						switch satSolver {
 						case CRYPTOMINISAT:
 							go cryptoMiniSat(filepath, context, i, time.Now())
 						case KISSAT:
 							go kissat(filepath, context, i, time.Now())
+						case CADICAL:
+							go cadical(filepath, context, i, time.Now())
 						case MAPLESAT:
 							go mapleSat(filepath, context, i, time.Now())
+						case GLUCOSE:
+							go glucose(filepath, context, i, time.Now())
 						}
 
 						i++
