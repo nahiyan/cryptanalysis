@@ -181,7 +181,7 @@ func main() {
 			}
 		}
 
-		fmt.Printf("Spawned %d the instances of %s.\n", instancesCount, satSolver)
+		fmt.Printf("Spawned %d instances of %s.\n", instancesCount, satSolver)
 
 		{
 			interval := time.Second * 1
