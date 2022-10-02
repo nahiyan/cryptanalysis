@@ -9,12 +9,12 @@ import (
 )
 
 const (
-	CRYPTOMINISAT = "cryptominisat"
-	KISSAT        = "kissat"
-	CADICAL       = "cadical"
-	GLUCOSE       = "glucose"
-	MAPLESAT      = "maplesat"
-	// MAX_TIME                = 5000
+	CRYPTOMINISAT           = "cryptominisat"
+	KISSAT                  = "kissat"
+	CADICAL                 = "cadical"
+	GLUCOSE                 = "glucose"
+	MAPLESAT                = "maplesat"
+	MAX_TIME                = 5000
 	BENCHMARK_LOG_FILE_NAME = "benchmark.log"
 	BASE_PATH               = "../../"
 	SOLUTIONS_DIR_PATH      = BASE_PATH + "solutions/saeed/"
@@ -181,7 +181,7 @@ func main() {
 			interval := time.Second * 1
 			lastOutputTime := time.Now().Add(-interval)
 			// Wait as long as the operation didn't timeout and the instances aren't completed
-			for time.Now().Sub(startTime).Seconds() <= 5000 && !areInstancesCompleted(context, satSolver) {
+			for time.Now().Sub(startTime).Seconds() <= MAX_TIME && !areInstancesCompleted(context, satSolver) {
 				if time.Now().Sub(lastOutputTime) > interval {
 					totalItems := len(context.completionTimes[satSolver])
 					completions := 0
