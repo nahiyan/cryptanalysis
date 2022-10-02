@@ -44,10 +44,16 @@ func invokeSatSolver(command string, satSolver string, context *Context, filepat
 	duration := time.Now().Sub(startTime)
 	context.completionTimes[satSolver][instanceIndex] = &duration
 
-	logMessage := fmt.Sprintf("Time: %.2fs, Instance index: %d", time.Now().Sub(startTime).Seconds(), instanceIndex)
-
 	// Log down to a file
+	logMessage := fmt.Sprintf("Time: %.2fs, Instance index: %d", duration.Seconds(), instanceIndex)
 	appendLog(logMessage)
+
+	// Kill the process if it's timed out
+	if duration.Seconds() > MAX_TIME {
+		if err := cmd.Process.Kill(); err != nil {
+			fmt.Println("Failed to kill process: ", err.Error())
+		}
+	}
 }
 
 func cryptoMiniSat(filepath string, context *Context, instanceIndex uint, startTime time.Time) {
