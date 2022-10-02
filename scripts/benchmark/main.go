@@ -9,12 +9,12 @@ import (
 )
 
 const (
-	CRYPTOMINISAT           = "cryptominisat"
-	KISSAT                  = "kissat"
-	CADICAL                 = "cadical"
-	GLUCOSE                 = "glucose"
-	MAPLESAT                = "maplesat"
-	MAX_TIME                = 5000
+	CRYPTOMINISAT = "cryptominisat"
+	KISSAT        = "kissat"
+	CADICAL       = "cadical"
+	GLUCOSE       = "glucose"
+	MAPLESAT      = "maplesat"
+	// MAX_TIME                = 5000
 	BENCHMARK_LOG_FILE_NAME = "benchmark.log"
 	BASE_PATH               = "../../"
 	SOLUTIONS_DIR_PATH      = BASE_PATH + "solutions/saeed/"
@@ -43,12 +43,17 @@ func invokeSatSolver(command string, satSolver string, context *Context, filepat
 
 	duration := time.Now().Sub(startTime)
 	context.completionTimes[satSolver][instanceIndex] = &duration
+
+	logMessage := fmt.Sprintf("Time: %.2fs, Instance index: %d", time.Now().Sub(startTime).Seconds(), instanceIndex)
+
+	// Log down to a file
+	appendLog(logMessage)
 }
 
 func cryptoMiniSat(filepath string, context *Context, instanceIndex uint, startTime time.Time) {
 	baseFileName := path.Base(filepath)
 	solutionFilePath := baseFileName[:len(baseFileName)-3]
-	command := fmt.Sprintf("cryptominisat5 --verb 0 %s > %s%ssol", filepath, SOLUTIONS_DIR_PATH, solutionFilePath)
+	command := fmt.Sprintf("cryptominisat5 --verb 0 %s > %scryptominisat/%ssol", filepath, SOLUTIONS_DIR_PATH, solutionFilePath)
 
 	invokeSatSolver(command, CRYPTOMINISAT, context, filepath, startTime, instanceIndex)
 }
@@ -56,7 +61,7 @@ func cryptoMiniSat(filepath string, context *Context, instanceIndex uint, startT
 func kissat(filepath string, context *Context, instanceIndex uint, startTime time.Time) {
 	baseFileName := path.Base(filepath)
 	solutionFilePath := baseFileName[:len(baseFileName)-3]
-	command := fmt.Sprintf("kissat -q %s > %s%ssol", filepath, SOLUTIONS_DIR_PATH, solutionFilePath)
+	command := fmt.Sprintf("kissat -q %s > %skissat/%ssol", filepath, SOLUTIONS_DIR_PATH, solutionFilePath)
 
 	invokeSatSolver(command, KISSAT, context, filepath, startTime, instanceIndex)
 }
@@ -64,7 +69,7 @@ func kissat(filepath string, context *Context, instanceIndex uint, startTime tim
 func cadical(filepath string, context *Context, instanceIndex uint, startTime time.Time) {
 	baseFileName := path.Base(filepath)
 	solutionFilePath := baseFileName[:len(baseFileName)-3]
-	command := fmt.Sprintf("cadical -q %s > %s%ssol", filepath, SOLUTIONS_DIR_PATH, solutionFilePath)
+	command := fmt.Sprintf("cadical -q %s > %scadical/%ssol", filepath, SOLUTIONS_DIR_PATH, solutionFilePath)
 
 	invokeSatSolver(command, CADICAL, context, filepath, startTime, instanceIndex)
 }
@@ -72,7 +77,7 @@ func cadical(filepath string, context *Context, instanceIndex uint, startTime ti
 func mapleSat(filepath string, context *Context, instanceIndex uint, startTime time.Time) {
 	baseFileName := path.Base(filepath)
 	solutionFilePath := baseFileName[:len(baseFileName)-3]
-	command := fmt.Sprintf("maplesat -verb=0 %s %s%ssol", filepath, SOLUTIONS_DIR_PATH, solutionFilePath)
+	command := fmt.Sprintf("maplesat -verb=0 %s %smaplesat/%ssol", filepath, SOLUTIONS_DIR_PATH, solutionFilePath)
 
 	invokeSatSolver(command, MAPLESAT, context, filepath, startTime, instanceIndex)
 }
@@ -80,7 +85,7 @@ func mapleSat(filepath string, context *Context, instanceIndex uint, startTime t
 func glucose(filepath string, context *Context, instanceIndex uint, startTime time.Time) {
 	baseFileName := path.Base(filepath)
 	solutionFilePath := baseFileName[:len(baseFileName)-3]
-	command := fmt.Sprintf("glucose -verb=0 %s %s%ssol", filepath, SOLUTIONS_DIR_PATH, solutionFilePath)
+	command := fmt.Sprintf("glucose -verb=0 %s %sglucose/%ssol", filepath, SOLUTIONS_DIR_PATH, solutionFilePath)
 
 	invokeSatSolver(command, GLUCOSE, context, filepath, startTime, instanceIndex)
 }
@@ -173,10 +178,11 @@ func main() {
 		fmt.Printf("Spawned %d the instances of %s.\n", instancesCount, satSolver)
 
 		{
-			lastOutputTime := time.Now().Add(-time.Second * 1)
+			interval := time.Second * 1
+			lastOutputTime := time.Now().Add(-interval)
 			// Wait as long as the operation didn't timeout and the instances aren't completed
 			for time.Now().Sub(startTime).Seconds() <= 5000 && !areInstancesCompleted(context, satSolver) {
-				if time.Now().Sub(lastOutputTime).Seconds() > 1 {
+				if time.Now().Sub(lastOutputTime) > interval {
 					totalItems := len(context.completionTimes[satSolver])
 					completions := 0
 					for i, item := range context.completionTimes[satSolver] {
@@ -191,17 +197,17 @@ func main() {
 						}
 					}
 					fmt.Println()
-					logMessage := fmt.Sprintf("Time: %.2fs, Instances Solved: %d, Completion: %.2f%%", time.Now().Sub(startTime).Seconds(), completedInstancesCount(context, satSolver), float32(completions)/float32(totalItems)*100)
-					fmt.Println(logMessage)
-					fmt.Println()
+					fmt.Printf("Completion: %.2f%%\n", float32(completions)/float32(totalItems)*100)
+					// logMessage := fmt.Sprintf("Time: %.2fs, Instances Solved: %d, Completion: %.2f%%", time.Now().Sub(startTime).Seconds(), completedInstancesCount(context, satSolver), float32(completions)/float32(totalItems)*100)
+					// fmt.Println(logMessage)
+					// fmt.Println()
 					fmt.Println()
 
 					lastOutputTime = time.Now()
 
 					// Log down to a file
-					appendLog(logMessage)
+					// appendLog(logMessage)
 				}
-
 			}
 		}
 
@@ -213,6 +219,7 @@ func main() {
 				fmt.Print("- ")
 			}
 		}
+
 		fmt.Println()
 	}
 }
