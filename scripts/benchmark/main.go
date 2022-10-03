@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
 	"time"
 )
 
@@ -25,34 +26,30 @@ type Context struct {
 	completionTimes map[string][]*time.Duration
 }
 
-func invokeSatSolver(command string, satSolver string, context *Context, filepath string, startTime time.Time, instanceIndex uint) {
-	cmd := exec.Command("bash", "-c", command)
-	// fmt.Println(cmd.String())
-	if err := cmd.Start(); err != nil && err.Error() != "exit status 10" && err.Error() != "exit status 20" {
-		fmt.Println("Failed to run the command: ", err.Error())
-	}
+func invokeSatSolver(command string, satSolver string, context_ *Context, filepath string, startTime time.Time, instanceIndex uint) {
+	cmd := exec.Command("timeout", strconv.Itoa(MAX_TIME), "bash", "-c", command)
+	if err := cmd.Run(); err != nil {
+		// TODO: Aggregate the logs
+		if err.Error() != "exit status 10" && err.Error() != "exit status 20" {
+			fmt.Println("Failed to run the command:", cmd.String(), err.Error())
+		}
 
-	// TODO: Aggregate the logs
-	if err := cmd.Wait(); err != nil {
 		exiterr, _ := err.(*exec.ExitError)
 		exitcode := exiterr.ExitCode()
 		if exitcode != 10 && exitcode != 20 {
 			// TODO: Take action
+			fmt.Println("Error with solving the instance:", exitcode)
 		}
 	}
 
-	duration := time.Now().Sub(startTime)
-	context.completionTimes[satSolver][instanceIndex] = &duration
+	duration := time.Since(startTime)
+	if duration <= time.Second*MAX_TIME {
+		// TODO: Validate the results
+		context_.completionTimes[satSolver][instanceIndex] = &duration
 
-	// Log down to a file
-	logMessage := fmt.Sprintf("Time: %.2fs, Instance index: %d", duration.Seconds(), instanceIndex)
-	appendLog(logMessage)
-
-	// Kill the process if it's timed out
-	if duration.Seconds() > MAX_TIME {
-		if err := cmd.Process.Kill(); err != nil {
-			fmt.Println("Failed to kill process: ", err.Error())
-		}
+		// Log down to a file
+		logMessage := fmt.Sprintf("Time: %.2fs, Instance index: %d", duration.Seconds(), instanceIndex)
+		appendLog(logMessage)
 	}
 }
 
@@ -184,11 +181,11 @@ func main() {
 		fmt.Printf("Spawned %d instances of %s.\n", instancesCount, satSolver)
 
 		{
-			interval := time.Second * 1
+			interval := time.Second * 5
 			lastOutputTime := time.Now().Add(-interval)
 			// Wait as long as the operation didn't timeout and the instances aren't completed
-			for time.Now().Sub(startTime).Seconds() <= MAX_TIME && !areInstancesCompleted(context, satSolver) {
-				if time.Now().Sub(lastOutputTime) > interval {
+			for time.Since(startTime).Seconds() <= MAX_TIME && !areInstancesCompleted(context, satSolver) {
+				if time.Since(lastOutputTime) > interval {
 					totalItems := len(context.completionTimes[satSolver])
 					completions := 0
 					for i, item := range context.completionTimes[satSolver] {
