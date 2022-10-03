@@ -30,13 +30,9 @@ func invokeSatSolver(command string, satSolver string, context_ *Context, filepa
 	cmd := exec.Command("timeout", strconv.Itoa(MAX_TIME), "bash", "-c", command)
 	if err := cmd.Run(); err != nil {
 		// TODO: Aggregate the logs
-		if err.Error() != "exit status 10" && err.Error() != "exit status 20" {
-			fmt.Println("Failed to run the command:", cmd.String(), err.Error())
-		}
-
 		exiterr, _ := err.(*exec.ExitError)
 		exitcode := exiterr.ExitCode()
-		if exitcode != 10 && exitcode != 20 {
+		if exitcode != 10 && exitcode != 20 && exitcode != 124 {
 			// TODO: Take action
 			fmt.Println("Error with solving the instance:", exitcode)
 		}
