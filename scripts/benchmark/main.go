@@ -13,22 +13,23 @@ import (
 )
 
 const (
-	CRYPTOMINISAT           = "cryptominisat"
-	KISSAT                  = "kissat"
-	CADICAL                 = "cadical"
-	GLUCOSE                 = "glucose"
-	MAPLESAT                = "maplesat"
-	CRYPTOMINISAT_BIN_PATH  = "../../../sat-solvers/cryptominisat"
-	KISSAT_BIN_PATH         = "../../../sat-solvers/kissat"
-	CADICAL_BIN_PATH        = "../../../sat-solvers/cadical"
-	GLUCOSE_BIN_PATH        = "../../../sat-solvers/glucose"
-	MAPLESAT_BIN_PATH       = "../../../sat-solvers/maplesat"
-	VERIFIER_BIN_PATH       = "../../encoders/saeed/crypto/verify-md4"
-	MAX_TIME                = 5000
-	BENCHMARK_LOG_FILE_NAME = "benchmark.log"
-	BASE_PATH               = "../../"
-	SOLUTIONS_DIR_PATH      = BASE_PATH + "solutions/saeed/"
-	ENCODINGS_DIR_PATH      = BASE_PATH + "encodings/saeed/"
+	CRYPTOMINISAT              = "cryptominisat"
+	KISSAT                     = "kissat"
+	CADICAL                    = "cadical"
+	GLUCOSE                    = "glucose"
+	MAPLESAT                   = "maplesat"
+	CRYPTOMINISAT_BIN_PATH     = "../../../sat-solvers/cryptominisat"
+	KISSAT_BIN_PATH            = "../../../sat-solvers/kissat"
+	CADICAL_BIN_PATH           = "../../../sat-solvers/cadical"
+	GLUCOSE_BIN_PATH           = "../../../sat-solvers/glucose"
+	MAPLESAT_BIN_PATH          = "../../../sat-solvers/maplesat"
+	VERIFIER_BIN_PATH          = "../../encoders/saeed/crypto/verify-md4"
+	MAX_TIME                   = 5000
+	BENCHMARK_LOG_FILE_NAME    = "benchmark.log"
+	VERIFICATION_LOG_FILE_NAME = "verification.log"
+	BASE_PATH                  = "../../"
+	SOLUTIONS_DIR_PATH         = BASE_PATH + "solutions/saeed/"
+	ENCODINGS_DIR_PATH         = BASE_PATH + "encodings/saeed/"
 )
 
 type Context struct {
@@ -45,15 +46,38 @@ func invokeSatSolver(command string, satSolver string, context_ *Context, filepa
 	}
 
 	duration := time.Since(startTime)
-	// TODO: Validate the results
 	context_.progress[satSolver][instanceIndex] = true
 
 	// Log down to a file
 	instanceName := strings.TrimSuffix(path.Base(filepath), ".cnf")
 	logMessage := fmt.Sprintf("Time: %.2fs, instance index: %d, instance name: %s, SAT solver: %s, exit code: %d", duration.Seconds(), instanceIndex, instanceName, satSolver, exitCode)
-	appendLog(logMessage)
+	appendBenchmarkLog(logMessage)
 
 	fmt.Printf("%s completed %s in %.2fs with exit code: %d\n", satSolver, instanceName, duration.Seconds(), exitCode)
+
+	// TODO: Normalize the solution
+	// Verify the solution
+	steps, err := strconv.Atoi(strings.Split(instanceName, "_")[1])
+	if err != nil {
+		appendVerificationLog("Failed to verify " + instanceName)
+	}
+
+	command = fmt.Sprintf("%s %d < %s%s/%s.sol", VERIFIER_BIN_PATH, steps, SOLUTIONS_DIR_PATH, satSolver, instanceName)
+	cmd = exec.Command("bash", "-c", command)
+
+	exitCode = 0
+	if err := cmd.Run(); err != nil {
+		exiterr, _ := err.(*exec.ExitError)
+		exitCode = exiterr.ExitCode()
+	}
+
+	if exitCode == 0 {
+		appendVerificationLog(fmt.Sprintf("Valid: %s %s", satSolver, instanceName))
+	} else if exitCode == 1 {
+		appendVerificationLog(fmt.Sprintf("Invalid: %s %s", satSolver, instanceName))
+	} else {
+		appendVerificationLog(fmt.Sprintf("Unknown error: %s %s", satSolver, instanceName))
+	}
 }
 
 func cryptoMiniSat(filepath string, context *Context, instanceIndex uint, startTime time.Time) {
@@ -108,8 +132,8 @@ func areAllInstancesCompleted(context *Context) bool {
 	return true
 }
 
-func appendLog(message string) {
-	f, err := os.OpenFile(BENCHMARK_LOG_FILE_NAME, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+func appendLog(filename, message string) {
+	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		panic("Failed to write logs")
 	}
@@ -118,6 +142,14 @@ func appendLog(message string) {
 		panic("Failed to write logs")
 	}
 	f.Close()
+}
+
+func appendBenchmarkLog(message string) {
+	appendLog(BENCHMARK_LOG_FILE_NAME, message)
+}
+
+func appendVerificationLog(message string) {
+	appendLog(VERIFICATION_LOG_FILE_NAME, message)
 }
 
 func main() {
@@ -142,6 +174,7 @@ func main() {
 	}
 
 	os.Remove(BENCHMARK_LOG_FILE_NAME)
+	os.Remove(VERIFICATION_LOG_FILE_NAME)
 
 	// Solve the encodings for each SAT solver
 	for _, satSolver := range satSolvers {
