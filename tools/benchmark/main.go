@@ -24,7 +24,7 @@ const (
 	GLUCOSE_BIN_PATH           = "../../../sat-solvers/glucose"
 	MAPLESAT_BIN_PATH          = "../../../sat-solvers/maplesat"
 	VERIFIER_BIN_PATH          = "../../encoders/saeed/crypto/verify-md4"
-	MAX_TIME                   = 5000
+	MAX_TIME                   = 20
 	BENCHMARK_LOG_FILE_NAME    = "benchmark.log"
 	VERIFICATION_LOG_FILE_NAME = "verification.log"
 	BASE_PATH                  = "../../"
