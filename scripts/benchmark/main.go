@@ -32,7 +32,7 @@ const (
 )
 
 type Context struct {
-	completionTimes map[string][]*time.Duration
+	progress map[string][]bool
 }
 
 func invokeSatSolver(command string, satSolver string, context_ *Context, filepath string, startTime time.Time, instanceIndex uint) {
@@ -46,7 +46,7 @@ func invokeSatSolver(command string, satSolver string, context_ *Context, filepa
 
 	duration := time.Since(startTime)
 	// TODO: Validate the results
-	context_.completionTimes[satSolver][instanceIndex] = &duration
+	context_.progress[satSolver][instanceIndex] = true
 
 	// Log down to a file
 	instanceName := strings.TrimSuffix(path.Base(filepath), ".cnf")
@@ -97,9 +97,9 @@ func glucose(filepath string, context *Context, instanceIndex uint, startTime ti
 }
 
 func areAllInstancesCompleted(context *Context) bool {
-	for _, completionTimes := range context.completionTimes {
-		if lo.SomeBy(completionTimes, func(duration *time.Duration) bool {
-			return duration == nil
+	for _, progressEntries := range context.progress {
+		if lo.SomeBy(progressEntries, func(done bool) bool {
+			return !done
 		}) {
 			return false
 		}
@@ -135,10 +135,10 @@ func main() {
 
 	// Define the context
 	context := &Context{
-		completionTimes: make(map[string][]*time.Duration),
+		progress: make(map[string][]bool),
 	}
 	for _, satSolver := range satSolvers {
-		context.completionTimes[satSolver] = make([]*time.Duration, instancesCount)
+		context.progress[satSolver] = make([]bool, instancesCount)
 	}
 
 	os.Remove(BENCHMARK_LOG_FILE_NAME)
