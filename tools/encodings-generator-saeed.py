@@ -15,16 +15,16 @@ adder_types = ["counter_chain", "dot_matrix"]
 step_variations = list(range(16, 49))
 
 # Check if the executable exists
-encoder_path = "encoders/saeed/crypto/main"
+encoder_path = "../encoders/saeed/crypto/main"
 if not os.path.exists(encoder_path):
     sys.exit("Failed to find the encoder in the 'encoders/saeed/crypto' directory. Can you ensure that you compiled it?")
 
 for hash in hashes:
     for xor_option in xor_options:
-        xor_flag = "--xor" if xor_flag else None
+        xor_flag = "--xor" if xor_option else None
         for adder_type in adder_types:
             for steps in step_variations:
-                os.system("{} {} -A {} -r {} -f md4 -a preimage -t {} > encodings/saeed/md4_{}_{}_xor{}_{}.cnf".format(
+                os.system("{} {} -A {} -r {} -f md4 -a preimage -t {} > ../encodings/saeed/md4_{}_{}_xor{}_{}.cnf".format(
                     encoder_path,
                     xor_flag,
                     adder_type,
@@ -32,6 +32,6 @@ for hash in hashes:
                     hash,
                     steps,
                     adder_type,
-                    "1" if xor_flag == True else "0",
+                    "1" if xor_option == True else "0",
                     hash
                 ))
