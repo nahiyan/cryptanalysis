@@ -25,7 +25,7 @@ const (
 	MAPLESAT_BIN_PATH          = "../../../sat-solvers/maplesat"
 	VERIFIER_BIN_PATH          = "../../encoders/saeed/crypto/verify-md4"
 	SOLUTION_ANALYZER_BIN_PATH = "../solution_analyzer/target/release/solution_analyzer"
-	MAX_TIME                   = 20
+	MAX_TIME                   = 5000
 	BENCHMARK_LOG_FILE_NAME    = "benchmark.log"
 	VERIFICATION_LOG_FILE_NAME = "verification.log"
 	BASE_PATH                  = "../../"
@@ -47,7 +47,6 @@ func invokeSatSolver(command string, satSolver string, context_ *Context, filepa
 	}
 
 	duration := time.Since(startTime)
-	context_.progress[satSolver][instanceIndex] = true
 
 	// Log down to a file
 	instanceName := strings.TrimSuffix(path.Base(filepath), ".cnf")
@@ -85,9 +84,11 @@ func invokeSatSolver(command string, satSolver string, context_ *Context, filepa
 		} else if strings.Contains(string(output), "Solution's hash DOES NOT match the target:") || strings.Contains(string(output), "Result is UNSAT!") {
 			appendVerificationLog(fmt.Sprintf("Invalid: %s %s", satSolver, instanceName))
 		} else {
-			appendVerificationLog(fmt.Sprintf("Unknown error: %s %s", satSolver, instanceName))
+			appendVerificationLog(fmt.Sprintf("Unknown error: %s %s %s", satSolver, instanceName, output))
 		}
 	}
+
+	context_.progress[satSolver][instanceIndex] = true
 }
 
 func cryptoMiniSat(filepath string, context *Context, instanceIndex uint, startTime time.Time) {
