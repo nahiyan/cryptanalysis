@@ -53,8 +53,6 @@ func invokeSatSolver(command string, satSolver string, context_ *Context, filepa
 	logMessage := fmt.Sprintf("Time: %.2fs, instance index: %d, instance name: %s, SAT solver: %s, exit code: %d", duration.Seconds(), instanceIndex, instanceName, satSolver, exitCode)
 	appendBenchmarkLog(logMessage)
 
-	fmt.Printf("%s completed %s in %.2fs with exit code: %d\n", satSolver, instanceName, duration.Seconds(), exitCode)
-
 	// Normalize the solution
 	{
 		command := fmt.Sprintf("%s %s%s/%s.sol normalize > /tmp/%s-%s.sol && cat /tmp/%s-%s.sol > %s%s/%s.sol", SOLUTION_ANALYZER_BIN_PATH, SOLUTIONS_DIR_PATH, satSolver, instanceName, satSolver, instanceName, satSolver, instanceName, SOLUTIONS_DIR_PATH, satSolver, instanceName)
@@ -87,6 +85,26 @@ func invokeSatSolver(command string, satSolver string, context_ *Context, filepa
 			appendVerificationLog(fmt.Sprintf("Unknown error: %s %s %s", satSolver, instanceName, output))
 		}
 	}
+
+	// Report the instance's completion
+	var (
+		completedInstancesCount uint = 0
+		totalInstancesCount     int  = 0
+	)
+	for satSolver_, _ := range context_.progress {
+		completedInstancesCount += lo.SumBy(context_.progress[satSolver_], func(b bool) uint {
+			if b {
+				return 1
+			} else {
+				return 0
+			}
+		})
+
+		totalInstancesCount += len(context_.progress[satSolver_])
+	}
+	completedInstancesCount += 1
+
+	fmt.Printf("[%d/%d] %s \t %s \t %.2fs \t exit code: %d\n", completedInstancesCount, totalInstancesCount, satSolver, instanceName, duration.Seconds(), exitCode)
 
 	context_.progress[satSolver][instanceIndex] = true
 }
@@ -225,8 +243,6 @@ func main() {
 				}
 			}
 		}
-
-		fmt.Printf("Spawned %d instances of %s.\n", instancesCount, satSolver)
 	}
 
 	for !areAllInstancesCompleted(context) {
