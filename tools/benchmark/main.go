@@ -196,7 +196,16 @@ func appendVerificationLog(message string) {
 }
 
 func main() {
-	// Should be 264 for all the possible variations
+	// Get the steps from the CLI arguments
+	if len(os.Args) == 3 {
+		stepsStart, err1 := strconv.Atoi(os.Args[1])
+		stepsEnd, err2 := strconv.Atoi(os.Args[2])
+
+		if err1 == nil && err2 == nil {
+			stepVariations = makeRange(stepsStart, stepsEnd)
+		}
+	}
+
 	instancesCount := len(xorOptions) * len(hashes) * len(adderTypes) * len(stepVariations)
 
 	// Define the context
