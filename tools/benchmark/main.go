@@ -31,10 +31,23 @@ const (
 	BASE_PATH                  = "../../"
 	SOLUTIONS_DIR_PATH         = BASE_PATH + "solutions/saeed/"
 	ENCODINGS_DIR_PATH         = BASE_PATH + "encodings/saeed/"
+	MAX_INSTANCES_COUNT        = 50
+)
+
+// Variations
+var (
+	xorOptions = []uint{0}
+	hashes     = []string{"ffffffffffffffffffffffffffffffff",
+		"00000000000000000000000000000000"}
+	adderTypes     = []string{"counter_chain", "dot_matrix"}
+	stepVariations = makeRange(16, 28)
+
+	satSolvers = []string{CRYPTOMINISAT, KISSAT, CADICAL, GLUCOSE, MAPLESAT}
 )
 
 type Context struct {
-	progress map[string][]bool
+	progress         map[string][]bool
+	runningInstances uint
 }
 
 func invokeSatSolver(command string, satSolver string, context_ *Context, filepath string, startTime time.Time, instanceIndex uint) {
@@ -91,7 +104,7 @@ func invokeSatSolver(command string, satSolver string, context_ *Context, filepa
 		completedInstancesCount uint = 0
 		totalInstancesCount     int  = 0
 	)
-	for satSolver_, _ := range context_.progress {
+	for satSolver_ := range context_.progress {
 		completedInstancesCount += lo.SumBy(context_.progress[satSolver_], func(b bool) uint {
 			if b {
 				return 1
@@ -106,6 +119,7 @@ func invokeSatSolver(command string, satSolver string, context_ *Context, filepa
 
 	fmt.Printf("[%d/%d] %s \t %s \t %.2fs \t exit code: %d\n", completedInstancesCount, totalInstancesCount, satSolver, instanceName, duration.Seconds(), exitCode)
 
+	context_.runningInstances -= 1
 	context_.progress[satSolver][instanceIndex] = true
 }
 
@@ -182,15 +196,6 @@ func appendVerificationLog(message string) {
 }
 
 func main() {
-	// Variations
-	xorOptions := []uint{0}
-	hashes := []string{"ffffffffffffffffffffffffffffffff",
-		"00000000000000000000000000000000"}
-	adderTypes := []string{"counter_chain", "dot_matrix"}
-	stepVariations := makeRange(16, 32)
-
-	satSolvers := []string{CRYPTOMINISAT, KISSAT, CADICAL, GLUCOSE, MAPLESAT}
-
 	// Should be 264 for all the possible variations
 	instancesCount := len(xorOptions) * len(hashes) * len(adderTypes) * len(stepVariations)
 
@@ -221,6 +226,10 @@ func main() {
 			for _, hash := range hashes {
 				for _, xorOption := range xorOptions {
 					for _, adderType := range adderTypes {
+						for context.runningInstances > MAX_INSTANCES_COUNT {
+							time.Sleep(time.Second * 1)
+						}
+
 						filepath := fmt.Sprintf("%smd4_%d_%s_xor%d_%s.cnf",
 							ENCODINGS_DIR_PATH, steps, adderType, xorOption, hash)
 
@@ -238,6 +247,7 @@ func main() {
 							go glucose(filepath, context, i, startTime)
 						}
 
+						context.runningInstances += 1
 						i++
 					}
 				}
@@ -246,6 +256,6 @@ func main() {
 	}
 
 	for !areAllInstancesCompleted(context) {
-
+		time.Sleep(time.Second * 1)
 	}
 }
