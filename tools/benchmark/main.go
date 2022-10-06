@@ -25,24 +25,25 @@ const (
 	MAPLESAT_BIN_PATH          = "../../../sat-solvers/maplesat"
 	VERIFIER_BIN_PATH          = "../../encoders/saeed/crypto/verify-md4"
 	SOLUTION_ANALYZER_BIN_PATH = "../solution_analyzer/target/release/solution_analyzer"
-	MAX_TIME                   = 5000
+
 	BENCHMARK_LOG_FILE_NAME    = "benchmark.log"
 	VERIFICATION_LOG_FILE_NAME = "verification.log"
 	BASE_PATH                  = "../../"
 	SOLUTIONS_DIR_PATH         = BASE_PATH + "solutions/saeed/"
 	ENCODINGS_DIR_PATH         = BASE_PATH + "encodings/saeed/"
-	MAX_INSTANCES_COUNT        = 50
 )
 
-// Variations
 var (
+	maxTime           = uint(5000)
+	maxInstancesCount = uint(50)
+
+	// Variations
 	xorOptions = []uint{0}
 	hashes     = []string{"ffffffffffffffffffffffffffffffff",
 		"00000000000000000000000000000000"}
 	adderTypes     = []string{"counter_chain", "dot_matrix"}
-	stepVariations = makeRange(16, 28)
-
-	satSolvers = []string{CRYPTOMINISAT, KISSAT, CADICAL, GLUCOSE, MAPLESAT}
+	stepVariations = makeRange(16, 48)
+	satSolvers     = []string{CRYPTOMINISAT, KISSAT, CADICAL, GLUCOSE, MAPLESAT}
 )
 
 type Context struct {
@@ -51,7 +52,7 @@ type Context struct {
 }
 
 func invokeSatSolver(command string, satSolver string, context_ *Context, filepath string, startTime time.Time, instanceIndex uint) {
-	cmd := exec.Command("timeout", strconv.Itoa(MAX_TIME), "bash", "-c", command)
+	cmd := exec.Command("timeout", strconv.Itoa(int(maxTime)), "bash", "-c", command)
 	exitCode := 0
 	if err := cmd.Run(); err != nil {
 		// TODO: Aggregate the logs
@@ -197,12 +198,24 @@ func appendVerificationLog(message string) {
 
 func main() {
 	// Get the steps from the CLI arguments
-	if len(os.Args) == 3 {
+	if len(os.Args) >= 3 {
 		stepsStart, err1 := strconv.Atoi(os.Args[1])
 		stepsEnd, err2 := strconv.Atoi(os.Args[2])
 
 		if err1 == nil && err2 == nil {
 			stepVariations = makeRange(stepsStart, stepsEnd)
+		}
+	}
+
+	if len(os.Args) >= 4 {
+		if maxTime_, err := strconv.Atoi(os.Args[3]); err == nil {
+			maxTime = uint(maxTime_)
+		}
+	}
+
+	if len(os.Args) >= 5 {
+		if maxInstancesCount_, err := strconv.Atoi(os.Args[4]); err == nil {
+			maxInstancesCount = uint(maxInstancesCount_)
 		}
 	}
 
@@ -235,7 +248,7 @@ func main() {
 			for _, hash := range hashes {
 				for _, xorOption := range xorOptions {
 					for _, adderType := range adderTypes {
-						for context.runningInstances > MAX_INSTANCES_COUNT {
+						for context.runningInstances > maxInstancesCount {
 							time.Sleep(time.Second * 1)
 						}
 
