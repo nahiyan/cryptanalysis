@@ -6,26 +6,29 @@ sat_solvers = []
 print("instance ", end="")
 
 for line in sys.stdin:
-    if line.startswith("SAT Solver:"):
-        sat_solver = line.split(":")[-1].strip()
-        print(sat_solver, end=" ")
+    segments = line.split(" ")
+
+    sat_solver = segments[10][:-1]
+    if sat_solver not in sat_solvers:
         sat_solvers.append(sat_solver)
-    elif line.startswith("Time:"):
-        segments = line.split(" ")
-        time = segments[1][:-2]
-        instance_index = segments[4].strip()
-        # print(sat_solver, time, "-", instance_index)
-        if instance_index not in instances:
-            instances[instance_index] = []
-        instances[instance_index].append(time)
+        print(sat_solver, end=" ")
+
+    sat_solver_index = sat_solvers.index(sat_solver)
+
+    time = segments[1][:-2]
+    instance_index = int(segments[4][:-1].strip())
+    if instance_index not in instances:
+        instances[instance_index] = {}
+    instances[instance_index][sat_solver_index] = time
 
 print()
 
 i = 0
 while True:
-    if str(i) in instances:
+    if i in instances:
         print("instance" + str(i + 1), end=" ")
-        for time in instances[str(i)]:
+        for j in range(len(sat_solvers)):
+            time = instances[i][j]
             print(time, end=" ")
         print()
     else:
