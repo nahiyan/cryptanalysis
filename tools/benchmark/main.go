@@ -24,6 +24,7 @@ const (
 	GLUCOSE_BIN_PATH           = "../../../sat-solvers/glucose"
 	MAPLESAT_BIN_PATH          = "../../../sat-solvers/maplesat"
 	VERIFIER_BIN_PATH          = "../../encoders/saeed/crypto/verify-md4"
+	SOLUTION_ANALYZER_BIN_PATH = "../solution_analyzer/target/release/solution_analyzer"
 	MAX_TIME                   = 20
 	BENCHMARK_LOG_FILE_NAME    = "benchmark.log"
 	VERIFICATION_LOG_FILE_NAME = "verification.log"
@@ -55,28 +56,37 @@ func invokeSatSolver(command string, satSolver string, context_ *Context, filepa
 
 	fmt.Printf("%s completed %s in %.2fs with exit code: %d\n", satSolver, instanceName, duration.Seconds(), exitCode)
 
-	// TODO: Normalize the solution
+	// Normalize the solution
+	{
+		command := fmt.Sprintf("%s %s%s/%s.sol normalize > /tmp/%s-%s.sol && cat /tmp/%s-%s.sol > %s%s/%s.sol", SOLUTION_ANALYZER_BIN_PATH, SOLUTIONS_DIR_PATH, satSolver, instanceName, satSolver, instanceName, satSolver, instanceName, SOLUTIONS_DIR_PATH, satSolver, instanceName)
+		cmd := exec.Command("bash", "-c", command)
+		if err := cmd.Run(); err != nil {
+			appendVerificationLog("Failed to normalize " + instanceName + " " + err.Error() + " " + cmd.String())
+		}
+	}
+
 	// Verify the solution
-	steps, err := strconv.Atoi(strings.Split(instanceName, "_")[1])
-	if err != nil {
-		appendVerificationLog("Failed to verify " + instanceName)
-	}
+	{
+		steps, err := strconv.Atoi(strings.Split(instanceName, "_")[1])
+		if err != nil {
+			appendVerificationLog("Failed to verify " + instanceName)
+		}
 
-	command = fmt.Sprintf("%s %d < %s%s/%s.sol", VERIFIER_BIN_PATH, steps, SOLUTIONS_DIR_PATH, satSolver, instanceName)
-	cmd = exec.Command("bash", "-c", command)
+		command := fmt.Sprintf("%s %d < %s%s/%s.sol", VERIFIER_BIN_PATH, steps, SOLUTIONS_DIR_PATH, satSolver, instanceName)
+		// fmt.Println(command)
+		cmd := exec.Command("bash", "-c", command)
+		output, err := cmd.Output()
+		if err != nil {
+			appendVerificationLog("Failed to verify " + instanceName)
+		}
 
-	exitCode = 0
-	if err := cmd.Run(); err != nil {
-		exiterr, _ := err.(*exec.ExitError)
-		exitCode = exiterr.ExitCode()
-	}
-
-	if exitCode == 0 {
-		appendVerificationLog(fmt.Sprintf("Valid: %s %s", satSolver, instanceName))
-	} else if exitCode == 1 {
-		appendVerificationLog(fmt.Sprintf("Invalid: %s %s", satSolver, instanceName))
-	} else {
-		appendVerificationLog(fmt.Sprintf("Unknown error: %s %s", satSolver, instanceName))
+		if strings.Contains(string(output), "Solution's hash matches the target!") {
+			appendVerificationLog(fmt.Sprintf("Valid: %s %s", satSolver, instanceName))
+		} else if strings.Contains(string(output), "Solution's hash DOES NOT match the target:") || strings.Contains(string(output), "Result is UNSAT!") {
+			appendVerificationLog(fmt.Sprintf("Invalid: %s %s", satSolver, instanceName))
+		} else {
+			appendVerificationLog(fmt.Sprintf("Unknown error: %s %s", satSolver, instanceName))
+		}
 	}
 }
 
@@ -173,8 +183,16 @@ func main() {
 		context.progress[satSolver] = make([]bool, instancesCount)
 	}
 
+	// Remove the files from previous execution
 	os.Remove(BENCHMARK_LOG_FILE_NAME)
 	os.Remove(VERIFICATION_LOG_FILE_NAME)
+	for _, satSolver := range satSolvers {
+		cmd := exec.Command("bash", "-c", fmt.Sprintf("rm %s%s/*.sol", SOLUTIONS_DIR_PATH, satSolver))
+		if err := cmd.Run(); err != nil {
+			fmt.Println(cmd.String())
+			fmt.Println("Failed to delete the solution files: " + err.Error())
+		}
+	}
 
 	// Solve the encodings for each SAT solver
 	for _, satSolver := range satSolvers {
