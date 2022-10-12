@@ -34,4 +34,4 @@ MAX_INSTANCES_COUNT = 50
 - Kissat performed the best, but CaDiCaL was close.
 - Only Glucose and Kissat were able to invert MD4-31 within the time limit.
 - CryptoMiniSAT performed the worst. Maybe it'd do better with XOR encodings and multi-threading?
-- Keeping the max. instance count to 50 kept the memory usage down and reduced intensity of the harder problems from bottlenecking the easier ones.
+- Keeping the max. instance count to 50 kept the memory usage down and reduced intensity of the harder problems from bottlenecking the easier ones. But is it unfair to have more running instances than the number of logical threads?
