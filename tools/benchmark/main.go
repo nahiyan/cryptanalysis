@@ -221,8 +221,8 @@ func main() {
 	}
 
 	// Count the number of instances for determining the progress
-	instancesCount := len(xorOptions)*len(hashes)*len(adderTypes)*len(stepVariations) + (len(dobbertionVariations) * len(lo.Filter(stepVariations, func(i1, i2 int) bool {
-		return i1 >= 28
+	instancesCount := len(xorOptions) * len(hashes) * len(adderTypes) * len(stepVariations) * (len(dobbertionVariations) * len(lo.Filter(stepVariations, func(steps, _ int) bool {
+		return steps >= 28
 	})))
 
 	// Define the context
