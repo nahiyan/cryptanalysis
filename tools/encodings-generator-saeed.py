@@ -25,7 +25,7 @@ for hash in hashes:
         for adder_type in adder_types:
             for steps in step_variations:
                 for dobbertin in dobbertin_variations:
-                    dobbertin = dobbertin and steps >= 28
+                    dobbertin = dobbertin and steps >= 27
 
                     os.system("{} {} -A {} -r {} -f md4 -a preimage -t {} {} > ../encodings/saeed/md4_{}_{}_xor{}_{}_dobbertin{}.cnf".format(
                         encoder_path,
