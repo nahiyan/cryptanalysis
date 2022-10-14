@@ -31,6 +31,7 @@ char cfg_target[32];
 FuncType cfg_function;
 AnalysisType cfg_analysis;
 int fixed_bits;
+int dobbertin;
 
 void preimage(int rounds)
 {
@@ -41,7 +42,7 @@ void preimage(int rounds)
     else if (cfg_function == FT_SHA256)
         f = new SHA256(rounds);
     else if (cfg_function == FT_MD4)
-        f = new MD4(rounds);
+        f = new MD4(rounds, dobbertin);
     else {
         fprintf(stderr, "Invalid function type!\n");
         return;
@@ -136,6 +137,7 @@ int main(int argc, char** argv)
         /* flag options */
         { "xor", no_argument, &cfg_use_xor_clauses, 1 },
         { "print_target", no_argument, &cfg_print_target, 1 },
+        { "dobbertin", no_argument, &dobbertin, 1 },
         /* valued options */
         { "rounds", required_argument, 0, 'r' },
         { "fix", required_argument, 0, 'F' },

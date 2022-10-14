@@ -4,14 +4,13 @@
 #include "hash.h"
 
 class MD4 : public MDHash {
-    public:
-        MD4(int rnds = 48, bool initBlock = true);
+public:
+    MD4(int rnds = 48, int dobbertin = 0, bool initBlock = true);
 
-        void encode();
+    void encode();
 
-        Word q[52];
-        bool dobbertin;
+    Word q[52];
+    bool dobbertin;
 };
 
 #endif
-
