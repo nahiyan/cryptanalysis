@@ -41,9 +41,10 @@ var (
 	xorOptions = []uint{0}
 	hashes     = []string{"ffffffffffffffffffffffffffffffff",
 		"00000000000000000000000000000000"}
-	adderTypes     = []string{"counter_chain", "dot_matrix"}
-	stepVariations = makeRange(16, 48)
-	satSolvers     = []string{CRYPTOMINISAT, KISSAT, CADICAL, GLUCOSE, MAPLESAT}
+	adderTypes           = []string{"counter_chain", "dot_matrix"}
+	stepVariations       = makeRange(16, 48)
+	dobbertionVariations = []uint{0, 1}
+	satSolvers           = []string{CRYPTOMINISAT, KISSAT, CADICAL, GLUCOSE, MAPLESAT}
 )
 
 type Context struct {
@@ -219,7 +220,10 @@ func main() {
 		}
 	}
 
-	instancesCount := len(xorOptions) * len(hashes) * len(adderTypes) * len(stepVariations)
+	// Count the number of instances for determining the progress
+	instancesCount := len(xorOptions)*len(hashes)*len(adderTypes)*len(stepVariations) + (len(dobbertionVariations) * len(lo.Filter(stepVariations, func(i1, i2 int) bool {
+		return i1 >= 28
+	})))
 
 	// Define the context
 	context := &Context{
@@ -248,29 +252,36 @@ func main() {
 			for _, hash := range hashes {
 				for _, xorOption := range xorOptions {
 					for _, adderType := range adderTypes {
-						for context.runningInstances > maxInstancesCount {
-							time.Sleep(time.Second * 1)
+						for _, dobbertin := range dobbertionVariations {
+							// Skip dobbertin's attacks when steps count < 28
+							if steps < 28 && dobbertin == 1 {
+								dobbertin = 0
+							}
+
+							for context.runningInstances > maxInstancesCount {
+								time.Sleep(time.Second * 1)
+							}
+
+							filepath := fmt.Sprintf("%smd4_%d_%s_xor%d_%s_dobbertin%d.cnf",
+								ENCODINGS_DIR_PATH, steps, adderType, xorOption, hash, dobbertin)
+
+							startTime := time.Now()
+							switch satSolver {
+							case CRYPTOMINISAT:
+								go cryptoMiniSat(filepath, context, i, startTime)
+							case KISSAT:
+								go kissat(filepath, context, i, startTime)
+							case CADICAL:
+								go cadical(filepath, context, i, startTime)
+							case MAPLESAT:
+								go mapleSat(filepath, context, i, startTime)
+							case GLUCOSE:
+								go glucose(filepath, context, i, startTime)
+							}
+
+							context.runningInstances += 1
+							i++
 						}
-
-						filepath := fmt.Sprintf("%smd4_%d_%s_xor%d_%s.cnf",
-							ENCODINGS_DIR_PATH, steps, adderType, xorOption, hash)
-
-						startTime := time.Now()
-						switch satSolver {
-						case CRYPTOMINISAT:
-							go cryptoMiniSat(filepath, context, i, startTime)
-						case KISSAT:
-							go kissat(filepath, context, i, startTime)
-						case CADICAL:
-							go cadical(filepath, context, i, startTime)
-						case MAPLESAT:
-							go mapleSat(filepath, context, i, startTime)
-						case GLUCOSE:
-							go glucose(filepath, context, i, startTime)
-						}
-
-						context.runningInstances += 1
-						i++
 					}
 				}
 			}
