@@ -1,8 +1,6 @@
 package slurm
 
 import (
-	"benchmark/constants"
-	"benchmark/core"
 	"benchmark/types"
 	"benchmark/utils"
 	"fmt"
@@ -14,27 +12,14 @@ func generateJobs(context *types.CommandContext) {
 		instanceName := fmt.Sprintf("md4_%d_%s_xor%d_%s_dobbertin%d",
 			steps, adderType, xorOption, hash, dobbertin)
 
-		filepath := fmt.Sprintf("%s%s.cnf",
-			constants.ENCODINGS_DIR_PATH, instanceName)
+		// filepath := fmt.Sprintf("%s%s.cnf", constants.ENCODINGS_DIR_PATH, instanceName)
 
-		satSolver := utils.ResolveSatSolverName(satSolver_)
+		slurmArgs := fmt.Sprintf("#SBATCH --nodes=1\n#SBATCH --cpus-per-task=1\n#SBATCH --mem=300M\n#SBATCH --time=00:%d\n", context.InstanceMaxTime)
 
-		command := ""
-		switch satSolver {
-		case constants.CRYPTOMINISAT:
-			command = core.CryptoMiniSatCmd(filepath)
-		case constants.KISSAT:
-			command = core.KissatCmd(filepath)
-		case constants.CADICAL:
-			command = core.CadicalCmd(filepath)
-		case constants.MAPLESAT:
-			command = core.MapleSatCmd(filepath)
-		case constants.GLUCOSE:
-			command = core.GlucoseCmd(filepath)
-		}
+		command := fmt.Sprintf("%s\n./benchmark --var-steps %d --var-xor %d --var-dobbertin %d --var-adders %s --var-hashes %s --var-sat-solvers %s --reset-data 0 regular", slurmArgs, steps, xorOption, dobbertin, adderType, hash, satSolver_)
 
 		// Write the file for the job
-		d := []byte("#!/bin/bash\n" + command)
+		d := []byte("#!/bin/bash\n\n" + command)
 		if err := os.WriteFile("./jobs/"+instanceName+".sh", d, 0644); err != nil {
 			fmt.Println("Failed to create job:", instanceName)
 		}

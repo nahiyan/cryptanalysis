@@ -25,8 +25,10 @@ func Run(commandContext *types.CommandContext) {
 	}
 
 	// Remove the files from previous execution
-	os.Remove(constants.BENCHMARK_LOG_FILE_NAME)
-	os.Remove(constants.VERIFICATION_LOG_FILE_NAME)
+	if commandContext.ResetData {
+		os.Remove(constants.BENCHMARK_LOG_FILE_NAME)
+		os.Remove(constants.VERIFICATION_LOG_FILE_NAME)
+	}
 	for _, satSolver_ := range commandContext.VariationsSatSolvers {
 		satSolver := utils.ResolveSatSolverName(satSolver_)
 

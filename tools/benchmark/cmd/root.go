@@ -23,6 +23,7 @@ var variationsDobbertin_ string
 var variationsSteps_ string
 var instanceMaxTime uint
 var maxConcurrentInstancesCount uint
+var resetData bool
 
 var rootCmd = &cobra.Command{
 	Use:   "benchmark",
@@ -168,6 +169,9 @@ func processFlags() types.CommandContext {
 	// Max. concurrent instances count
 	context.MaxConcurrentInstancesCount = maxConcurrentInstancesCount
 
+	// Reset data
+	context.ResetData = resetData
+
 	return context
 }
 
@@ -180,7 +184,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&variationsDobbertin_, "var-dobbertin", "0,1", "State the possible comma-separated variations of the Dobbertin's attack. Possible values: 0, 1")
 	rootCmd.PersistentFlags().StringVar(&variationsSteps_, "var-steps", "31-39", "State the possible comma-separated variations of the values and/or ranges of steps")
 	rootCmd.PersistentFlags().UintVar(&instanceMaxTime, "max-time", 5000, "Maximum time in seconds for each instance to run")
-	regularCmd.PersistentFlags().UintVar(&maxConcurrentInstancesCount, "max-instances", 50, "Maximum number of instances to run concurrently")
+	regularCmd.Flags().UintVar(&maxConcurrentInstancesCount, "max-instances", 50, "Maximum number of instances to run concurrently")
+	regularCmd.Flags().BoolVar(&resetData, "reset-data", true, "Reset data such as logs, solutions, etc.")
 
 	// Commands
 	rootCmd.AddCommand(regularCmd)
