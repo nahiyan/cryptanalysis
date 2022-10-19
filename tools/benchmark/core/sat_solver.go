@@ -28,14 +28,18 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 	// Log down to a file
 	instanceName := strings.TrimSuffix(path.Base(filepath), ".cnf")
 	logMessage := fmt.Sprintf("Time: %.2fs, instance index: %d, instance name: %s, SAT solver: %s, exit code: %d", duration.Seconds(), instanceIndex, instanceName, satSolver, exitCode)
-	utils.AppendBenchmarkLog(logMessage)
+
+	benchmarkLogFilePath := constants.RESULTS_DIR_PATH + "benchmark_" + instanceName + "_" + satSolver + ".log"
+	verificationLogFilePath := constants.RESULTS_DIR_PATH + "verification_" + instanceName + "_" + satSolver + ".log"
+
+	utils.AppendLog(benchmarkLogFilePath, logMessage)
 
 	// Normalize the solution
 	{
 		command := fmt.Sprintf("%s %s%s/%s.sol normalize > /tmp/%s-%s.sol && cat /tmp/%s-%s.sol > %s%s/%s.sol", constants.SOLUTION_ANALYZER_BIN_PATH, constants.SOLUTIONS_DIR_PATH, satSolver, instanceName, satSolver, instanceName, satSolver, instanceName, constants.SOLUTIONS_DIR_PATH, satSolver, instanceName)
 		cmd := exec.Command("bash", "-c", command)
 		if err := cmd.Run(); err != nil {
-			utils.AppendVerificationLog("Failed to normalize " + instanceName + " " + err.Error() + " " + cmd.String())
+			utils.AppendLog(verificationLogFilePath, "Failed to normalize "+instanceName+" "+err.Error()+" "+cmd.String())
 		}
 	}
 
@@ -43,22 +47,22 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 	{
 		steps, err := strconv.Atoi(strings.Split(instanceName, "_")[1])
 		if err != nil {
-			utils.AppendVerificationLog("Failed to verify " + instanceName)
+			utils.AppendLog(verificationLogFilePath, "Failed to verify "+instanceName)
 		}
 
 		command := fmt.Sprintf("%s %d < %s%s/%s.sol", constants.VERIFIER_BIN_PATH, steps, constants.SOLUTIONS_DIR_PATH, satSolver, instanceName)
 		cmd := exec.Command("bash", "-c", command)
 		output, err := cmd.Output()
 		if err != nil {
-			utils.AppendVerificationLog("Failed to verify " + instanceName)
+			utils.AppendLog(verificationLogFilePath, "Failed to verify "+instanceName)
 		}
 
 		if strings.Contains(string(output), "Solution's hash matches the target!") {
-			utils.AppendVerificationLog(fmt.Sprintf("Valid: %s %s", satSolver, instanceName))
+			utils.AppendLog(verificationLogFilePath, fmt.Sprintf("Valid: %s %s", satSolver, instanceName))
 		} else if strings.Contains(string(output), "Solution's hash DOES NOT match the target:") || strings.Contains(string(output), "Result is UNSAT!") {
-			utils.AppendVerificationLog(fmt.Sprintf("Invalid: %s %s", satSolver, instanceName))
+			utils.AppendLog(verificationLogFilePath, fmt.Sprintf("Invalid: %s %s", satSolver, instanceName))
 		} else {
-			utils.AppendVerificationLog(fmt.Sprintf("Unknown error: %s %s %s", satSolver, instanceName, output))
+			utils.AppendLog(verificationLogFilePath, fmt.Sprintf("Unknown error: %s %s %s", satSolver, instanceName, output))
 		}
 	}
 

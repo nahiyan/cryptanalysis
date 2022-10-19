@@ -3,7 +3,11 @@ package utils
 import (
 	"benchmark/constants"
 	"benchmark/types"
+	"fmt"
+	"io/ioutil"
 	"os"
+	"path"
+	"strings"
 )
 
 func MakeRange(min, max int) []int {
@@ -14,7 +18,7 @@ func MakeRange(min, max int) []int {
 	return a
 }
 
-func appendLog(filename, message string) {
+func AppendLog(filename, message string) {
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		panic("Failed to write logs")
@@ -27,11 +31,11 @@ func appendLog(filename, message string) {
 }
 
 func AppendBenchmarkLog(message string) {
-	appendLog(constants.BENCHMARK_LOG_FILE_NAME, message)
+	AppendLog(constants.BENCHMARK_LOG_FILE_NAME, message)
 }
 
 func AppendVerificationLog(message string) {
-	appendLog(constants.VERIFICATION_LOG_FILE_NAME, message)
+	AppendLog(constants.VERIFICATION_LOG_FILE_NAME, message)
 }
 
 func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, uint, string, uint, string, uint)) {
@@ -105,4 +109,31 @@ func InstancesCount(commandContext *types.CommandContext) uint {
 	}
 
 	return count
+}
+
+func AggregateLogs() {
+	items, _ := ioutil.ReadDir(constants.RESULTS_DIR_PATH)
+	for _, item := range items {
+		if item.IsDir() {
+			continue
+		}
+
+		if path.Ext(item.Name()) != ".log" {
+			continue
+		}
+
+		data, err := os.ReadFile(path.Join(constants.RESULTS_DIR_PATH, item.Name()))
+		if err != nil {
+			fmt.Println("Failed to aggregate logs", err.Error())
+		}
+
+		data_ := strings.TrimSpace(string(data))
+
+		fmt.Println(item.Name())
+		if strings.HasPrefix(item.Name(), "verification") {
+			AppendVerificationLog(data_)
+		} else if strings.HasPrefix(item.Name(), "benchmark") {
+			AppendBenchmarkLog(data_)
+		}
+	}
 }

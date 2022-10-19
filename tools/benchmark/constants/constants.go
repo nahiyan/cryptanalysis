@@ -27,4 +27,5 @@ const (
 	BASE_PATH                  = "../../"
 	SOLUTIONS_DIR_PATH         = BASE_PATH + "solutions/saeed/"
 	ENCODINGS_DIR_PATH         = BASE_PATH + "encodings/saeed/"
+	RESULTS_DIR_PATH           = "./results/"
 )

@@ -52,6 +52,14 @@ var regularCmd = &cobra.Command{
 	},
 }
 
+var aggregateLogsCmd = &cobra.Command{
+	Use:   "aggregate_logs",
+	Short: "Aggregate the logs into a single file for each category",
+	Run: func(cmd *cobra.Command, args []string) {
+		utils.AggregateLogs()
+	},
+}
+
 func processFlags() types.CommandContext {
 	context := types.CommandContext{}
 
@@ -190,6 +198,7 @@ func init() {
 	// Commands
 	rootCmd.AddCommand(regularCmd)
 	rootCmd.AddCommand(slurmCmd)
+	rootCmd.AddCommand(aggregateLogsCmd)
 }
 
 func Execute() {
