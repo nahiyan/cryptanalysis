@@ -19,9 +19,11 @@ func generateJobs(context *types.CommandContext) []string {
 
 		command := fmt.Sprintf("%s\n./benchmark --var-steps %d --var-xor %d --var-dobbertin %d --var-adders %s --var-hashes %s --var-sat-solvers %s --reset-data 0 regular", slurmArgs, steps, xorOption, dobbertin, adderType, hash, satSolver_)
 
+		satSolver := utils.ResolveSatSolverName(satSolver_)
+
 		// Write the file for the job
 		d := []byte("#!/bin/bash\n\n" + command)
-		filepath := "./jobs/" + instanceName + ".sh"
+		filepath := "./jobs/" + satSolver + "_" + instanceName + ".sh"
 		if err := os.WriteFile(filepath, d, 0644); err != nil {
 			fmt.Println("Failed to create job:", instanceName)
 		}
