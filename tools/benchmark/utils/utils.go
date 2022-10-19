@@ -35,16 +35,16 @@ func AppendVerificationLog(message string) {
 }
 
 func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, uint, string, uint, string, uint)) {
-	var i uint = 0
 	for _, satSolver := range context.VariationsSatSolvers {
+		var i uint = 0
 		for _, steps := range context.VariationsSteps {
 			for _, hash := range context.VariationsHashes {
 				for _, xorOption := range context.VariationsXor {
 					for _, adderType := range context.VariationsAdders {
 						for _, dobbertin := range context.VariationsDobbertin {
-							// Skip dobbertin's attacks when steps count < 28
-							if steps < 28 && dobbertin == 1 {
-								dobbertin = 0
+							// Skip dobbertin's attacks when steps count < 27
+							if steps < 27 && dobbertin == 1 {
+								continue
 							}
 
 							cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin)
@@ -83,4 +83,26 @@ func ResolveAdderType(shortcut string) string {
 	}
 
 	return ""
+}
+
+func InstancesCount(commandContext *types.CommandContext) uint {
+	var count uint = 0
+	for _, steps := range commandContext.VariationsSteps {
+		for range commandContext.VariationsHashes {
+			for range commandContext.VariationsXor {
+				for range commandContext.VariationsAdders {
+					for _, dobbertin := range commandContext.VariationsDobbertin {
+						// Skip dobbertin's attacks when steps count < 27
+						if steps < 27 && dobbertin == 1 {
+							continue
+						}
+
+						count++
+					}
+				}
+			}
+		}
+	}
+
+	return count
 }

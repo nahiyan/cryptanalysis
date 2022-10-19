@@ -3,10 +3,10 @@ package constants
 const (
 	ArgCounterChain            = "cc"
 	ArgDotMatrix               = "dm"
-	ArgCryptoMiniSat           = "cmc"
+	ArgCryptoMiniSat           = "cms"
 	ArgKissat                  = "ks"
 	ArgCadical                 = "cdc"
-	ArgGlucoseSyrup            = "gc"
+	ArgGlucoseSyrup            = "gs"
 	ArgMapleSat                = "ms"
 	ArgXnfSat                  = "xnf"
 	CRYPTOMINISAT              = "cryptominisat"

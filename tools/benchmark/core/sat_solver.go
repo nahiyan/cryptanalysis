@@ -161,7 +161,7 @@ func GlucoseCmd(filepath string) string {
 	return command
 }
 
-func areAllInstancesCompleted(context *types.BenchmarkContext) bool {
+func AreAllInstancesCompleted(context *types.BenchmarkContext) bool {
 	for _, progressEntries := range context.Progress {
 		if lo.SomeBy(progressEntries, func(done bool) bool {
 			return !done
