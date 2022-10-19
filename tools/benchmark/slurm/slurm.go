@@ -1,6 +1,7 @@
 package slurm
 
 import (
+	"benchmark/constants"
 	"benchmark/types"
 	"benchmark/utils"
 	"fmt"
@@ -34,14 +35,19 @@ func generateJobs(context *types.CommandContext) []string {
 
 func Run(context *types.CommandContext) {
 	// TODO:Clean up the results and jobs directory
+	os.Remove(constants.BENCHMARK_LOG_FILE_NAME)
+	os.Remove(constants.VERIFICATION_LOG_FILE_NAME)
+
 	// Generate jobs
 	jobFilePaths := generateJobs(context)
 
 	// TODO: Schedule the jobs
 	for _, jobFilePath := range jobFilePaths {
 		cmd := exec.Command("sbatch", jobFilePath)
-		if err := cmd.Run(); err != nil {
-			fmt.Println("Job schedule failed:", jobFilePath, err.Error())
+		output, err := cmd.Output()
+		fmt.Println(output)
+		if err != nil {
+			fmt.Println("Job schedule failed:", jobFilePath)
 		}
 	}
 }
