@@ -6,8 +6,6 @@ import (
 	"benchmark/types"
 	"benchmark/utils"
 	"fmt"
-	"os"
-	"os/exec"
 	"time"
 )
 
@@ -22,21 +20,6 @@ func Run(commandContext *types.CommandContext) {
 	for _, satSolver_ := range commandContext.VariationsSatSolvers {
 		satSolver := utils.ResolveSatSolverName(satSolver_)
 		benchmarkContext.Progress[satSolver] = make([]bool, instancesCount)
-	}
-
-	// Remove the files from previous execution
-	if commandContext.ResetData {
-		os.Remove(constants.BENCHMARK_LOG_FILE_NAME)
-		os.Remove(constants.VERIFICATION_LOG_FILE_NAME)
-	}
-	for _, satSolver_ := range commandContext.VariationsSatSolvers {
-		satSolver := utils.ResolveSatSolverName(satSolver_)
-
-		cmd := exec.Command("bash", "-c", fmt.Sprintf("rm %s%s/*.sol", constants.SOLUTIONS_DIR_PATH, satSolver))
-		if err := cmd.Run(); err != nil {
-			fmt.Println(cmd.String())
-			fmt.Println("Failed to delete the solution files: " + err.Error())
-		}
 	}
 
 	// Loop through the instances

@@ -1,7 +1,6 @@
 package slurm
 
 import (
-	"benchmark/constants"
 	"benchmark/types"
 	"benchmark/utils"
 	"fmt"
@@ -34,10 +33,6 @@ func generateJobs(context *types.CommandContext) []string {
 }
 
 func Run(context *types.CommandContext) {
-	// TODO:Clean up the results and jobs directory
-	os.Remove(constants.BENCHMARK_LOG_FILE_NAME)
-	os.Remove(constants.VERIFICATION_LOG_FILE_NAME)
-
 	// Generate jobs
 	jobFilePaths := generateJobs(context)
 
