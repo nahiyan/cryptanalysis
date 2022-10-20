@@ -4,22 +4,22 @@ import matplotlib.pyplot as plt
 
 sat_solvers = []
 points = {}
-max_instances_solved = 0
 
 # Gather the points in a dictionary from the input
 for line in sys.stdin:
     segments = line.split(" ")
 
+    exit_code = int(segments[-1])
+    if exit_code != 10:
+        continue
+
     sat_solver = segments[10][:-1]
     if sat_solver not in sat_solvers:
         sat_solvers.append(sat_solver)
-        points[sat_solver] = {}
+        points[sat_solver] = []
 
     time = float(segments[1][:-2])
-    instance_index = int(segments[4][:-1].strip())
-    points[sat_solver][instance_index] = time
-    if instance_index + 1 > max_instances_solved:
-        max_instances_solved = instance_index + 1
+    points[sat_solver].append(time)
 
 # Organize the points for each line
 lines = []
@@ -30,14 +30,11 @@ for sat_solver in sat_solvers:
         continue
 
     lines.append([])
-    for i in range(0, max_instances_solved):
-        if i not in points[sat_solver]:
-            continue
-
-        time = points[sat_solver][i]
+    for time in points[sat_solver]:
         lines[j].append(time)
 
 
+# Plot the cactus plot
 point_styles = ['b+', 'g.', 'r+', 'c*', 'm.', 'ys', 'kp']
 
 plt.figure(dpi=600)
