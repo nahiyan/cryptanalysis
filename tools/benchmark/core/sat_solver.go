@@ -29,14 +29,14 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 	instanceName := strings.TrimSuffix(path.Base(filepath), ".cnf")
 	logMessage := fmt.Sprintf("Time: %.2fs, instance index: %d, instance name: %s, SAT solver: %s, exit code: %d", duration.Seconds(), instanceIndex, instanceName, satSolver, exitCode)
 
-	benchmarkLogFilePath := constants.RESULTS_DIR_PATH + "benchmark_" + instanceName + "_" + satSolver + ".log"
-	verificationLogFilePath := constants.RESULTS_DIR_PATH + "verification_" + instanceName + "_" + satSolver + ".log"
+	benchmarkLogFilePath := constants.ResultsDirPat + "benchmark_" + instanceName + "_" + satSolver + ".log"
+	verificationLogFilePath := constants.ResultsDirPat + "verification_" + instanceName + "_" + satSolver + ".log"
 
 	utils.AppendLog(benchmarkLogFilePath, logMessage)
 
 	// Normalize the solution
 	{
-		command := fmt.Sprintf("%s %s%s/%s.sol normalize > /tmp/%s-%s.sol && cat /tmp/%s-%s.sol > %s%s/%s.sol", constants.SOLUTION_ANALYZER_BIN_PATH, constants.SOLUTIONS_DIR_PATH, satSolver, instanceName, satSolver, instanceName, satSolver, instanceName, constants.SOLUTIONS_DIR_PATH, satSolver, instanceName)
+		command := fmt.Sprintf("%s %s%s/%s.sol normalize > /tmp/%s-%s.sol && cat /tmp/%s-%s.sol > %s%s/%s.sol", constants.SolutionAnalyzerBinPath, constants.SolutionsDirPath, satSolver, instanceName, satSolver, instanceName, satSolver, instanceName, constants.SolutionsDirPath, satSolver, instanceName)
 		cmd := exec.Command("bash", "-c", command)
 		if err := cmd.Run(); err != nil {
 			utils.AppendLog(verificationLogFilePath, "Failed to normalize "+instanceName+" "+err.Error()+" "+cmd.String())
@@ -50,7 +50,7 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 			utils.AppendLog(verificationLogFilePath, "Failed to verify "+instanceName)
 		}
 
-		command := fmt.Sprintf("%s %d < %s%s/%s.sol", constants.VERIFIER_BIN_PATH, steps, constants.SOLUTIONS_DIR_PATH, satSolver, instanceName)
+		command := fmt.Sprintf("%s %d < %s%s/%s.sol", constants.VerifierBinPath, steps, constants.SolutionsDirPath, satSolver, instanceName)
 		cmd := exec.Command("bash", "-c", command)
 		output, err := cmd.Output()
 		if err != nil {
@@ -93,14 +93,14 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 func CryptoMiniSat(filepath string, context *types.BenchmarkContext, instanceIndex uint, startTime time.Time, maxTime uint) {
 	command := CryptoMiniSatCmd(filepath)
 
-	invokeSatSolver(command, constants.CRYPTOMINISAT, context, filepath, startTime, instanceIndex, maxTime)
+	invokeSatSolver(command, constants.CryptoMiniSat, context, filepath, startTime, instanceIndex, maxTime)
 }
 
 func CryptoMiniSatCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
 	solutionFilePath := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s --verb=0 %s > %scryptominisat/%ssol", constants.CRYPTOMINISAT_BIN_PATH, filepath, constants.SOLUTIONS_DIR_PATH, solutionFilePath)
+	command := fmt.Sprintf("%s --verb=0 %s > %scryptominisat/%ssol", constants.CryptoMiniSatBinPath, filepath, constants.SolutionsDirPath, solutionFilePath)
 
 	return command
 }
@@ -108,14 +108,14 @@ func CryptoMiniSatCmd(filepath string) string {
 func Kissat(filepath string, context *types.BenchmarkContext, instanceIndex uint, startTime time.Time, maxTime uint) {
 	command := KissatCmd(filepath)
 
-	invokeSatSolver(command, constants.KISSAT, context, filepath, startTime, instanceIndex, maxTime)
+	invokeSatSolver(command, constants.Kissat, context, filepath, startTime, instanceIndex, maxTime)
 }
 
 func KissatCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
 	solutionFilePath := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -q %s > %skissat/%ssol", constants.KISSAT_BIN_PATH, filepath, constants.SOLUTIONS_DIR_PATH, solutionFilePath)
+	command := fmt.Sprintf("%s -q %s > %skissat/%ssol", constants.KissatBinPath, filepath, constants.SolutionsDirPath, solutionFilePath)
 
 	return command
 }
@@ -123,14 +123,14 @@ func KissatCmd(filepath string) string {
 func Cadical(filepath string, context *types.BenchmarkContext, instanceIndex uint, startTime time.Time, maxTime uint) {
 	command := CadicalCmd(filepath)
 
-	invokeSatSolver(command, constants.CADICAL, context, filepath, startTime, instanceIndex, maxTime)
+	invokeSatSolver(command, constants.Cadical, context, filepath, startTime, instanceIndex, maxTime)
 }
 
 func CadicalCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
 	solutionFilePath := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -q %s > %scadical/%ssol", constants.CADICAL_BIN_PATH, filepath, constants.SOLUTIONS_DIR_PATH, solutionFilePath)
+	command := fmt.Sprintf("%s -q %s > %scadical/%ssol", constants.CadicalBinPath, filepath, constants.SolutionsDirPath, solutionFilePath)
 
 	return command
 }
@@ -138,14 +138,29 @@ func CadicalCmd(filepath string) string {
 func MapleSat(filepath string, context *types.BenchmarkContext, instanceIndex uint, startTime time.Time, maxTime uint) {
 	command := MapleSatCmd(filepath)
 
-	invokeSatSolver(command, constants.MAPLESAT, context, filepath, startTime, instanceIndex, maxTime)
+	invokeSatSolver(command, constants.MapleSat, context, filepath, startTime, instanceIndex, maxTime)
 }
 
 func MapleSatCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
 	solutionFilePath := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -verb=0 %s %smaplesat/%ssol", constants.MAPLESAT_BIN_PATH, filepath, constants.SOLUTIONS_DIR_PATH, solutionFilePath)
+	command := fmt.Sprintf("%s -verb=0 %s %smaplesat/%ssol", constants.MapleSatBinPath, filepath, constants.SolutionsDirPath, solutionFilePath)
+
+	return command
+}
+
+func XnfSat(filepath string, context *types.BenchmarkContext, instanceIndex uint, startTime time.Time, maxTime uint) {
+	command := XnfSatCmd(filepath)
+
+	invokeSatSolver(command, constants.MapleSat, context, filepath, startTime, instanceIndex, maxTime)
+}
+
+func XnfSatCmd(filepath string) string {
+	baseFileName := path.Base(filepath)
+	solutionFilePath := baseFileName[:len(baseFileName)-3]
+
+	command := fmt.Sprintf("%s --witness --verbose=0 %s > %sxnfsat/%ssol", constants.XnfSatBinPath, filepath, constants.SolutionsDirPath, solutionFilePath)
 
 	return command
 }
@@ -153,14 +168,14 @@ func MapleSatCmd(filepath string) string {
 func Glucose(filepath string, context *types.BenchmarkContext, instanceIndex uint, startTime time.Time, maxTime uint) {
 	command := GlucoseCmd(filepath)
 
-	invokeSatSolver(command, constants.GLUCOSE, context, filepath, startTime, instanceIndex, maxTime)
+	invokeSatSolver(command, constants.Glucose, context, filepath, startTime, instanceIndex, maxTime)
 }
 
 func GlucoseCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
 	solutionFilePath := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -verb=0 %s %sglucose/%ssol", constants.GLUCOSE_BIN_PATH, filepath, constants.SOLUTIONS_DIR_PATH, solutionFilePath)
+	command := fmt.Sprintf("%s -verb=0 %s %sglucose/%ssol", constants.GlucoseBinPath, filepath, constants.SolutionsDirPath, solutionFilePath)
 
 	return command
 }

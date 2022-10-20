@@ -30,21 +30,23 @@ func Run(commandContext *types.CommandContext) {
 
 		adderType := utils.ResolveAdderType(adderType_)
 		filepath := fmt.Sprintf("%smd4_%d_%s_xor%d_%s_dobbertin%d.cnf",
-			constants.ENCODINGS_DIR_PATH, steps, adderType, xorOption, hash, dobbertin)
+			constants.EncodingsDirPath, steps, adderType, xorOption, hash, dobbertin)
 
 		satSolver := utils.ResolveSatSolverName(satSolver_)
 		startTime := time.Now()
 		switch satSolver {
-		case constants.CRYPTOMINISAT:
+		case constants.CryptoMiniSat:
 			go core.CryptoMiniSat(filepath, benchmarkContext, i, startTime, commandContext.InstanceMaxTime)
-		case constants.KISSAT:
+		case constants.Kissat:
 			go core.Kissat(filepath, benchmarkContext, i, startTime, commandContext.InstanceMaxTime)
-		case constants.CADICAL:
+		case constants.Cadical:
 			go core.Cadical(filepath, benchmarkContext, i, startTime, commandContext.InstanceMaxTime)
-		case constants.MAPLESAT:
+		case constants.MapleSat:
 			go core.MapleSat(filepath, benchmarkContext, i, startTime, commandContext.InstanceMaxTime)
-		case constants.GLUCOSE:
+		case constants.Glucose:
 			go core.Glucose(filepath, benchmarkContext, i, startTime, commandContext.InstanceMaxTime)
+		case constants.XnfSat:
+			go core.XnfSat(filepath, benchmarkContext, i, startTime, commandContext.InstanceMaxTime)
 		}
 
 		benchmarkContext.RunningInstances += 1

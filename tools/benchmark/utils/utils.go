@@ -31,11 +31,11 @@ func AppendLog(filename, message string) {
 }
 
 func AppendBenchmarkLog(message string) {
-	AppendLog(constants.BENCHMARK_LOG_FILE_NAME, message)
+	AppendLog(constants.BenchmarkLogFileName, message)
 }
 
 func AppendVerificationLog(message string) {
-	AppendLog(constants.VERIFICATION_LOG_FILE_NAME, message)
+	AppendLog(constants.VerificationLogFileName, message)
 }
 
 func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, uint, string, uint, string, uint)) {
@@ -64,15 +64,17 @@ func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, 
 func ResolveSatSolverName(shortcut string) string {
 	switch shortcut {
 	case constants.ArgCryptoMiniSat:
-		return constants.CRYPTOMINISAT
+		return constants.CryptoMiniSat
 	case constants.ArgKissat:
-		return constants.KISSAT
+		return constants.Kissat
 	case constants.ArgCadical:
-		return constants.CADICAL
+		return constants.Cadical
 	case constants.ArgGlucoseSyrup:
-		return constants.GLUCOSE
+		return constants.Glucose
 	case constants.ArgMapleSat:
-		return constants.MAPLESAT
+		return constants.MapleSat
+	case constants.ArgXnfSat:
+		return constants.XnfSat
 	}
 
 	return ""
@@ -112,7 +114,7 @@ func InstancesCount(commandContext *types.CommandContext) uint {
 }
 
 func AggregateLogs() {
-	items, _ := ioutil.ReadDir(constants.RESULTS_DIR_PATH)
+	items, _ := ioutil.ReadDir(constants.ResultsDirPat)
 	for _, item := range items {
 		if item.IsDir() {
 			continue
@@ -122,7 +124,7 @@ func AggregateLogs() {
 			continue
 		}
 
-		data, err := os.ReadFile(path.Join(constants.RESULTS_DIR_PATH, item.Name()))
+		data, err := os.ReadFile(path.Join(constants.ResultsDirPat, item.Name()))
 		if err != nil {
 			fmt.Println("Failed to aggregate logs", err.Error())
 		}
