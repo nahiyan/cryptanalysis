@@ -2,6 +2,11 @@ import sys
 from matplotlib.lines import lineStyles
 import matplotlib.pyplot as plt
 
+time_in_x = False
+
+if len(sys.argv) >= 2 and sys.argv[1] == "invert":
+    time_in_x = True
+
 sat_solvers = []
 points = {}
 
@@ -37,7 +42,7 @@ for sat_solver in sat_solvers:
 # Plot the cactus plot
 point_styles = ['b+', 'g.', 'r+', 'c*', 'm.', 'ys', 'kp']
 
-plt.figure(dpi=600)
+plt.figure(dpi=250)
 i = 0
 for sat_solver in sat_solvers:
     sat_solver_index = sat_solvers.index(sat_solver)
@@ -53,12 +58,23 @@ for sat_solver in sat_solvers:
 
     time_values.sort()
 
-    plt.plot(instance_count_values, time_values,
+    # Control the orientation of the plot
+    x = instance_count_values
+    y = time_values
+    xlabel = "Instances Solved"
+    ylabel = "Time Limit"
+    if time_in_x:
+        x = time_values
+        y = instance_count_values
+        xlabel = "Time Limit"
+        ylabel = "Instances Solved"
+
+    plt.plot(x, y,
              point_styles[i], label=sat_solver, linewidth=0.5, linestyle='solid')
     i += 1
 
 plt.grid()
 plt.legend()
-plt.xlabel("Instances Solved")
-plt.ylabel("Time Limit")
+plt.ylabel(ylabel)
+plt.xlabel(xlabel)
 plt.savefig("plot.png")
