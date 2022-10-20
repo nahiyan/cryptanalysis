@@ -153,7 +153,7 @@ func MapleSatCmd(filepath string) string {
 func XnfSat(filepath string, context *types.BenchmarkContext, instanceIndex uint, startTime time.Time, maxTime uint) {
 	command := XnfSatCmd(filepath)
 
-	invokeSatSolver(command, constants.MapleSat, context, filepath, startTime, instanceIndex, maxTime)
+	invokeSatSolver(command, constants.XnfSat, context, filepath, startTime, instanceIndex, maxTime)
 }
 
 func XnfSatCmd(filepath string) string {

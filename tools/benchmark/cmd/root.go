@@ -8,6 +8,7 @@ import (
 	"benchmark/utils"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -23,7 +24,7 @@ var variationsDobbertin_ string
 var variationsSteps_ string
 var instanceMaxTime uint
 var maxConcurrentInstancesCount uint
-var resetData bool
+var cleanResults bool
 
 var rootCmd = &cobra.Command{
 	Use:   "benchmark",
@@ -104,7 +105,7 @@ func processFlags() types.CommandContext {
 
 	// SAT Solver Variations
 	{
-		satSolvers := []string{constants.ArgCryptoMiniSat, constants.ArgKissat, constants.ArgCadical, constants.ArgGlucoseSyrup, constants.ArgMapleSat}
+		satSolvers := []string{constants.ArgCryptoMiniSat, constants.ArgKissat, constants.ArgCadical, constants.ArgGlucoseSyrup, constants.ArgMapleSat, constants.ArgXnfSat}
 
 		var variationSatSolvers []string
 		pieces := strings.Split(variationsSatSolvers_, ",")
@@ -178,22 +179,28 @@ func processFlags() types.CommandContext {
 	context.MaxConcurrentInstancesCount = maxConcurrentInstancesCount
 
 	// Reset data
-	context.ResetData = resetData
+	context.CleanResults = cleanResults
+
+	// TODO: Improve the way this is handled
+	// Remove leftover results
+	if context.CleanResults {
+		exec.Command("bash", "-c", "rm "+constants.ResultsDirPat+"*.log").Run()
+	}
 
 	return context
 }
 
 func init() {
 	// Flags
-	rootCmd.PersistentFlags().StringVar(&variationsXor_, "var-xor", "0,1", "State the possible comma-separated variations of XOR. Possible values: 0, 1")
-	rootCmd.PersistentFlags().StringVar(&variationsAdders_, "var-adders", "cc,dm", "State the possible comma-separated variations of the adders. Possible values: cm, dm")
-	rootCmd.PersistentFlags().StringVar(&variationsSatSolvers_, "var-sat-solvers", "cms,ks,cdc,gs,xnf,ms", "State the possible comma-separated variations of the SAT solvers. Possible values: cms, ks, cdc, gs, xnf, ms")
-	rootCmd.PersistentFlags().StringVar(&variationsHashes_, "var-hashes", "ffffffffffffffffffffffffffffffff,00000000000000000000000000000000", "State the possible comma-separated variations of the hashes. Possible values: ffffffffffffffffffffffffffffffff, 00000000000000000000000000000000")
-	rootCmd.PersistentFlags().StringVar(&variationsDobbertin_, "var-dobbertin", "0,1", "State the possible comma-separated variations of the Dobbertin's attack. Possible values: 0, 1")
-	rootCmd.PersistentFlags().StringVar(&variationsSteps_, "var-steps", "31-39", "State the possible comma-separated variations of the values and/or ranges of steps")
+	rootCmd.PersistentFlags().StringVar(&variationsXor_, "var-xor", "0,1", "Comma-separated variations of XOR. Possible values: 0, 1")
+	rootCmd.PersistentFlags().StringVar(&variationsAdders_, "var-adders", "cc,dm", "Comma-separated variations of the adders. Possible values: cm, dm")
+	rootCmd.PersistentFlags().StringVar(&variationsSatSolvers_, "var-sat-solvers", "cms,ks,cdc,gs,ms", "Comma-separated variations of the SAT solvers. Possible values: cms, ks, cdc, gs, ms, xnf")
+	rootCmd.PersistentFlags().StringVar(&variationsHashes_, "var-hashes", "ffffffffffffffffffffffffffffffff,00000000000000000000000000000000", "Comma-separated variations of the hashes. Possible values: ffffffffffffffffffffffffffffffff, 00000000000000000000000000000000")
+	rootCmd.PersistentFlags().StringVar(&variationsDobbertin_, "var-dobbertin", "0,1", "Comma-separated variations of the Dobbertin's attack. Possible values: 0, 1")
+	rootCmd.PersistentFlags().StringVar(&variationsSteps_, "var-steps", "31-39", "Comma-separated variations of the values and/or ranges of steps")
 	rootCmd.PersistentFlags().UintVar(&instanceMaxTime, "max-time", 5000, "Maximum time in seconds for each instance to run")
 	regularCmd.Flags().UintVar(&maxConcurrentInstancesCount, "max-instances", 50, "Maximum number of instances to run concurrently")
-	regularCmd.Flags().BoolVar(&resetData, "reset-data", true, "Reset data such as logs, solutions, etc.")
+	rootCmd.PersistentFlags().BoolVar(&cleanResults, "clean-results", false, "Remove leftover results from previous sessions")
 
 	// Commands
 	rootCmd.AddCommand(regularCmd)

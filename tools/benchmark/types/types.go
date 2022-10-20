@@ -9,7 +9,7 @@ type CommandContext struct {
 	VariationsHashes            []string
 	InstanceMaxTime             uint
 	MaxConcurrentInstancesCount uint
-	ResetData                   bool
+	CleanResults                bool
 }
 
 type BenchmarkContext struct {

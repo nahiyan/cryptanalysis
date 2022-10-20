@@ -52,7 +52,7 @@ func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, 
 							}
 
 							cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin)
-							i++
+							i += 1
 						}
 					}
 				}
