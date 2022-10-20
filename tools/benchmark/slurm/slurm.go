@@ -17,7 +17,7 @@ func generateJobs(context *types.CommandContext) []string {
 
 		slurmArgs := fmt.Sprintf("#SBATCH --nodes=1\n#SBATCH --cpus-per-task=1\n#SBATCH --mem=300M\n#SBATCH --time=00:%d\n", context.InstanceMaxTime)
 
-		command := fmt.Sprintf("%s\n./benchmark --var-steps %d --var-xor %d --var-dobbertin %d --var-adders %s --var-hashes %s --var-sat-solvers %s --reset-data 0 regular", slurmArgs, steps, xorOption, dobbertin, adderType, hash, satSolver_)
+		command := fmt.Sprintf("%s\n./benchmark --var-steps %d --var-xor %d --var-dobbertin %d --var-adders %s --var-hashes %s --var-sat-solvers %s 0 regular", slurmArgs, steps, xorOption, dobbertin, adderType, hash, satSolver_)
 
 		satSolver := utils.ResolveSatSolverName(satSolver_)
 
