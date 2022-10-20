@@ -91,7 +91,7 @@ impl NormalizationContext<'_> {
     // Analyze the line
     fn analyze_line(&mut self, line: &str) {
         // Ignore headers
-        if line.starts_with("s SATISFIABLE") || line.starts_with("SAT") {
+        if line.starts_with("s SATISFIABLE") || line.starts_with("SAT") || line.starts_with("c") {
             return;
         }
 
