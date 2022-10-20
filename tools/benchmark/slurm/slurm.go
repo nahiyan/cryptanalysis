@@ -42,7 +42,7 @@ func Run(context *types.CommandContext) {
 	for _, jobFilePath := range jobFilePaths {
 		cmd := exec.Command("sbatch", jobFilePath)
 		output, err := cmd.Output()
-		fmt.Println(string(output))
+		fmt.Print(string(output))
 		if err != nil {
 			fmt.Println("Job schedule failed:", jobFilePath)
 		}
