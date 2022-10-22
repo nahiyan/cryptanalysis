@@ -33,14 +33,14 @@ func AppendBenchmarkLog(message string) {
 	AppendLog(constants.BenchmarkLogFileName, message)
 }
 func AppendValidResultsLog(message string) {
-	AppendLog(constants.BenchmarkLogFileName, message)
+	AppendLog(constants.ValidResultsLogFileName, message)
 }
 
 func AppendVerificationLog(message string) {
 	AppendLog(constants.VerificationLogFileName, message)
 }
 
-func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, uint, string, uint, string, uint)) {
+func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, uint, string, uint, string, uint, uint)) {
 	for _, satSolver := range context.VariationsSatSolvers {
 		var i uint = 0
 		for _, steps := range context.VariationsSteps {
@@ -48,18 +48,25 @@ func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, 
 				for _, xorOption := range context.VariationsXor {
 					for _, adderType := range context.VariationsAdders {
 						for _, dobbertin := range context.VariationsDobbertin {
-							// Skip dobbertin's attacks when steps count < 27
-							if steps < 27 && dobbertin == 1 {
-								continue
-							}
+							for _, dobbertinBits := range context.VariationsDobbertinBits {
+								// Skip any dobbertin bit variation when dobbertin's attack isn't on
+								if dobbertin == 0 && dobbertinBits != 32 {
+									continue
+								}
 
-							// No XOR for SAT Solvers other than CryptoMiniSAT and XNFSAT
-							if xorOption == 1 && satSolver != constants.ArgCryptoMiniSat && satSolver != constants.ArgXnfSat {
-								xorOption = 0
-							}
+								// Skip dobbertin's attacks when steps count < 27
+								if steps < 27 && dobbertin == 1 {
+									continue
+								}
 
-							cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin)
-							i += 1
+								// No XOR for SAT Solvers other than CryptoMiniSAT and XNFSAT
+								if xorOption == 1 && satSolver != constants.ArgCryptoMiniSat && satSolver != constants.ArgXnfSat {
+									xorOption = 0
+								}
+
+								cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin, dobbertinBits)
+								i += 1
+							}
 						}
 					}
 				}
@@ -100,22 +107,9 @@ func ResolveAdderType(shortcut string) string {
 
 func InstancesCount(commandContext *types.CommandContext) uint {
 	var count uint = 0
-	for _, steps := range commandContext.VariationsSteps {
-		for range commandContext.VariationsHashes {
-			for range commandContext.VariationsXor {
-				for range commandContext.VariationsAdders {
-					for _, dobbertin := range commandContext.VariationsDobbertin {
-						// Skip dobbertin's attacks when steps count < 27
-						if steps < 27 && dobbertin == 1 {
-							continue
-						}
-
-						count++
-					}
-				}
-			}
-		}
-	}
+	LoopThroughVariations(commandContext, func(u1 uint, s1 string, u2 uint, s2 string, u3 uint, s3 string, u4, u5 uint) {
+		count++
+	})
 
 	return count
 }
@@ -147,4 +141,9 @@ func AggregateLogs() {
 			AppendValidResultsLog(data_)
 		}
 	}
+}
+
+func EncodingsFileName(steps uint, adderType string, xorOption uint, hash string, dobbertin, dobbertinBits uint) string {
+	return fmt.Sprintf("%smd4_%d_%s_xor%d_%s_dobbertin%d_b%d.cnf",
+		constants.EncodingsDirPath, steps, adderType, xorOption, hash, dobbertin, dobbertinBits)
 }

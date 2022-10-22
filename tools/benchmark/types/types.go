@@ -5,6 +5,7 @@ type CommandContext struct {
 	VariationsAdders            []string
 	VariationsSatSolvers        []string
 	VariationsDobbertin         []uint
+	VariationsDobbertinBits     []uint
 	VariationsSteps             []uint
 	VariationsHashes            []string
 	InstanceMaxTime             uint
