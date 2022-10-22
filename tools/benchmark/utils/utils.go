@@ -51,6 +51,11 @@ func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, 
 								continue
 							}
 
+							// No XOR for SAT Solvers other than CryptoMiniSAT and XNFSAT
+							if xorOption == 1 && satSolver != constants.ArgCryptoMiniSat && satSolver != constants.ArgXnfSat {
+								xorOption = 0
+							}
+
 							cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin)
 							i += 1
 						}
