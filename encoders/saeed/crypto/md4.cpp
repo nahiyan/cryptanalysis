@@ -1,6 +1,6 @@
 #include "md4.h"
 
-MD4::MD4(int rnds, int dobbertin, bool initBlock)
+MD4::MD4(int rnds, int dobbertin, int bits, bool initBlock)
     : MDHash(16, 4, rnds, initBlock)
 {
     this->dobbertin = dobbertin == 1;
@@ -165,17 +165,17 @@ void MD4::encode()
 
     // Dobbertin attack's conditions
     if (dobbertin) {
-        cnf.fixedValue(q[17], 0);
-        cnf.fixedValue(q[18], 0);
-        cnf.fixedValue(q[20], 0);
-        cnf.fixedValue(q[21], 0);
-        cnf.fixedValue(q[22], 0);
-        cnf.fixedValue(q[24], 0);
-        cnf.fixedValue(q[25], 0);
-        cnf.fixedValue(q[26], 0);
-        cnf.fixedValue(q[28], 0);
-        cnf.fixedValue(q[29], 0);
-        cnf.fixedValue(q[30], 0);
+        cnf.fixedValue(q[17], 0, bits);
+        cnf.fixedValue(q[18], 0, bits);
+        cnf.fixedValue(q[20], 0, bits);
+        cnf.fixedValue(q[21], 0, bits);
+        cnf.fixedValue(q[22], 0, bits);
+        cnf.fixedValue(q[24], 0, bits);
+        cnf.fixedValue(q[25], 0, bits);
+        cnf.fixedValue(q[26], 0, bits);
+        cnf.fixedValue(q[28], 0, bits);
+        cnf.fixedValue(q[29], 0, bits);
+        cnf.fixedValue(q[30], 0, bits);
     }
 
     int R = rounds, r = rounds % 4;

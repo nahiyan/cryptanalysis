@@ -32,6 +32,7 @@ FuncType cfg_function;
 AnalysisType cfg_analysis;
 int fixed_bits;
 int dobbertin;
+int bits; // Dobbertin-like containts: Number of bits to relax
 
 void preimage(int rounds)
 {
@@ -42,7 +43,7 @@ void preimage(int rounds)
     else if (cfg_function == FT_SHA256)
         f = new SHA256(rounds);
     else if (cfg_function == FT_MD4)
-        f = new MD4(rounds, dobbertin);
+        f = new MD4(rounds, dobbertin, bits);
     else {
         fprintf(stderr, "Invalid function type!\n");
         return;
@@ -132,6 +133,7 @@ int main(int argc, char** argv)
     cfg_analysis = AT_PREIMAGE;
     int rounds = -1;
     fixed_bits = 0;
+    bits = 32;
 
     struct option long_options[] = {
         /* flag options */
@@ -139,6 +141,7 @@ int main(int argc, char** argv)
         { "print_target", no_argument, &cfg_print_target, 1 },
         { "dobbertin", no_argument, &dobbertin, 1 },
         /* valued options */
+        { "bits", required_argument, 0, 'b' },
         { "rounds", required_argument, 0, 'r' },
         { "fix", required_argument, 0, 'F' },
         { "function", required_argument, 0, 'f' },
@@ -165,6 +168,10 @@ int main(int argc, char** argv)
 
         case 'r':
             rounds = atoi(optarg);
+            break;
+
+        case 'b':
+            bits = atoi(optarg);
             break;
 
         case 'F':
