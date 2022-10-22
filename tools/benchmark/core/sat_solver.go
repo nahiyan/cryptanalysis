@@ -30,6 +30,7 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 	logMessage := fmt.Sprintf("Time: %.2fs, instance index: %d, instance name: %s, SAT solver: %s, exit code: %d", duration.Seconds(), instanceIndex, instanceName, satSolver, exitCode)
 
 	benchmarkLogFilePath := constants.ResultsDirPat + "benchmark_" + instanceName + "_" + satSolver + ".log"
+	validResultsLogFilePath := constants.ResultsDirPat + "valid_results_" + instanceName + "_" + satSolver + ".log"
 	verificationLogFilePath := constants.ResultsDirPat + "verification_" + instanceName + "_" + satSolver + ".log"
 
 	utils.AppendLog(benchmarkLogFilePath, logMessage)
@@ -59,6 +60,7 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 
 		if strings.Contains(string(output), "Solution's hash matches the target!") {
 			utils.AppendLog(verificationLogFilePath, fmt.Sprintf("Valid: %s %s", satSolver, instanceName))
+			utils.AppendLog(validResultsLogFilePath, logMessage)
 		} else if strings.Contains(string(output), "Solution's hash DOES NOT match the target:") || strings.Contains(string(output), "Result is UNSAT!") {
 			utils.AppendLog(verificationLogFilePath, fmt.Sprintf("Invalid: %s %s", satSolver, instanceName))
 		} else {

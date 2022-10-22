@@ -26,6 +26,7 @@ const (
 
 	BenchmarkLogFileName    = "benchmark.log"
 	VerificationLogFileName = "verification.log"
+	ValidResultsLogFileName = "valid_results.log"
 	BasePath                = "../../"
 	SolutionsDirPath        = BasePath + "solutions/saeed/"
 	EncodingsDirPath        = BasePath + "encodings/saeed/"

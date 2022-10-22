@@ -4,7 +4,6 @@ import (
 	"benchmark/constants"
 	"benchmark/types"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -31,6 +30,9 @@ func AppendLog(filename, message string) {
 }
 
 func AppendBenchmarkLog(message string) {
+	AppendLog(constants.BenchmarkLogFileName, message)
+}
+func AppendValidResultsLog(message string) {
 	AppendLog(constants.BenchmarkLogFileName, message)
 }
 
@@ -119,7 +121,7 @@ func InstancesCount(commandContext *types.CommandContext) uint {
 }
 
 func AggregateLogs() {
-	items, _ := ioutil.ReadDir(constants.ResultsDirPat)
+	items, _ := os.ReadDir(constants.ResultsDirPat)
 	for _, item := range items {
 		if item.IsDir() {
 			continue
@@ -141,6 +143,8 @@ func AggregateLogs() {
 			AppendVerificationLog(data_)
 		} else if strings.HasPrefix(item.Name(), "benchmark") {
 			AppendBenchmarkLog(data_)
+		} else if strings.HasPrefix(item.Name(), "valid_results") {
+			AppendValidResultsLog(data_)
 		}
 	}
 }
