@@ -144,6 +144,10 @@ func AggregateLogs() {
 }
 
 func EncodingsFileName(steps uint, adderType string, xorOption uint, hash string, dobbertin, dobbertinBits uint) string {
-	return fmt.Sprintf("%smd4_%d_%s_xor%d_%s_dobbertin%d_b%d.cnf",
+	return InstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits) + ".cnf"
+}
+
+func InstanceName(steps uint, adderType string, xorOption uint, hash string, dobbertin, dobbertinBits uint) string {
+	return fmt.Sprintf("%smd4_%d_%s_xor%d_%s_dobbertin%d_b%d",
 		constants.EncodingsDirPath, steps, adderType, xorOption, hash, dobbertin, dobbertinBits)
 }
