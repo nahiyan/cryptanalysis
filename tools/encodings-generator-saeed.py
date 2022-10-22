@@ -13,6 +13,7 @@ hashes = ["ffffffffffffffffffffffffffffffff",
 adder_types = ["counter_chain", "dot_matrix"]
 step_variations = list(range(16, 49))
 dobbertin_variations = [True, False]
+dobbertin_relaxation_variations = list(range(0, 33))
 
 # Check if the executable exists
 encoder_path = "../encoders/saeed/crypto/main"
@@ -25,18 +26,24 @@ for hash in hashes:
         for adder_type in adder_types:
             for steps in step_variations:
                 for dobbertin in dobbertin_variations:
-                    dobbertin = dobbertin and steps >= 27
+                    for dobbertin_relaxation_variation in dobbertin_relaxation_variations:
+                        dobbertin = dobbertin and steps >= 27
 
-                    os.system("{} {} -A {} -r {} -f md4 -a preimage -t {} {} > ../encodings/saeed/md4_{}_{}_xor{}_{}_dobbertin{}.cnf".format(
-                        encoder_path,
-                        xor_flag,
-                        adder_type,
-                        steps,
-                        hash,
-                        "--dobbertin" if dobbertin else "",
-                        steps,
-                        adder_type,
-                        "1" if xor_option else "0",
-                        hash,
-                        "1" if dobbertin else "0"
-                    ))
+                        if not dobbertin and dobbertin_relaxation_variation != 32:
+                            continue
+
+                        os.system("{} {} -A {} -r {} -f md4 -a preimage -t {} {} --bits {} > ../encodings/saeed/md4_{}_{}_xor{}_{}_dobbertin{}_b{}.cnf".format(
+                            encoder_path,
+                            xor_flag,
+                            adder_type,
+                            steps,
+                            hash,
+                            "--dobbertin" if dobbertin else "",
+                            dobbertin_relaxation_variation,
+                            steps,
+                            adder_type,
+                            "1" if xor_option else "0",
+                            hash,
+                            "1" if dobbertin else "0",
+                            dobbertin_relaxation_variation
+                        ))

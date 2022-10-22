@@ -21,6 +21,7 @@ var variationsHashes_ string
 var variationsAdders_ string
 var variationsSatSolvers_ string
 var variationsDobbertin_ string
+var variationsDobbertinBits_ string
 var variationsSteps_ string
 var instanceMaxTime uint
 var maxConcurrentInstancesCount uint
@@ -172,6 +173,49 @@ func processFlags() types.CommandContext {
 		}
 	}
 
+	// Dobbertin Bits Variations
+	{
+		var variationsDobbertinBits []uint
+		pieces := strings.Split(variationsDobbertinBits_, ",")
+		if len(pieces) > 0 {
+			for _, piece := range pieces {
+				isRange := len(strings.Split(piece, "-")) == 2
+				if isRange {
+					tuple := make([]int, 2)
+					rangePieces := strings.Split(piece, "-")
+					{
+						minValue, err := strconv.Atoi(rangePieces[0])
+						if err != nil {
+							continue
+						}
+						tuple[0] = (minValue)
+					}
+					{
+						maxValue, err := strconv.Atoi(rangePieces[1])
+						if err != nil {
+							continue
+						}
+						tuple[1] = (maxValue)
+					}
+
+					values := utils.MakeRange(tuple[0], tuple[1])
+
+					for _, value := range values {
+						variationsDobbertinBits = append(variationsDobbertinBits, uint(value))
+					}
+				} else {
+					value, err := strconv.Atoi(piece)
+					if err != nil {
+						continue
+					}
+					variationsDobbertinBits = append(variationsDobbertinBits, uint(value))
+				}
+			}
+
+			context.VariationsDobbertinBits = lo.Reverse(variationsDobbertinBits)
+		}
+	}
+
 	// Max. Instance Time
 	context.InstanceMaxTime = instanceMaxTime
 
@@ -197,6 +241,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&variationsSatSolvers_, "var-sat-solvers", "cms,ks,cdc,gs,ms", "Comma-separated variations of the SAT solvers. Possible values: cms, ks, cdc, gs, ms, xnf")
 	rootCmd.PersistentFlags().StringVar(&variationsHashes_, "var-hashes", "ffffffffffffffffffffffffffffffff,00000000000000000000000000000000", "Comma-separated variations of the hashes. Possible values: ffffffffffffffffffffffffffffffff, 00000000000000000000000000000000")
 	rootCmd.PersistentFlags().StringVar(&variationsDobbertin_, "var-dobbertin", "0,1", "Comma-separated variations of the Dobbertin's attack. Possible values: 0, 1")
+	rootCmd.PersistentFlags().StringVar(&variationsDobbertinBits_, "var-dobbertin-bits", "32", "Comma-separated variations of the values and/or ranges of the number of significant bits to constrain in Dobbertin's attack (The order of the values evaluated is reversed)")
 	rootCmd.PersistentFlags().StringVar(&variationsSteps_, "var-steps", "31-39", "Comma-separated variations of the values and/or ranges of steps")
 	rootCmd.PersistentFlags().UintVar(&instanceMaxTime, "max-time", 5000, "Maximum time in seconds for each instance to run")
 	regularCmd.Flags().UintVar(&maxConcurrentInstancesCount, "max-instances", 50, "Maximum number of instances to run concurrently")

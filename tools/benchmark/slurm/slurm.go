@@ -11,7 +11,7 @@ import (
 func generateJobs(context *types.CommandContext) []string {
 	filepaths := make([]string, 0)
 
-	utils.LoopThroughVariations(context, func(i uint, satSolver_ string, steps uint, hash string, xorOption uint, adderType string, dobbertin uint) {
+	utils.LoopThroughVariations(context, func(i uint, satSolver_ string, steps uint, hash string, xorOption uint, adderType string, dobbertin, dobbertinBits uint) {
 		instanceName := fmt.Sprintf("md4_%d_%s_xor%d_%s_dobbertin%d",
 			steps, adderType, xorOption, hash, dobbertin)
 

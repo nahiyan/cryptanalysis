@@ -5,7 +5,6 @@ import (
 	"benchmark/core"
 	"benchmark/types"
 	"benchmark/utils"
-	"fmt"
 	"time"
 )
 
@@ -23,14 +22,13 @@ func Run(commandContext *types.CommandContext) {
 	}
 
 	// Loop through the instances
-	utils.LoopThroughVariations(commandContext, func(i uint, satSolver_ string, steps uint, hash string, xorOption uint, adderType_ string, dobbertin uint) {
+	utils.LoopThroughVariations(commandContext, func(i uint, satSolver_ string, steps uint, hash string, xorOption uint, adderType_ string, dobbertin, dobbertinBits uint) {
 		for uint(benchmarkContext.RunningInstances) > commandContext.MaxConcurrentInstancesCount {
 			time.Sleep(time.Second * 1)
 		}
 
 		adderType := utils.ResolveAdderType(adderType_)
-		filepath := fmt.Sprintf("%smd4_%d_%s_xor%d_%s_dobbertin%d.cnf",
-			constants.EncodingsDirPath, steps, adderType, xorOption, hash, dobbertin)
+		filepath := utils.EncodingsFileName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits)
 
 		satSolver := utils.ResolveSatSolverName(satSolver_)
 		startTime := time.Now()
