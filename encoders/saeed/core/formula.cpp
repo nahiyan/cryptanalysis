@@ -58,7 +58,18 @@ void Formula::addClause(Clause c)
 
 void Formula::fixedValue(int* z, unsigned value, int n)
 {
+    // starting from z[0], which is the least significant bit
     for (int i = 0; i < n; i++) {
+        int x = (value >> i) & 1 ? z[i] : -z[i];
+        addClause({ x });
+    }
+}
+
+// Start from the least significant bit and move n steps
+void Formula::fixedValueInverse(int* z, unsigned value, int n)
+{
+    // starting from z[n - 1], which is the most significant bit
+    for (int i = n - 1; i >= 0; i--) {
         int x = (value >> i) & 1 ? z[i] : -z[i];
         addClause({ x });
     }

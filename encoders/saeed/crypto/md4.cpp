@@ -165,17 +165,17 @@ void MD4::encode()
 
     // Dobbertin attack's conditions
     if (dobbertin) {
-        cnf.fixedValue(q[17], 0, bits);
-        cnf.fixedValue(q[18], 0, bits);
-        cnf.fixedValue(q[20], 0, bits);
-        cnf.fixedValue(q[21], 0, bits);
-        cnf.fixedValue(q[22], 0, bits);
-        cnf.fixedValue(q[24], 0, bits);
-        cnf.fixedValue(q[25], 0, bits);
-        cnf.fixedValue(q[26], 0, bits);
-        cnf.fixedValue(q[28], 0, bits);
-        cnf.fixedValue(q[29], 0, bits);
-        cnf.fixedValue(q[30], 0, bits);
+        cnf.fixedValueInverse(q[17], 0, bits);
+        cnf.fixedValueInverse(q[18], 0, bits);
+        cnf.fixedValueInverse(q[20], 0, bits);
+        cnf.fixedValueInverse(q[21], 0, bits);
+        cnf.fixedValueInverse(q[22], 0, bits);
+        cnf.fixedValueInverse(q[24], 0, bits);
+        cnf.fixedValueInverse(q[25], 0, bits);
+        cnf.fixedValueInverse(q[26], 0, bits);
+        cnf.fixedValueInverse(q[28], 0, bits);
+        cnf.fixedValueInverse(q[29], 0, bits);
+        cnf.fixedValueInverse(q[30], 0, bits);
     }
 
     int R = rounds, r = rounds % 4;
