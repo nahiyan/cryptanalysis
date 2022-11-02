@@ -163,19 +163,21 @@ void MD4::encode()
         cnf.rotl(q[i + 4], t, s[i]);
     }
 
-    // Dobbertin attack's conditions
+    // Dobbertin's constraints
     if (dobbertin) {
-        cnf.fixedValueInverse(q[17], 0, bits);
-        cnf.fixedValueInverse(q[18], 0, bits);
-        cnf.fixedValueInverse(q[20], 0, bits);
-        cnf.fixedValueInverse(q[21], 0, bits);
-        cnf.fixedValueInverse(q[22], 0, bits);
-        cnf.fixedValueInverse(q[24], 0, bits);
-        cnf.fixedValueInverse(q[25], 0, bits);
-        cnf.fixedValueInverse(q[26], 0, bits);
-        cnf.fixedValueInverse(q[28], 0, bits);
-        cnf.fixedValueInverse(q[29], 0, bits);
-        cnf.fixedValueInverse(q[30], 0, bits);
+        // Dobbertin's constant
+        unsigned int k = 0;
+        int q_indices[11] = { 17, 18, 20, 21, 22, 24, 25, 26, 28, 29, 30 };
+        // Index of q with relaxation
+        int p = 17;
+
+        for (int& i : q_indices) {
+            if (i == p && bits != 32) {
+                cnf.fixedValue(q[i] + (32 - bits), k, bits);
+            } else {
+                cnf.fixedValue(q[i], k);
+            }
+        }
     }
 
     int R = rounds, r = rounds % 4;
