@@ -167,13 +167,13 @@ void MD4::encode()
     if (dobbertin) {
         // Dobbertin's constant
         unsigned int k = 0;
-        int q_indices[11] = { 17, 18, 20, 21, 22, 24, 25, 26, 28, 29, 30 };
+        int q_indices[12] = { 13, 17, 18, 20, 21, 22, 24, 25, 26, 28, 29, 30 };
         // Index of q with relaxation
-        int p = 17;
+        int p = 13;
 
         for (int& i : q_indices) {
             if (i == p && bits != 32) {
-                cnf.fixedValue(q[i] + (32 - bits), k, bits);
+                cnf.fixedValue(q[i] + (32 - bits), k + (32 - bits), bits);
             } else {
                 cnf.fixedValue(q[i], k);
             }
