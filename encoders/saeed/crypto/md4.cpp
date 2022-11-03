@@ -136,10 +136,10 @@ void MD4::encode()
         15,
     };
 
-    cnf.assign(q[0], chain[0]); // A, q[0]
-    cnf.assign(q[3], chain[1]); // B, q[3]
-    cnf.assign(q[2], chain[2]); // C, q[2]
-    cnf.assign(q[1], chain[3]); // D, q[1]
+    cnf.assign(q[0], chain[0]); // A
+    cnf.assign(q[3], chain[1]); // B
+    cnf.assign(q[2], chain[2]); // C
+    cnf.assign(q[1], chain[3]); // D
 
     /* Main loop */
     for (int i = 0; i < rounds; i++) {
