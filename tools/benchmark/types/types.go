@@ -1,13 +1,17 @@
 package types
 
+type Variations struct {
+	VariationsXor           []uint
+	VariationsAdders        []string
+	VariationsSatSolvers    []string
+	VariationsDobbertin     []uint
+	VariationsDobbertinBits []uint
+	VariationsSteps         []uint
+	VariationsHashes        []string
+}
+
 type CommandContext struct {
-	VariationsXor               []uint
-	VariationsAdders            []string
-	VariationsSatSolvers        []string
-	VariationsDobbertin         []uint
-	VariationsDobbertinBits     []uint
-	VariationsSteps             []uint
-	VariationsHashes            []string
+	Variations
 	InstanceMaxTime             uint
 	MaxConcurrentInstancesCount uint
 	CleanResults                bool
@@ -16,4 +20,8 @@ type CommandContext struct {
 type BenchmarkContext struct {
 	Progress         map[string][]bool
 	RunningInstances uint
+}
+
+type EncodingsGenContext struct {
+	Variations
 }
