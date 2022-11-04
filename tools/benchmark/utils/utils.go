@@ -3,10 +3,14 @@ package utils
 import (
 	"benchmark/constants"
 	"benchmark/types"
+	"encoding/csv"
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"strings"
+
+	"github.com/samber/lo"
 )
 
 func MakeRange(min, max int) []int {
@@ -17,27 +21,28 @@ func MakeRange(min, max int) []int {
 	return a
 }
 
-func AppendLog(filename, message string) {
-	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+func AppendLog(filename string, records []string) {
+	f, err := os.OpenFile(path.Join(constants.LogsDirPath, filename), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		panic("Failed to write logs")
+		panic("Failed to write logs: " + err.Error())
 	}
-	_, err = f.WriteString(message + "\n")
-	if err != nil {
-		panic("Failed to write logs")
-	}
+
+	csvWriter := csv.NewWriter(f)
+	csvWriter.Write(records)
+	csvWriter.Flush()
+
 	f.Close()
 }
 
-func AppendBenchmarkLog(message string) {
-	AppendLog(constants.BenchmarkLogFileName, message)
+func AppendBenchmarkLog(records []string) {
+	AppendLog(constants.BenchmarkLogFileName, records)
 }
-func AppendValidResultsLog(message string) {
-	AppendLog(constants.ValidResultsLogFileName, message)
+func AppendValidResultsLog(records []string) {
+	AppendLog(constants.ValidResultsLogFileName, records)
 }
 
-func AppendVerificationLog(message string) {
-	AppendLog(constants.VerificationLogFileName, message)
+func AppendVerificationLog(records []string) {
+	AppendLog(constants.VerificationLogFileName, records)
 }
 
 func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, uint, string, uint, string, uint, uint)) {
@@ -100,9 +105,9 @@ func ResolveAdderType(shortcut string) string {
 		return "counter_chain"
 	case "dm":
 		return "dot_matrix"
+	default:
+		return ""
 	}
-
-	return ""
 }
 
 func InstancesCount(commandContext *types.CommandContext) uint {
@@ -115,36 +120,53 @@ func InstancesCount(commandContext *types.CommandContext) uint {
 }
 
 func AggregateLogs() {
-	items, _ := os.ReadDir(constants.ResultsDirPat)
+	AppendBenchmarkLog([]string{"SAT Solver", "Instance Name", "Time", "Exit Code"})
+	AppendValidResultsLog([]string{"SAT Solver", "Instance Name", "Time", "Exit Code"})
+	AppendVerificationLog([]string{"SAT Solver", "Instance Name", "Result"})
+
+	items, _ := os.ReadDir(constants.LogsDirPath)
 	for _, item := range items {
-		if item.IsDir() {
+		if item.IsDir() || path.Ext(item.Name()) != ".log" || lo.Contains([]string{"benchmark.log", "verification.log", "valid_results.log"}, item.Name()) {
 			continue
 		}
 
-		if path.Ext(item.Name()) != ".log" {
-			continue
-		}
-
-		data, err := os.ReadFile(path.Join(constants.ResultsDirPat, item.Name()))
+		// Open the file as CSV
+		filePath := path.Join(constants.LogsDirPath, item.Name())
+		fileReader, err := os.Open(filePath)
 		if err != nil {
-			fmt.Println("Failed to aggregate logs", err.Error())
+			continue
 		}
 
-		data_ := strings.TrimSpace(string(data))
+		csvReader := csv.NewReader(fileReader)
+		record, err := csvReader.Read()
+		if err != nil {
+			continue
+		}
+		fmt.Println(record)
+
+		fileReader.Close()
 
 		fmt.Println(item.Name())
 		if strings.HasPrefix(item.Name(), "verification") {
-			AppendVerificationLog(data_)
+			AppendVerificationLog(record)
 		} else if strings.HasPrefix(item.Name(), "benchmark") {
-			AppendBenchmarkLog(data_)
+			AppendBenchmarkLog(record)
 		} else if strings.HasPrefix(item.Name(), "valid_results") {
-			AppendValidResultsLog(data_)
+			AppendValidResultsLog(record)
 		}
+	}
+
+	// Remove the individual logs
+	for _, item := range items {
+		if lo.Contains([]string{"benchmark.log", "verification.log", "valid_results.log"}, item.Name()) {
+			continue
+		}
+
+		exec.Command("bash", "-c", fmt.Sprintf("rm %s%s", constants.LogsDirPath, item.Name())).Run()
 	}
 }
 
 func EncodingsFileName(steps uint, adderType string, xorOption uint, hash string, dobbertin, dobbertinBits uint) string {
-
 	return fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, InstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits))
 }
 
