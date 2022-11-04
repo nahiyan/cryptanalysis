@@ -18,29 +18,26 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 	cmd := exec.Command("timeout", strconv.Itoa(int(maxTime)), "bash", "-c", command)
 	exitCode := 0
 	if err := cmd.Run(); err != nil {
-		// TODO: Aggregate the logs
 		exiterr, _ := err.(*exec.ExitError)
 		exitCode = exiterr.ExitCode()
 	}
 
 	duration := time.Since(startTime)
+	instanceName := strings.TrimSuffix(path.Base(filepath), ".cnf")
+	benchmarkLogFilePath := "benchmark_" + instanceName + "_" + satSolver + ".log"
+	validResultsLogFilePath := "valid_results_" + instanceName + "_" + satSolver + ".log"
+	verificationLogFilePath := "verification_" + instanceName + "_" + satSolver + ".log"
 
 	// Log down to a file
-	instanceName := strings.TrimSuffix(path.Base(filepath), ".cnf")
-	logMessage := fmt.Sprintf("Time: %.2fs, instance index: %d, instance name: %s, SAT solver: %s, exit code: %d", duration.Seconds(), instanceIndex, instanceName, satSolver, exitCode)
-
-	benchmarkLogFilePath := constants.ResultsDirPat + "benchmark_" + instanceName + "_" + satSolver + ".log"
-	validResultsLogFilePath := constants.ResultsDirPat + "valid_results_" + instanceName + "_" + satSolver + ".log"
-	verificationLogFilePath := constants.ResultsDirPat + "verification_" + instanceName + "_" + satSolver + ".log"
-
-	utils.AppendLog(benchmarkLogFilePath, logMessage)
+	logRecord := []string{satSolver, instanceName, fmt.Sprintf("%.2f", duration.Seconds()), strconv.Itoa(exitCode)}
+	utils.AppendLog(benchmarkLogFilePath, logRecord)
 
 	// Normalize the solution
 	{
-		command := fmt.Sprintf("%s %s%s/%s.sol normalize > /tmp/%s-%s.sol && cat /tmp/%s-%s.sol > %s%s/%s.sol", constants.SolutionAnalyzerBinPath, constants.SolutionsDirPath, satSolver, instanceName, satSolver, instanceName, satSolver, instanceName, constants.SolutionsDirPath, satSolver, instanceName)
+		command := fmt.Sprintf("%s %s%s_%s.sol normalize > /tmp/%s_%s.sol && cat /tmp/%s_%s.sol > %s%s_%s.sol", constants.SolutionAnalyzerBinPath, constants.SolutionsDirPath, satSolver, instanceName, satSolver, instanceName, satSolver, instanceName, constants.SolutionsDirPath, satSolver, instanceName)
 		cmd := exec.Command("bash", "-c", command)
 		if err := cmd.Run(); err != nil {
-			utils.AppendLog(verificationLogFilePath, "Failed to normalize "+instanceName+" "+err.Error()+" "+cmd.String())
+			utils.AppendLog(verificationLogFilePath, []string{satSolver, instanceName, fmt.Sprintf("Normalization failed: %s %s", err.Error(), cmd.String())})
 		}
 	}
 
@@ -48,23 +45,23 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 	{
 		steps, err := strconv.Atoi(strings.Split(instanceName, "_")[1])
 		if err != nil {
-			utils.AppendLog(verificationLogFilePath, "Failed to verify "+instanceName)
+			utils.AppendLog(verificationLogFilePath, []string{satSolver, instanceName, "Verification failed"})
 		}
 
-		command := fmt.Sprintf("%s %d < %s%s/%s.sol", constants.VerifierBinPath, steps, constants.SolutionsDirPath, satSolver, instanceName)
+		command := fmt.Sprintf("%s %d < %s%s_%s.sol", constants.VerifierBinPath, steps, constants.SolutionsDirPath, satSolver, instanceName)
 		cmd := exec.Command("bash", "-c", command)
 		output, err := cmd.Output()
 		if err != nil {
-			utils.AppendLog(verificationLogFilePath, "Failed to verify "+instanceName)
+			utils.AppendLog(verificationLogFilePath, []string{satSolver, instanceName, "Verification failed"})
 		}
 
 		if strings.Contains(string(output), "Solution's hash matches the target!") {
-			utils.AppendLog(verificationLogFilePath, fmt.Sprintf("Valid: %s %s", satSolver, instanceName))
-			utils.AppendLog(validResultsLogFilePath, logMessage)
+			utils.AppendLog(verificationLogFilePath, []string{satSolver, instanceName, "Valid"})
+			utils.AppendLog(validResultsLogFilePath, logRecord)
 		} else if strings.Contains(string(output), "Solution's hash DOES NOT match the target:") || strings.Contains(string(output), "Result is UNSAT!") {
-			utils.AppendLog(verificationLogFilePath, fmt.Sprintf("Invalid: %s %s", satSolver, instanceName))
+			utils.AppendLog(verificationLogFilePath, []string{satSolver, instanceName, "Verification failed"})
 		} else {
-			utils.AppendLog(verificationLogFilePath, fmt.Sprintf("Unknown error: %s %s %s", satSolver, instanceName, output))
+			utils.AppendLog(verificationLogFilePath, []string{satSolver, instanceName, fmt.Sprintf("Unknown error: %s", output)})
 		}
 	}
 
