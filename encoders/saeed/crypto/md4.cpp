@@ -168,7 +168,7 @@ void MD4::encode()
         // Dobbertin's constant
         unsigned int k = 0;
         int q_indices[12] = { 13, 17, 18, 20, 21, 22, 24, 25, 26, 28, 29, 30 };
-        // Index of q with relaxation
+        // Index of q that needs relaxation
         int p = 13;
 
         for (int& i : q_indices) {
