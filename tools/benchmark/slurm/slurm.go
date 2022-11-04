@@ -1,6 +1,7 @@
 package slurm
 
 import (
+	"benchmark/encodings"
 	"benchmark/types"
 	"benchmark/utils"
 	"fmt"
@@ -33,6 +34,11 @@ func generateJobs(context *types.CommandContext) []string {
 }
 
 func Run(context *types.CommandContext) {
+	// Generate encodings
+	encodings.Generate(types.EncodingsGenContext{
+		Variations: context.Variations,
+	})
+
 	// Generate jobs
 	jobFilePaths := generateJobs(context)
 
