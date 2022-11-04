@@ -31,9 +31,6 @@ var rootCmd = &cobra.Command{
 	Use:   "benchmark",
 	Short: "benchmark - MD4 Inversion tool",
 	Long:  `MD4 Inversion tool`,
-	Run: func(cmd *cobra.Command, args []string) {
-
-	},
 }
 
 var slurmCmd = &cobra.Command{
@@ -228,14 +225,14 @@ func processFlags() types.CommandContext {
 	// TODO: Improve the way this is handled
 	// Remove leftover results
 	if context.CleanResults {
-		exec.Command("bash", "-c", "rm "+constants.ResultsDirPat+"*.log").Run()
+		exec.Command("bash", "-c", fmt.Sprintf("rm %s*.log", constants.LogsDirPath)).Run()
 	}
 
 	return context
 }
 
 func init() {
-	// Flags
+	// Flags and arguments
 	rootCmd.PersistentFlags().StringVar(&variationsXor_, "var-xor", "0", "Comma-separated variations of XOR. Possible values: 0, 1")
 	rootCmd.PersistentFlags().StringVar(&variationsAdders_, "var-adders", "cc,dm", "Comma-separated variations of the adders. Possible values: cm, dm")
 	rootCmd.PersistentFlags().StringVar(&variationsSatSolvers_, "var-sat-solvers", "cms,ks,cdc,gs,ms", "Comma-separated variations of the SAT solvers. Possible values: cms, ks, cdc, gs, ms, xnf")
