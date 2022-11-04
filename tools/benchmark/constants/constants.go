@@ -27,8 +27,9 @@ const (
 	BenchmarkLogFileName    = "benchmark.log"
 	VerificationLogFileName = "verification.log"
 	ValidResultsLogFileName = "valid_results.log"
-	BasePath                = "../../"
-	SolutionsDirPath        = BasePath + "solutions/saeed/"
-	EncodingsDirPath        = BasePath + "encodings/saeed/"
-	ResultsDirPat           = "./results/"
+	ResultsDirPath          = "./results/"
+	EncodingsDirPath        = ResultsDirPath + "encodings/"
+	LogsDirPath             = ResultsDirPath + "logs/"
+	SolutionsDirPath        = ResultsDirPath + "solutions/"
+	EncoderPath             = "../../encoders/saeed/crypto/main"
 )
