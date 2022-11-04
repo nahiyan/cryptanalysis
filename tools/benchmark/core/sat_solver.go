@@ -100,9 +100,9 @@ func CryptoMiniSat(filepath string, context *types.BenchmarkContext, instanceInd
 
 func CryptoMiniSatCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
-	solutionFilePath := baseFileName[:len(baseFileName)-3]
+	solutionFileName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s --verb=0 %s > %scryptominisat/%ssol", constants.CryptoMiniSatBinPath, filepath, constants.SolutionsDirPath, solutionFilePath)
+	command := fmt.Sprintf("%s --verb=0 %s > %scryptominisat_%ssol", constants.CryptoMiniSatBinPath, filepath, constants.SolutionsDirPath, solutionFileName)
 
 	return command
 }
@@ -115,9 +115,9 @@ func Kissat(filepath string, context *types.BenchmarkContext, instanceIndex uint
 
 func KissatCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
-	solutionFilePath := baseFileName[:len(baseFileName)-3]
+	solutionFileName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -q %s > %skissat/%ssol", constants.KissatBinPath, filepath, constants.SolutionsDirPath, solutionFilePath)
+	command := fmt.Sprintf("%s -q %s > %skissat_%ssol", constants.KissatBinPath, filepath, constants.SolutionsDirPath, solutionFileName)
 
 	return command
 }
@@ -130,9 +130,9 @@ func Cadical(filepath string, context *types.BenchmarkContext, instanceIndex uin
 
 func CadicalCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
-	solutionFilePath := baseFileName[:len(baseFileName)-3]
+	solutionFileName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -q %s > %scadical/%ssol", constants.CadicalBinPath, filepath, constants.SolutionsDirPath, solutionFilePath)
+	command := fmt.Sprintf("%s -q %s > %scadical_%ssol", constants.CadicalBinPath, filepath, constants.SolutionsDirPath, solutionFileName)
 
 	return command
 }
@@ -145,9 +145,9 @@ func MapleSat(filepath string, context *types.BenchmarkContext, instanceIndex ui
 
 func MapleSatCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
-	solutionFilePath := baseFileName[:len(baseFileName)-3]
+	solutionFileName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -verb=0 %s %smaplesat/%ssol", constants.MapleSatBinPath, filepath, constants.SolutionsDirPath, solutionFilePath)
+	command := fmt.Sprintf("%s -verb=0 %s %smaplesat_%ssol", constants.MapleSatBinPath, filepath, constants.SolutionsDirPath, solutionFileName)
 
 	return command
 }
@@ -160,9 +160,9 @@ func XnfSat(filepath string, context *types.BenchmarkContext, instanceIndex uint
 
 func XnfSatCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
-	solutionFilePath := baseFileName[:len(baseFileName)-3]
+	solutionFileName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s --witness --verbose=0 %s > %sxnfsat/%ssol", constants.XnfSatBinPath, filepath, constants.SolutionsDirPath, solutionFilePath)
+	command := fmt.Sprintf("%s --witness --verbose=0 %s > %sxnfsat_%ssol", constants.XnfSatBinPath, filepath, constants.SolutionsDirPath, solutionFileName)
 
 	return command
 }
@@ -175,9 +175,9 @@ func Glucose(filepath string, context *types.BenchmarkContext, instanceIndex uin
 
 func GlucoseCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
-	solutionFilePath := baseFileName[:len(baseFileName)-3]
+	solutionFileName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -verb=0 %s %sglucose/%ssol", constants.GlucoseBinPath, filepath, constants.SolutionsDirPath, solutionFilePath)
+	command := fmt.Sprintf("%s -verb=0 %s %sglucose_%ssol", constants.GlucoseBinPath, filepath, constants.SolutionsDirPath, solutionFileName)
 
 	return command
 }
