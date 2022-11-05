@@ -12,8 +12,8 @@ import (
 func generateJobs(context *types.CommandContext) []string {
 	filepaths := make([]string, 0)
 
-	utils.LoopThroughVariations(context, func(i uint, satSolver_ string, steps uint, hash string, xorOption uint, adderType string, dobbertin, dobbertinBits uint) {
-		instanceName := utils.InstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits)
+	utils.LoopThroughVariations(context, func(i uint, satSolver_ string, steps uint, hash string, xorOption uint, adderType string, dobbertin, dobbertinBits uint, cubeIndex *uint) {
+		instanceName := utils.InstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, nil)
 
 		slurmArgs := fmt.Sprintf("#SBATCH --nodes=1\n#SBATCH --cpus-per-task=1\n#SBATCH --mem=300M\n#SBATCH --time=00:%d\n", context.InstanceMaxTime)
 

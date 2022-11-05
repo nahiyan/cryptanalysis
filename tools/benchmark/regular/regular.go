@@ -12,7 +12,9 @@ import (
 func Run(context *types.CommandContext) {
 	// Generate encodings
 	encodings.Generate(types.EncodingsGenContext{
-		Variations: context.Variations,
+		Variations:    context.Variations,
+		IsCubeEnabled: context.IsCubeEnabled,
+		CubeDepth:     context.CubeDepth,
 	})
 
 	// Count the number of instances for determining the progress
@@ -28,12 +30,12 @@ func Run(context *types.CommandContext) {
 	}
 
 	// Loop through the instances
-	utils.LoopThroughVariations(context, func(i uint, satSolver_ string, steps uint, hash string, xorOption uint, adderType string, dobbertin, dobbertinBits uint) {
+	utils.LoopThroughVariations(context, func(i uint, satSolver_ string, steps uint, hash string, xorOption uint, adderType string, dobbertin, dobbertinBits uint, cubeIndex *uint) {
 		for uint(benchmarkContext.RunningInstances) > context.MaxConcurrentInstancesCount {
 			time.Sleep(time.Second * 1)
 		}
 
-		filepath := utils.EncodingsFileName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits)
+		filepath := utils.EncodingsFileName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, cubeIndex)
 
 		satSolver := utils.ResolveSatSolverName(satSolver_)
 		startTime := time.Now()

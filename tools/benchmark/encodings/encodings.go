@@ -52,7 +52,7 @@ func Generate(context types.EncodingsGenContext) {
 								}
 
 								return 0
-							}(isDobbertinEnabled), dobbertinRelaxationBits)
+							}(isDobbertinEnabled), dobbertinRelaxationBits, nil)
 
 							// * 3. Drive the encoder
 							cmd := exec.Command("bash", "-c", fmt.Sprintf("%s%s -A %s -r %d -f md4 -a preimage -t %s%s --bits %d > %sencodings/%s.cnf", constants.EncoderPath, xorFlag, utils.ResolveAdderType(adderType), steps, hash, dobbertinFlag, dobbertinRelaxationBits, constants.ResultsDirPath, instanceName))
