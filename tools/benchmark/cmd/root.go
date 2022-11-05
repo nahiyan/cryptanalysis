@@ -222,7 +222,6 @@ func processFlags() types.CommandContext {
 	// Reset data
 	context.CleanResults = cleanResults
 
-	// TODO: Improve the way this is handled
 	// Remove leftover results
 	if context.CleanResults {
 		exec.Command("bash", "-c", fmt.Sprintf("rm %s*.log", constants.LogsDirPath)).Run()
