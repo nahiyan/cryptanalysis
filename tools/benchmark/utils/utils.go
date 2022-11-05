@@ -3,8 +3,11 @@ package utils
 import (
 	"benchmark/constants"
 	"benchmark/types"
+	"bytes"
 	"encoding/csv"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -69,8 +72,24 @@ func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, 
 									xorOption = 0
 								}
 
-								cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin, dobbertinBits)
-								i += 1
+								if context.IsCubeEnabled {
+									iCnfFile, err := os.Open(fmt.Sprintf("%s%s.icnf", constants.EncodingsDirPath, InstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, nil)))
+									if err != nil {
+										log.Fatal("Failed to read .icnf file")
+									}
+									linesCount, err := CountLines(iCnfFile)
+									if err != nil {
+										log.Fatal("Failed to count the cubes")
+									}
+
+									for _, cubeIndex := range MakeRange(1, linesCount) {
+										cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin, dobbertinBits, lo.ToPtr(uint(cubeIndex)))
+										i += 1
+									}
+								} else {
+									cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin, dobbertinBits, nil)
+									i += 1
+								}
 							}
 						}
 					}
