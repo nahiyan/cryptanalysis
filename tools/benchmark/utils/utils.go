@@ -165,10 +165,35 @@ func AggregateLogs() {
 	}
 }
 
-func EncodingsFileName(steps uint, adderType string, xorOption uint, hash string, dobbertin, dobbertinBits uint) string {
-	return fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, InstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits))
+func EncodingsFileName(steps uint, adderType string, xorOption uint, hash string, dobbertin, dobbertinBits uint, cubeIndex *uint) string {
+	return fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, InstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, cubeIndex))
 }
 
-func InstanceName(steps uint, adderType string, xorOption uint, hash string, dobbertin, dobbertinBits uint) string {
-	return fmt.Sprintf("md4_%d_%s_xor%d_%s_dobbertin%d_b%d", steps, adderType, xorOption, hash, dobbertin, dobbertinBits)
+func InstanceName(steps uint, adderType string, xorOption uint, hash string, dobbertin, dobbertinBits uint, cubeIndex *uint) string {
+	return fmt.Sprintf("%smd4_%d_%s_xor%d_%s_dobbertin%d_b%d", func(cubeIndex *uint) string {
+		if cubeIndex != nil {
+			return fmt.Sprintf("cube%d_", *cubeIndex)
+		}
+
+		return ""
+	}(cubeIndex), steps, adderType, xorOption, hash, dobbertin, dobbertinBits)
+}
+
+func CountLines(r io.Reader) (int, error) {
+	buf := make([]byte, 32*1024)
+	count := 0
+	lineSep := []byte{'\n'}
+
+	for {
+		c, err := r.Read(buf)
+		count += bytes.Count(buf[:c], lineSep)
+
+		switch {
+		case err == io.EOF:
+			return count, nil
+
+		case err != nil:
+			return count, err
+		}
+	}
 }
