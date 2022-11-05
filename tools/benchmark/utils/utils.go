@@ -142,7 +142,6 @@ func AggregateLogs() {
 		if err != nil {
 			continue
 		}
-		fmt.Println(record)
 
 		fileReader.Close()
 
