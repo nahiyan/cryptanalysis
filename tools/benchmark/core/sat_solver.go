@@ -44,7 +44,7 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 
 	// Verify the solution
 	{
-		steps, err := strconv.Atoi(strings.Split(instanceName, "_")[1])
+		steps, err := strconv.Atoi(strings.Split(instanceName, "_")[2])
 		if err != nil {
 			utils.AppendLog(verificationLogFilePath, []string{satSolver, instanceName, "Verification failed"})
 		}
@@ -184,9 +184,9 @@ func March(filepath string, maxDepth uint) {
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s %s -d %d -o %s%s.icnf", constants.MarchBinPath, filepath, maxDepth, constants.EncodingsDirPath, instanceName)
-	if err := exec.Command(command).Run(); err != nil {
-		log.Fatal("Failed to generate cubes with March")
+	command := fmt.Sprintf("%s %s -d %d -o %s%sicnf", constants.MarchBinPath, filepath, maxDepth, constants.EncodingsDirPath, instanceName)
+	if err := exec.Command("bash", "-c", command).Run(); err != nil {
+		log.Fatal("Failed to generate cubes with March", err)
 	}
 }
 
