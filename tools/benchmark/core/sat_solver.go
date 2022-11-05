@@ -180,7 +180,7 @@ func GlucoseCmd(filepath string) string {
 	return command
 }
 
-func March(filepath string, context *types.BenchmarkContext, maxDepth, instanceIndex uint, startTime time.Time, maxTime uint) {
+func March(filepath string, maxDepth uint) {
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 

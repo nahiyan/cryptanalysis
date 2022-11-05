@@ -2,6 +2,7 @@ package encodings
 
 import (
 	"benchmark/constants"
+	"benchmark/core"
 	"bufio"
 	"errors"
 	"fmt"
@@ -45,7 +46,10 @@ func generateCube(instance, instanceName, icnfSegment string, i int) error {
 	return nil
 }
 
-func generateCubes(instanceName string) error {
+func generateCubes(instanceName string, cubeDepth uint) error {
+	// Invoke March for generating the .icnf file
+	core.March(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, instanceName), cubeDepth)
+
 	// Read the instance
 	instance_, err := os.ReadFile(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, instanceName))
 	if err != nil {
