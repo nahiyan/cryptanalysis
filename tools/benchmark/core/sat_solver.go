@@ -5,6 +5,7 @@ import (
 	"benchmark/types"
 	"benchmark/utils"
 	"fmt"
+	"log"
 	"os/exec"
 	"path"
 	"strconv"
@@ -97,9 +98,9 @@ func CryptoMiniSat(filepath string, context *types.BenchmarkContext, instanceInd
 
 func CryptoMiniSatCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
-	solutionFileName := baseFileName[:len(baseFileName)-3]
+	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s --verb=0 %s > %scryptominisat_%ssol", constants.CryptoMiniSatBinPath, filepath, constants.SolutionsDirPath, solutionFileName)
+	command := fmt.Sprintf("%s --verb=0 %s > %scryptominisat_%ssol", constants.CryptoMiniSatBinPath, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
 }
@@ -112,9 +113,9 @@ func Kissat(filepath string, context *types.BenchmarkContext, instanceIndex uint
 
 func KissatCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
-	solutionFileName := baseFileName[:len(baseFileName)-3]
+	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -q %s > %skissat_%ssol", constants.KissatBinPath, filepath, constants.SolutionsDirPath, solutionFileName)
+	command := fmt.Sprintf("%s -q %s > %skissat_%ssol", constants.KissatBinPath, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
 }
@@ -127,9 +128,9 @@ func Cadical(filepath string, context *types.BenchmarkContext, instanceIndex uin
 
 func CadicalCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
-	solutionFileName := baseFileName[:len(baseFileName)-3]
+	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -q %s > %scadical_%ssol", constants.CadicalBinPath, filepath, constants.SolutionsDirPath, solutionFileName)
+	command := fmt.Sprintf("%s -q %s > %scadical_%ssol", constants.CadicalBinPath, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
 }
@@ -142,9 +143,9 @@ func MapleSat(filepath string, context *types.BenchmarkContext, instanceIndex ui
 
 func MapleSatCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
-	solutionFileName := baseFileName[:len(baseFileName)-3]
+	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -verb=0 %s %smaplesat_%ssol", constants.MapleSatBinPath, filepath, constants.SolutionsDirPath, solutionFileName)
+	command := fmt.Sprintf("%s -verb=0 %s %smaplesat_%ssol", constants.MapleSatBinPath, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
 }
@@ -157,9 +158,9 @@ func XnfSat(filepath string, context *types.BenchmarkContext, instanceIndex uint
 
 func XnfSatCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
-	solutionFileName := baseFileName[:len(baseFileName)-3]
+	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s --witness --verbose=0 %s > %sxnfsat_%ssol", constants.XnfSatBinPath, filepath, constants.SolutionsDirPath, solutionFileName)
+	command := fmt.Sprintf("%s --witness --verbose=0 %s > %sxnfsat_%ssol", constants.XnfSatBinPath, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
 }
@@ -172,11 +173,21 @@ func Glucose(filepath string, context *types.BenchmarkContext, instanceIndex uin
 
 func GlucoseCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
-	solutionFileName := baseFileName[:len(baseFileName)-3]
+	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -verb=0 %s %sglucose_%ssol", constants.GlucoseBinPath, filepath, constants.SolutionsDirPath, solutionFileName)
+	command := fmt.Sprintf("%s -verb=0 %s %sglucose_%ssol", constants.GlucoseBinPath, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
+}
+
+func March(filepath string, context *types.BenchmarkContext, maxDepth, instanceIndex uint, startTime time.Time, maxTime uint) {
+	baseFileName := path.Base(filepath)
+	instanceName := baseFileName[:len(baseFileName)-3]
+
+	command := fmt.Sprintf("%s %s -d %d -o %s%s.icnf", constants.MarchBinPath, filepath, maxDepth, constants.EncodingsDirPath, instanceName)
+	if err := exec.Command(command).Run(); err != nil {
+		log.Fatal("Failed to generate cubes with March")
+	}
 }
 
 func AreAllInstancesCompleted(context *types.BenchmarkContext) bool {
