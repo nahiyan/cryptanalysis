@@ -145,7 +145,7 @@ func AggregateLogs() {
 
 	items, _ := os.ReadDir(constants.LogsDirPath)
 	for _, item := range items {
-		if item.IsDir() || path.Ext(item.Name()) != ".log" || lo.Contains([]string{"benchmark.log", "verification.log", "valid_results.log"}, item.Name()) {
+		if item.IsDir() || path.Ext(item.Name()) != ".csv" || lo.Contains([]string{"benchmark.csv", "verification.csv", "valid_results.csv"}, item.Name()) {
 			continue
 		}
 
@@ -176,7 +176,7 @@ func AggregateLogs() {
 
 	// Remove the individual logs
 	for _, item := range items {
-		if lo.Contains([]string{"benchmark.log", "verification.log", "valid_results.log"}, item.Name()) {
+		if lo.Contains([]string{"benchmark.csv", "verification.csv", "valid_results.csv"}, item.Name()) || item.Name() == ".gitignore" {
 			continue
 		}
 

@@ -25,9 +25,9 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 
 	duration := time.Since(startTime)
 	instanceName := strings.TrimSuffix(path.Base(filepath), ".cnf")
-	benchmarkLogFilePath := "benchmark_" + instanceName + "_" + satSolver + ".log"
-	validResultsLogFilePath := "valid_results_" + instanceName + "_" + satSolver + ".log"
-	verificationLogFilePath := "verification_" + instanceName + "_" + satSolver + ".log"
+	benchmarkLogFilePath := "benchmark_" + instanceName + "_" + satSolver + ".csv"
+	validResultsLogFilePath := "valid_results_" + instanceName + "_" + satSolver + ".csv"
+	verificationLogFilePath := "verification_" + instanceName + "_" + satSolver + ".csv"
 
 	// Log down to a file
 	logRecord := []string{satSolver, instanceName, fmt.Sprintf("%.2f", duration.Seconds()), strconv.Itoa(exitCode)}

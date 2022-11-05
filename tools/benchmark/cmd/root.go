@@ -226,7 +226,7 @@ func processFlags() types.CommandContext {
 
 	// Remove leftover results
 	if context.CleanResults {
-		exec.Command("bash", "-c", fmt.Sprintf("rm %s*.log", constants.LogsDirPath)).Run()
+		exec.Command("bash", "-c", fmt.Sprintf("rm %s*.csv", constants.LogsDirPath)).Run()
 		exec.Command("bash", "-c", fmt.Sprintf("rm %s*.cnf", constants.EncodingsDirPath)).Run()
 		exec.Command("bash", "-c", fmt.Sprintf("rm %s*.icnf", constants.EncodingsDirPath)).Run()
 		exec.Command("bash", "-c", fmt.Sprintf("rm %s*.sol", constants.SolutionsDirPath)).Run()

@@ -25,9 +25,9 @@ const (
 	VerifierBinPath         = "../../encoders/saeed/crypto/verify-md4"
 	SolutionAnalyzerBinPath = "../solution_analyzer/target/release/solution_analyzer"
 
-	BenchmarkLogFileName    = "benchmark.log"
-	VerificationLogFileName = "verification.log"
-	ValidResultsLogFileName = "valid_results.log"
+	BenchmarkLogFileName    = "benchmark.csv"
+	VerificationLogFileName = "verification.csv"
+	ValidResultsLogFileName = "valid_results.csv"
 	ResultsDirPath          = "./results/"
 	EncodingsDirPath        = ResultsDirPath + "encodings/"
 	LogsDirPath             = ResultsDirPath + "logs/"
