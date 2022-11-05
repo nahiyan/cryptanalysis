@@ -21,6 +21,7 @@ const (
 	GlucoseBinPath          = "../../../sat-solvers/glucose"
 	MapleSatBinPath         = "../../../sat-solvers/maplesat"
 	XnfSatBinPath           = "../../../sat-solvers/xnfsat"
+	MarchBinPath            = "../../../sat-solvers/march_cu"
 	VerifierBinPath         = "../../encoders/saeed/crypto/verify-md4"
 	SolutionAnalyzerBinPath = "../solution_analyzer/target/release/solution_analyzer"
 
