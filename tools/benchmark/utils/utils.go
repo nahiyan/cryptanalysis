@@ -112,7 +112,7 @@ func ResolveAdderType(shortcut string) string {
 
 func InstancesCount(commandContext *types.CommandContext) uint {
 	var count uint = 0
-	LoopThroughVariations(commandContext, func(u1 uint, s1 string, u2 uint, s2 string, u3 uint, s3 string, u4, u5 uint) {
+	LoopThroughVariations(commandContext, func(_ uint, _ string, _ uint, _ string, _ uint, _ string, _, _ uint, _ *uint) {
 		count++
 	})
 
