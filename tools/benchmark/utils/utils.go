@@ -45,7 +45,7 @@ func AppendVerificationLog(records []string) {
 	AppendLog(constants.VerificationLogFileName, records)
 }
 
-func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, uint, string, uint, string, uint, uint)) {
+func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, uint, string, uint, string, uint, uint, *uint)) {
 	for _, satSolver := range context.VariationsSatSolvers {
 		var i uint = 0
 		for _, steps := range context.VariationsSteps {
