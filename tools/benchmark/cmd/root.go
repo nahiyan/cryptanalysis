@@ -26,6 +26,8 @@ var variationsSteps_ string
 var instanceMaxTime uint
 var maxConcurrentInstancesCount uint
 var cleanResults bool
+var isCubeEnabled bool
+var cubeDepth uint
 
 var rootCmd = &cobra.Command{
 	Use:   "benchmark",
@@ -227,6 +229,10 @@ func processFlags() types.CommandContext {
 		exec.Command("bash", "-c", fmt.Sprintf("rm %s*.log", constants.LogsDirPath)).Run()
 	}
 
+	// Cubing
+	context.IsCubeEnabled = isCubeEnabled
+	context.CubeDepth = cubeDepth
+
 	return context
 }
 
@@ -242,6 +248,8 @@ func init() {
 	rootCmd.PersistentFlags().UintVar(&instanceMaxTime, "max-time", 5000, "Maximum time in seconds for each instance to run")
 	regularCmd.Flags().UintVar(&maxConcurrentInstancesCount, "max-instances", 50, "Maximum number of instances to run concurrently")
 	rootCmd.PersistentFlags().BoolVar(&cleanResults, "clean-results", false, "Remove leftover results from previous sessions")
+	rootCmd.PersistentFlags().BoolVar(&isCubeEnabled, "cube", false, "Produce cubes from the instances and solve them")
+	rootCmd.PersistentFlags().UintVar(&cubeDepth, "cube-depth", 5, "Depth of the cubes. Ignored if the cubes flag is not set")
 
 	// Commands
 	rootCmd.AddCommand(regularCmd)
