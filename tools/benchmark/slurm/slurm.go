@@ -1,36 +1,62 @@
 package slurm
 
 import (
+	"benchmark/constants"
 	"benchmark/encodings"
 	"benchmark/types"
 	"benchmark/utils"
 	"fmt"
+	"html/template"
+	"log"
 	"os"
 	"os/exec"
 )
 
+func writeSlurmJob(job types.SlurmJob, satSolver, instanceName string) (string, error) {
+	template, err := template.New("job.tmpl").ParseFiles("slurm/job.tmpl")
+	if err != nil {
+		return "", err
+	}
+
+	filePath := fmt.Sprintf("%s%s_%s.sh", constants.JobsDirPath, utils.ResolveSatSolverName(satSolver), instanceName)
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return "", err
+	}
+
+	if err := template.Execute(file, job); err != nil {
+		return "", err
+	}
+
+	return filePath, nil
+}
+
 func generateJobs(context *types.CommandContext) []string {
-	filepaths := make([]string, 0)
+	filePaths := make([]string, 0)
 
 	utils.LoopThroughVariations(context, func(i uint, satSolver_ string, steps uint, hash string, xorOption uint, adderType string, dobbertin, dobbertinBits uint, cubeIndex *uint) {
 		instanceName := utils.InstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, cubeIndex)
 
-		slurmArgs := fmt.Sprintf("#SBATCH --nodes=1\n#SBATCH --cpus-per-task=1\n#SBATCH --mem=300M\n#SBATCH --time=00:%d\n", context.InstanceMaxTime)
-
-		satSolver := utils.ResolveSatSolverName(satSolver_)
-
 		// Write the file for the job
-		command := fmt.Sprintf("%s\n./benchmark --var-steps %d --var-xor %d --var-dobbertin %d --var-dobbertin-bits %d --var-adders %s --var-hashes %s --var-sat-solvers %s regular", slurmArgs, steps, xorOption, dobbertin, dobbertinBits, adderType, hash, satSolver_)
-		d := []byte("#!/bin/bash\n\n" + command)
-		filepath := "./jobs/" + satSolver + "_" + instanceName + ".sh"
-		if err := os.WriteFile(filepath, d, 0644); err != nil {
-			fmt.Println("Failed to create job:", instanceName)
+		body := fmt.Sprintf("./benchmark --var-steps %d --var-xor %d --var-dobbertin %d --var-dobbertin-bits %d --var-adders %s --var-hashes %s --var-sat-solvers %s regular", steps, xorOption, dobbertin, dobbertinBits, adderType, hash, satSolver_)
+
+		job := types.SlurmJob{
+			Body: body,
+		}
+		job.Head.Nodes = 1
+		job.Head.CpuCores = 1
+		job.Head.Memory = 300
+		job.Head.Time = context.InstanceMaxTime
+
+		filePath, err := writeSlurmJob(job, satSolver_, instanceName)
+		if err != nil {
+			log.Fatal("Failed to create job", err)
 		}
 
-		filepaths = append(filepaths, filepath)
+		filePaths = append(filePaths, filePath)
 	})
 
-	return filepaths
+	return filePaths
 }
 
 func Run(context *types.CommandContext) {
