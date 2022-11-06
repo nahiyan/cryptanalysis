@@ -1,6 +1,7 @@
 package encodings
 
 import (
+	"benchmark/config"
 	"benchmark/constants"
 	"benchmark/types"
 	"benchmark/utils"
@@ -13,7 +14,7 @@ import (
 
 func Generate(context types.EncodingsGenContext) {
 	// * 1. Check if the executable exists
-	if _, err := os.Stat(constants.EncoderPath); errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(config.Get().Paths.Bin.Encoder); errors.Is(err, os.ErrNotExist) {
 		log.Fatal("Failed to find the encoder in the 'encoders/saeed/crypto' directory. Can you ensure that you compiled it?")
 	}
 
@@ -55,7 +56,7 @@ func Generate(context types.EncodingsGenContext) {
 							}(isDobbertinEnabled), dobbertinRelaxationBits, nil)
 
 							// * 3. Drive the encoder
-							cmd := exec.Command("bash", "-c", fmt.Sprintf("%s%s -A %s -r %d -f md4 -a preimage -t %s%s --bits %d > %sencodings/%s.cnf", constants.EncoderPath, xorFlag, utils.ResolveAdderType(adderType), steps, hash, dobbertinFlag, dobbertinRelaxationBits, constants.ResultsDirPath, instanceName))
+							cmd := exec.Command("bash", "-c", fmt.Sprintf("%s%s -A %s -r %d -f md4 -a preimage -t %s%s --bits %d > %sencodings/%s.cnf", config.Get().Paths.Bin.Encoder, xorFlag, utils.ResolveAdderType(adderType), steps, hash, dobbertinFlag, dobbertinRelaxationBits, constants.ResultsDirPath, instanceName))
 							if err := cmd.Run(); err != nil {
 								log.Fatal("Failed to generate encodings for ", instanceName)
 							}

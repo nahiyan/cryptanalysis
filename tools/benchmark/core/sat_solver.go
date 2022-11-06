@@ -1,6 +1,7 @@
 package core
 
 import (
+	"benchmark/config"
 	"benchmark/constants"
 	"benchmark/types"
 	"benchmark/utils"
@@ -35,7 +36,7 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 
 	// Normalize the solution
 	{
-		command := fmt.Sprintf("%s %s%s_%s.sol normalize > /tmp/%s_%s.sol && cat /tmp/%s_%s.sol > %s%s_%s.sol", constants.SolutionAnalyzerBinPath, constants.SolutionsDirPath, satSolver, instanceName, satSolver, instanceName, satSolver, instanceName, constants.SolutionsDirPath, satSolver, instanceName)
+		command := fmt.Sprintf("%s %s%s_%s.sol normalize > /tmp/%s_%s.sol && cat /tmp/%s_%s.sol > %s%s_%s.sol", config.Get().Paths.Bin.SolutionAnalyzer, constants.SolutionsDirPath, satSolver, instanceName, satSolver, instanceName, satSolver, instanceName, constants.SolutionsDirPath, satSolver, instanceName)
 		cmd := exec.Command("bash", "-c", command)
 		if err := cmd.Run(); err != nil {
 			utils.AppendLog(verificationLogFilePath, []string{satSolver, instanceName, fmt.Sprintf("Normalization failed: %s %s", err.Error(), cmd.String())})
@@ -49,7 +50,7 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 			utils.AppendLog(verificationLogFilePath, []string{satSolver, instanceName, "Verification failed"})
 		}
 
-		command := fmt.Sprintf("%s %d < %s%s_%s.sol", constants.VerifierBinPath, steps, constants.SolutionsDirPath, satSolver, instanceName)
+		command := fmt.Sprintf("%s %d < %s%s_%s.sol", config.Get().Paths.Bin.Verifier, steps, constants.SolutionsDirPath, satSolver, instanceName)
 		cmd := exec.Command("bash", "-c", command)
 		output, err := cmd.Output()
 		if err != nil {
@@ -100,7 +101,7 @@ func CryptoMiniSatCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s --verb=0 %s > %scryptominisat_%ssol", constants.CryptoMiniSatBinPath, filepath, constants.SolutionsDirPath, instanceName)
+	command := fmt.Sprintf("%s --verb=0 %s > %scryptominisat_%ssol", config.Get().Paths.Bin.CryptoMiniSat, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
 }
@@ -115,7 +116,7 @@ func KissatCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -q %s > %skissat_%ssol", constants.KissatBinPath, filepath, constants.SolutionsDirPath, instanceName)
+	command := fmt.Sprintf("%s -q %s > %skissat_%ssol", config.Get().Paths.Bin.Kissat, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
 }
@@ -130,7 +131,7 @@ func CadicalCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -q %s > %scadical_%ssol", constants.CadicalBinPath, filepath, constants.SolutionsDirPath, instanceName)
+	command := fmt.Sprintf("%s -q %s > %scadical_%ssol", config.Get().Paths.Bin.Cadical, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
 }
@@ -145,7 +146,7 @@ func MapleSatCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -verb=0 %s %smaplesat_%ssol", constants.MapleSatBinPath, filepath, constants.SolutionsDirPath, instanceName)
+	command := fmt.Sprintf("%s -verb=0 %s %smaplesat_%ssol", config.Get().Paths.Bin.MapleSat, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
 }
@@ -160,7 +161,7 @@ func XnfSatCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s --witness --verbose=0 %s > %sxnfsat_%ssol", constants.XnfSatBinPath, filepath, constants.SolutionsDirPath, instanceName)
+	command := fmt.Sprintf("%s --witness --verbose=0 %s > %sxnfsat_%ssol", config.Get().Paths.Bin.XnfSat, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
 }
@@ -175,7 +176,7 @@ func GlucoseCmd(filepath string) string {
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -verb=0 %s %sglucose_%ssol", constants.GlucoseBinPath, filepath, constants.SolutionsDirPath, instanceName)
+	command := fmt.Sprintf("%s -verb=0 %s %sglucose_%ssol", config.Get().Paths.Bin.Glucose, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
 }
@@ -184,7 +185,7 @@ func March(filepath string, maxDepth uint) {
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s %s -d %d -o %s%sicnf", constants.MarchBinPath, filepath, maxDepth, constants.EncodingsDirPath, instanceName)
+	command := fmt.Sprintf("%s %s -d %d -o %s%sicnf", config.Get().Paths.Bin.March, filepath, maxDepth, constants.EncodingsDirPath, instanceName)
 	if err := exec.Command("bash", "-c", command).Run(); err != nil {
 		log.Fatal("Failed to generate cubes with March", err)
 	}
