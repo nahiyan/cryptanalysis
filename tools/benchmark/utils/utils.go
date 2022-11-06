@@ -4,6 +4,7 @@ import (
 	"benchmark/constants"
 	"benchmark/types"
 	"bytes"
+	"crypto/sha1"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/samber/lo"
 )
@@ -215,4 +217,12 @@ func CountLines(r io.Reader) (int, error) {
 			return count, err
 		}
 	}
+}
+
+func RandomHash() (string, error) {
+	hash := sha1.New()
+	if _, err := hash.Write([]byte(string(fmt.Sprintf("%d", time.Now().UnixNano())))); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", hash), nil
 }
