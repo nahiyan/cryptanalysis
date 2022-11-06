@@ -13,7 +13,7 @@ func generateJobs(context *types.CommandContext) []string {
 	filepaths := make([]string, 0)
 
 	utils.LoopThroughVariations(context, func(i uint, satSolver_ string, steps uint, hash string, xorOption uint, adderType string, dobbertin, dobbertinBits uint, cubeIndex *uint) {
-		instanceName := utils.InstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, nil)
+		instanceName := utils.InstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, cubeIndex)
 
 		slurmArgs := fmt.Sprintf("#SBATCH --nodes=1\n#SBATCH --cpus-per-task=1\n#SBATCH --mem=300M\n#SBATCH --time=00:%d\n", context.InstanceMaxTime)
 
@@ -36,7 +36,9 @@ func generateJobs(context *types.CommandContext) []string {
 func Run(context *types.CommandContext) {
 	// Generate encodings
 	encodings.Generate(types.EncodingsGenContext{
-		Variations: context.Variations,
+		Variations:    context.Variations,
+		IsCubeEnabled: context.IsCubeEnabled,
+		CubeDepth:     context.CubeDepth,
 	})
 
 	// Generate jobs
