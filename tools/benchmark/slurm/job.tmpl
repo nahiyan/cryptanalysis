@@ -1,0 +1,8 @@
+#!/bin/bash
+
+#SBATCH --nodes={{.Head.Nodes}}
+#SBATCH --cpus-per-task={{.Head.CpuCores}}
+#SBATCH --mem={{.Head.Memory}}M
+#SBATCH --time=00:{{.Head.Time}}
+
+{{.Body}}
