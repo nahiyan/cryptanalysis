@@ -19,6 +19,7 @@ const (
 	BenchmarkLogFileName    = "benchmark.csv"
 	VerificationLogFileName = "verification.csv"
 	ValidResultsLogFileName = "valid_results.csv"
+	JobsDirPath             = "./jobs/"
 	ResultsDirPath          = "./results/"
 	EncodingsDirPath        = ResultsDirPath + "encodings/"
 	LogsDirPath             = ResultsDirPath + "logs/"
