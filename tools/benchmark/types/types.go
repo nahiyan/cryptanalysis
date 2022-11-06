@@ -46,3 +46,13 @@ type Config struct {
 		}
 	}
 }
+
+type SlurmJob struct {
+	Head struct {
+		Nodes    uint
+		CpuCores uint
+		Memory   uint
+		Time     uint
+	}
+	Body string
+}
