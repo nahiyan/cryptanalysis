@@ -3,6 +3,7 @@ package config
 import (
 	"benchmark/types"
 	"log"
+	"path/filepath"
 
 	"github.com/spf13/viper"
 )
@@ -20,6 +21,13 @@ func ProcessConfig() {
 	viper.SetDefault("Paths.Bin.SolutionAnalyzer", "../solution_analyzer/target/release/solution_analyzer")
 	viper.SetDefault("Paths.Bin.Encoder", "../../encoders/saeed/crypto/main")
 	viper.SetDefault("Paths.Bin.Verifier", "../../encoders/saeed/crypto/verify-md4")
+	viper.SetDefault("Slurm.MaxJobs", 1000)
+
+	benchmarkAbsPath, err := filepath.Abs("./benchmark")
+	if err != nil {
+		benchmarkAbsPath = "./benchmark"
+	}
+	viper.SetDefault("Paths.Bin.Benchmark", benchmarkAbsPath)
 
 	viper.SetConfigFile("./config.toml")
 	if err := viper.ReadInConfig(); err != nil {
