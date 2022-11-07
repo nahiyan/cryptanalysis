@@ -29,6 +29,7 @@ var maxConcurrentInstancesCount uint
 var cleanResults bool
 var isCubeEnabled bool
 var cubeDepth uint
+var digest uint
 
 var rootCmd = &cobra.Command{
 	Use:   "benchmark",
@@ -237,6 +238,9 @@ func processFlags() types.CommandContext {
 	context.IsCubeEnabled = isCubeEnabled
 	context.CubeDepth = cubeDepth
 
+	// Digest
+	context.Digest = digest
+
 	return context
 }
 
@@ -250,10 +254,12 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&variationsDobbertinBits_, "var-dobbertin-bits", "32", "Comma-separated variations of the values and/or ranges of the number of significant bits to constrain in Dobbertin's attack (The order of the values evaluated is reversed)")
 	rootCmd.PersistentFlags().StringVar(&variationsSteps_, "var-steps", "31-39", "Comma-separated variations of the values and/or ranges of steps")
 	rootCmd.PersistentFlags().UintVar(&instanceMaxTime, "max-time", 5000, "Maximum time in seconds for each instance to run")
-	regularCmd.Flags().UintVar(&maxConcurrentInstancesCount, "max-instances", 50, "Maximum number of instances to run concurrently")
 	rootCmd.PersistentFlags().BoolVar(&cleanResults, "clean-results", false, "Remove leftover results from previous sessions")
 	rootCmd.PersistentFlags().BoolVar(&isCubeEnabled, "cube", false, "Produce cubes from the instances and solve them")
 	rootCmd.PersistentFlags().UintVar(&cubeDepth, "cube-depth", 5, "Depth of the cubes. Ignored if the cubes flag is not set")
+
+	regularCmd.Flags().UintVar(&maxConcurrentInstancesCount, "max-instances", 50, "Maximum number of instances to run concurrently")
+	slurmCmd.Flags().UintVar(&digest, "digest", 0, "The ID of the finished slurm job that needs to be digested")
 
 	// Commands
 	rootCmd.AddCommand(regularCmd)
