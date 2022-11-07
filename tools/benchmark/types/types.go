@@ -17,6 +17,7 @@ type CommandContext struct {
 	InstanceMaxTime             uint
 	MaxConcurrentInstancesCount uint
 	CleanResults                bool
+	Digest                      uint
 }
 
 type BenchmarkContext struct {
@@ -43,7 +44,11 @@ type Config struct {
 			Verifier         string
 			SolutionAnalyzer string
 			Encoder          string
+			Benchmark        string
 		}
+	}
+	Slurm struct {
+		MaxJobs uint
 	}
 }
 
