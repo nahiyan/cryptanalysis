@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -225,4 +226,12 @@ func RandomHash() (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("%x", hash), nil
+}
+
+func GetJobId(output string) int {
+	jobId, err := strconv.Atoi(strings.Split(output, " ")[3])
+	if err != nil {
+		return 0
+	}
+	return jobId
 }
