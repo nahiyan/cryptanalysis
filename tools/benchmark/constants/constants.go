@@ -24,4 +24,6 @@ const (
 	EncodingsDirPath        = ResultsDirPath + "encodings/"
 	LogsDirPath             = ResultsDirPath + "logs/"
 	SolutionsDirPath        = ResultsDirPath + "solutions/"
+
+	ErrOneJobScheduleFailed = "failed to schedule one of the jobs"
 )
