@@ -38,7 +38,7 @@ func generateJobs(context *types.CommandContext) []string {
 		instanceName := utils.InstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, cubeIndex)
 
 		// Write the file for the job
-		body := fmt.Sprintf("./benchmark --var-steps %d --var-xor %d --var-dobbertin %d --var-dobbertin-bits %d --var-adders %s --var-hashes %s --var-sat-solvers %s regular", steps, xorOption, dobbertin, dobbertinBits, adderType, hash, satSolver_)
+		body := fmt.Sprintf("%s regular --var-steps %d --var-xor %d --var-dobbertin %d --var-dobbertin-bits %d --var-adders %s --var-hashes %s --var-sat-solvers %s", config.Get().Paths.Bin.Benchmark, steps, xorOption, dobbertin, dobbertinBits, adderType, hash, satSolver_)
 
 		job := types.SlurmJob{
 			Body: body,
