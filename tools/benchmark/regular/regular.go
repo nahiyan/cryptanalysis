@@ -36,14 +36,20 @@ func Run(context *types.CommandContext) {
 
 	// Loop through the instances
 	utils.LoopThroughVariations(context, func(i uint, satSolver_ string, steps uint, hash string, xorOption uint, adderType string, dobbertin, dobbertinBits uint, cubeIndex *uint) {
-		for uint(benchmarkContext.RunningInstances) > context.MaxConcurrentInstancesCount {
+		for uint(benchmarkContext.RunningInstances) >= context.MaxConcurrentInstancesCount {
 			time.Sleep(time.Second * 1)
 		}
 
-		filepath := utils.EncodingsFileName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, cubeIndex)
-
 		satSolver := utils.ResolveSatSolverName(satSolver_)
 		startTime := time.Now()
+		filepath := utils.EncodingsFileName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, cubeIndex)
+
+		// Generate the subproblems from the cubes on the fly if cubes are enabled
+		if cubeIndex != nil {
+			instanceName := utils.InstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, nil)
+			encodings.GenerateSubProblem(instanceName, int(*cubeIndex))
+		}
+
 		switch satSolver {
 		case constants.CryptoMiniSat:
 			go core.CryptoMiniSat(filepath, benchmarkContext, i, startTime, context.InstanceMaxTime)
