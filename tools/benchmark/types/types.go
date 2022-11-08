@@ -18,6 +18,7 @@ type CommandContext struct {
 	MaxConcurrentInstancesCount uint
 	CleanResults                bool
 	Digest                      uint
+	GenerateEncodings           uint
 }
 
 type BenchmarkContext struct {

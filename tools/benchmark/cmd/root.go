@@ -30,6 +30,7 @@ var cleanResults bool
 var isCubeEnabled bool
 var cubeVars uint
 var digest uint
+var generateEncodings uint
 
 var rootCmd = &cobra.Command{
 	Use:   "benchmark",
@@ -240,6 +241,9 @@ func processFlags() types.CommandContext {
 
 	// Digest
 	context.Digest = digest
+
+	// Generate encodings
+	context.GenerateEncodings = generateEncodings
 
 	return context
 }

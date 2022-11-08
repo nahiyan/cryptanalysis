@@ -46,7 +46,7 @@ func generateJobs(context *types.CommandContext) []string {
 		instanceName := utils.InstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, cubeIndex)
 
 		// Write the file for the job
-		body := fmt.Sprintf("%s regular --var-steps %d --var-xor %d --var-dobbertin %d --var-dobbertin-bits %d --var-adders %s --var-hashes %s --var-sat-solvers %s", config.Get().Paths.Bin.Benchmark, steps, xorOption, dobbertin, dobbertinBits, adderType, hash, satSolver_)
+		body := fmt.Sprintf("%s regular --var-steps %d --var-xor %d --var-dobbertin %d --var-dobbertin-bits %d --var-adders %s --var-hashes %s --var-sat-solvers %s --generate-encodings 0", config.Get().Paths.Bin.Benchmark, steps, xorOption, dobbertin, dobbertinBits, adderType, hash, satSolver_)
 
 		job := types.SlurmJob{
 			Body: body,
@@ -127,6 +127,7 @@ func schedule(tx *gorm.DB, jobFilePaths []string) error {
 
 func scheduleToLimit() error {
 	if err := db.Get().Transaction(func(tx *gorm.DB) error {
+		// TODO: Use the max concurrent instance parameter for slurm too
 		emptySpots := config.Get().Slurm.MaxJobs - getScheduledJobCount()
 		if emptySpots > 0 {
 			pendingJobs := make([]types.Job, 0)
@@ -172,11 +173,13 @@ func Run(context *types.CommandContext) {
 	}
 
 	// Generate encodings
-	encodings.Generate(types.EncodingsGenContext{
-		Variations:    context.Variations,
-		IsCubeEnabled: context.IsCubeEnabled,
-		CubeVars:      context.CubeVars,
-	})
+	if context.GenerateEncodings == 1 {
+		encodings.Generate(types.EncodingsGenContext{
+			Variations:    context.Variations,
+			IsCubeEnabled: context.IsCubeEnabled,
+			CubeVars:      context.CubeVars,
+		})
+	}
 
 	// Generate jobs
 	jobFilePaths := generateJobs(context)

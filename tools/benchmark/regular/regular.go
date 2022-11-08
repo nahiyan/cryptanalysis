@@ -11,11 +11,13 @@ import (
 
 func Run(context *types.CommandContext) {
 	// Generate encodings
-	encodings.Generate(types.EncodingsGenContext{
-		Variations:    context.Variations,
-		IsCubeEnabled: context.IsCubeEnabled,
-		CubeVars:      context.CubeVars,
-	})
+	if context.GenerateEncodings == 1 {
+		encodings.Generate(types.EncodingsGenContext{
+			Variations:    context.Variations,
+			IsCubeEnabled: context.IsCubeEnabled,
+			CubeVars:      context.CubeVars,
+		})
+	}
 
 	// Count the number of instances for determining the progress
 	instancesCount := utils.InstancesCount(context)
