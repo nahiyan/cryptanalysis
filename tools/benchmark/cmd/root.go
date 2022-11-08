@@ -256,7 +256,8 @@ func init() {
 	rootCmd.PersistentFlags().UintVar(&instanceMaxTime, "max-time", 5000, "Maximum time in seconds for each instance to run")
 	rootCmd.PersistentFlags().BoolVar(&cleanResults, "clean-results", false, "Remove leftover results from previous sessions")
 	rootCmd.PersistentFlags().BoolVar(&isCubeEnabled, "cube", false, "Produce cubes from the instances and solve them")
-	rootCmd.PersistentFlags().UintVar(&cubeVars, "cube-depth", 5, "Depth of the cubes. Ignored if the cubes flag is not set")
+	rootCmd.PersistentFlags().UintVar(&cubeVars, "cube-vars", 3000, "Number of variables as a threshold for cube generation. Ignored if the cubes flag is not set")
+	rootCmd.PersistentFlags().UintVar(&generateEncodings, "generate-encodings", 1, "Flag whether to generate encodings or prior to solving")
 
 	regularCmd.Flags().UintVar(&maxConcurrentInstancesCount, "max-instances", 50, "Maximum number of instances to run concurrently")
 	slurmCmd.Flags().UintVar(&digest, "digest", 0, "The ID of the finished slurm job that needs to be digested")
