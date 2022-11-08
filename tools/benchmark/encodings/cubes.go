@@ -3,7 +3,7 @@ package encodings
 import (
 	"benchmark/constants"
 	"benchmark/core"
-	"bufio"
+	"benchmark/utils"
 	"errors"
 	"fmt"
 	"math"
@@ -12,8 +12,26 @@ import (
 	"strings"
 )
 
-func generateSubProblem(instance, instanceName, icnfSegment string, i int) error {
-	clause := strings.TrimPrefix(icnfSegment, "a ")
+func GenerateSubProblem(instanceName string, i int) error {
+	// Read the instance
+	instance_, err := os.ReadFile(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, instanceName))
+	if err != nil {
+		return err
+	}
+	instance := string(instance_)
+
+	// Open the .icnf file
+	iCnfFile, err := os.Open(fmt.Sprintf("%s%s.icnf", constants.EncodingsDirPath, instanceName))
+	if err != nil {
+		return err
+	}
+	defer iCnfFile.Close()
+
+	// Generate the subproblem
+	cube, _, _ := utils.ReadLine(iCnfFile, i)
+
+	// Generate the clause
+	clause := strings.TrimPrefix(cube, "a ")
 
 	// Grab the CNF as a starting point for the cube
 	head, body, _ := strings.Cut(instance, "\n")
@@ -46,35 +64,7 @@ func generateSubProblem(instance, instanceName, icnfSegment string, i int) error
 	return nil
 }
 
-func generateSubProblems(instanceName string, cubeVars uint) error {
-	// Invoke March for generating the cubes in an .icnf file
+func generateCubes(instanceName string, cubeVars uint) {
+	// Invoke March for generating the cubes that is held in an .icnf file
 	core.March(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, instanceName), cubeVars)
-
-	// Read the instance
-	instance_, err := os.ReadFile(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, instanceName))
-	if err != nil {
-		return err
-	}
-	instance := string(instance_)
-
-	// Open the .icnf iCnfFile
-	iCnfFile, err := os.Open(fmt.Sprintf("%s%s.icnf", constants.EncodingsDirPath, instanceName))
-	if err != nil {
-		return err
-	}
-	defer iCnfFile.Close()
-
-	// Generate the cubes
-	i := 1
-	scanner := bufio.NewScanner(iCnfFile)
-	for scanner.Scan() {
-		generateSubProblem(instance, instanceName, scanner.Text(), i)
-		i++
-	}
-
-	if err := scanner.Err(); err != nil {
-		return err
-	}
-
-	return nil
 }
