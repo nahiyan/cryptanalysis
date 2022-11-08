@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func generateCube(instance, instanceName, icnfSegment string, i int) error {
+func generateSubProblem(instance, instanceName, icnfSegment string, i int) error {
 	clause := strings.TrimPrefix(icnfSegment, "a ")
 
 	// Grab the CNF as a starting point for the cube
@@ -46,9 +46,9 @@ func generateCube(instance, instanceName, icnfSegment string, i int) error {
 	return nil
 }
 
-func generateCubes(instanceName string, cubeDepth uint) error {
-	// Invoke March for generating the .icnf file
-	core.March(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, instanceName), cubeDepth)
+func generateSubProblems(instanceName string, cubeVars uint) error {
+	// Invoke March for generating the cubes in an .icnf file
+	core.March(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, instanceName), cubeVars)
 
 	// Read the instance
 	instance_, err := os.ReadFile(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, instanceName))
@@ -68,7 +68,7 @@ func generateCubes(instanceName string, cubeDepth uint) error {
 	i := 1
 	scanner := bufio.NewScanner(iCnfFile)
 	for scanner.Scan() {
-		generateCube(instance, instanceName, scanner.Text(), i)
+		generateSubProblem(instance, instanceName, scanner.Text(), i)
 		i++
 	}
 

@@ -61,10 +61,10 @@ func Generate(context types.EncodingsGenContext) {
 								log.Fatal("Failed to generate encodings for ", instanceName)
 							}
 
-							// * 4. Conditional: Generate cubes if flagged
+							// * 4. Conditional: Generate cube-based subproblems if flagged
 							if context.IsCubeEnabled {
-								if err := generateCubes(instanceName, context.CubeDepth); err != nil {
-									log.Fatal("Failed to generate cubes")
+								if err := generateSubProblems(instanceName, context.CubeVars); err != nil {
+									log.Fatal("Failed to generate cube-based subproblems")
 								}
 							}
 						}

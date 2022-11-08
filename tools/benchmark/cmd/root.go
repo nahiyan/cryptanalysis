@@ -28,7 +28,7 @@ var instanceMaxTime uint
 var maxConcurrentInstancesCount uint
 var cleanResults bool
 var isCubeEnabled bool
-var cubeDepth uint
+var cubeVars uint
 var digest uint
 
 var rootCmd = &cobra.Command{
@@ -236,7 +236,7 @@ func processFlags() types.CommandContext {
 
 	// Cubing
 	context.IsCubeEnabled = isCubeEnabled
-	context.CubeDepth = cubeDepth
+	context.CubeVars = cubeVars
 
 	// Digest
 	context.Digest = digest
@@ -256,7 +256,7 @@ func init() {
 	rootCmd.PersistentFlags().UintVar(&instanceMaxTime, "max-time", 5000, "Maximum time in seconds for each instance to run")
 	rootCmd.PersistentFlags().BoolVar(&cleanResults, "clean-results", false, "Remove leftover results from previous sessions")
 	rootCmd.PersistentFlags().BoolVar(&isCubeEnabled, "cube", false, "Produce cubes from the instances and solve them")
-	rootCmd.PersistentFlags().UintVar(&cubeDepth, "cube-depth", 5, "Depth of the cubes. Ignored if the cubes flag is not set")
+	rootCmd.PersistentFlags().UintVar(&cubeVars, "cube-depth", 5, "Depth of the cubes. Ignored if the cubes flag is not set")
 
 	regularCmd.Flags().UintVar(&maxConcurrentInstancesCount, "max-instances", 50, "Maximum number of instances to run concurrently")
 	slurmCmd.Flags().UintVar(&digest, "digest", 0, "The ID of the finished slurm job that needs to be digested")

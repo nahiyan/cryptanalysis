@@ -175,7 +175,7 @@ func Run(context *types.CommandContext) {
 	encodings.Generate(types.EncodingsGenContext{
 		Variations:    context.Variations,
 		IsCubeEnabled: context.IsCubeEnabled,
-		CubeDepth:     context.CubeDepth,
+		CubeVars:      context.CubeVars,
 	})
 
 	// Generate jobs

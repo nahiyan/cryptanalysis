@@ -181,11 +181,11 @@ func GlucoseCmd(filepath string) string {
 	return command
 }
 
-func March(filepath string, maxDepth uint) {
+func March(filepath string, cubeVars uint) {
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s %s -d %d -o %s%sicnf", config.Get().Paths.Bin.March, filepath, maxDepth, constants.EncodingsDirPath, instanceName)
+	command := fmt.Sprintf("%s %s -n %d -o %s%sicnf", config.Get().Paths.Bin.March, filepath, cubeVars, constants.EncodingsDirPath, instanceName)
 	if err := exec.Command("bash", "-c", command).Run(); err != nil {
 		log.Fatal("Failed to generate cubes with March", err)
 	}

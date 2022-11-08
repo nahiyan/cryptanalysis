@@ -13,7 +13,7 @@ type Variations struct {
 type CommandContext struct {
 	Variations
 	IsCubeEnabled               bool
-	CubeDepth                   uint
+	CubeVars                    uint
 	InstanceMaxTime             uint
 	MaxConcurrentInstancesCount uint
 	CleanResults                bool
@@ -28,7 +28,7 @@ type BenchmarkContext struct {
 type EncodingsGenContext struct {
 	Variations
 	IsCubeEnabled bool
-	CubeDepth     uint
+	CubeVars      uint
 }
 
 type Config struct {
