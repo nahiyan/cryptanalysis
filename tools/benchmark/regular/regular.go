@@ -6,17 +6,20 @@ import (
 	"benchmark/encodings"
 	"benchmark/types"
 	"benchmark/utils"
+	"fmt"
 	"time"
 )
 
 func Run(context *types.CommandContext) {
 	// Generate encodings
 	if context.GenerateEncodings == 1 {
+		fmt.Println("Generating encodings")
 		encodings.Generate(types.EncodingsGenContext{
 			Variations:    context.Variations,
 			IsCubeEnabled: context.IsCubeEnabled,
 			CubeVars:      context.CubeVars,
 		})
+		fmt.Println("Done")
 	}
 
 	// Count the number of instances for determining the progress
