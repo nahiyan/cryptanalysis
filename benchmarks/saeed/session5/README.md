@@ -6,7 +6,7 @@
 - Dobbertin Relaxation Bits: 32
 - Cubes: Enabled
 - Cube Number of Vars (Cutoff Threshold): 3910 
-- Max Time: 10000
+- Max Time: 10,000s
 - Hashes: 00000000000000000000000000000000
 - Adders: Dot matrix
 - XOR: 0
