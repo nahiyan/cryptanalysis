@@ -128,8 +128,7 @@ func schedule(tx *gorm.DB, jobFilePaths []string) error {
 func scheduleToLimit() error {
 	if err := db.Get().Transaction(func(tx *gorm.DB) error {
 		// TODO: Use the max concurrent instance parameter for slurm too
-		emptySpots := config.Get().Slurm.MaxJobs - getScheduledJobCount()
-		if emptySpots > 0 {
+		if emptySpots := config.Get().Slurm.MaxJobs - getScheduledJobCount(); emptySpots > 0 {
 			pendingJobs := make([]types.Job, 0)
 
 			if err := tx.Limit(int(emptySpots)).Find(pendingJobs).Error; err != nil {
