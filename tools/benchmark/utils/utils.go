@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -247,4 +248,12 @@ func ReadLine(r io.Reader, lineNum int) (line string, lastLine int, err error) {
 		}
 	}
 	return line, lastLine, io.EOF
+}
+
+func FileExists(filePath string) bool {
+	if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
+		return false
+	}
+
+	return true
 }

@@ -5,16 +5,14 @@ import (
 	"benchmark/constants"
 	"benchmark/types"
 	"benchmark/utils"
-	"errors"
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
 )
 
 func Generate(context types.EncodingsGenContext) {
 	// * 1. Check if the executable exists
-	if _, err := os.Stat(config.Get().Paths.Bin.Encoder); errors.Is(err, os.ErrNotExist) {
+	if !utils.FileExists(config.Get().Paths.Bin.Encoder) {
 		log.Fatal("Failed to find the encoder in the 'encoders/saeed/crypto' directory. Can you ensure that you compiled it?")
 	}
 

@@ -17,6 +17,12 @@ import (
 )
 
 func invokeSatSolver(command string, satSolver string, context_ *types.BenchmarkContext, filepath string, startTime time.Time, instanceIndex uint, maxTime uint) {
+	// * 1. Check if the solution analyzer exists
+	if !utils.FileExists(config.Get().Paths.Bin.SolutionAnalyzer) {
+		log.Fatal("Solution analyzer doesn't exist. Did you forget to compile it?")
+	}
+
+	// * 2. Invoke the SAT solver
 	cmd := exec.Command("timeout", strconv.Itoa(int(maxTime)), "bash", "-c", command)
 	exitCode := 0
 	if err := cmd.Run(); err != nil {
@@ -24,17 +30,17 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 		exitCode = exiterr.ExitCode()
 	}
 
+	// * 3. Log down to a file
 	duration := time.Since(startTime)
 	instanceName := strings.TrimSuffix(path.Base(filepath), ".cnf")
 	benchmarkLogFilePath := "benchmark_" + instanceName + "_" + satSolver + ".csv"
 	validResultsLogFilePath := "valid_results_" + instanceName + "_" + satSolver + ".csv"
 	verificationLogFilePath := "verification_" + instanceName + "_" + satSolver + ".csv"
 
-	// Log down to a file
 	logRecord := []string{satSolver, instanceName, fmt.Sprintf("%.2f", duration.Seconds()), strconv.Itoa(exitCode)}
 	utils.AppendLog(benchmarkLogFilePath, logRecord)
 
-	// Normalize the solution
+	// * 4. Normalize the solution
 	{
 		command := fmt.Sprintf("%s %s%s_%s.sol normalize > /tmp/%s_%s.sol && cat /tmp/%s_%s.sol > %s%s_%s.sol", config.Get().Paths.Bin.SolutionAnalyzer, constants.SolutionsDirPath, satSolver, instanceName, satSolver, instanceName, satSolver, instanceName, constants.SolutionsDirPath, satSolver, instanceName)
 		cmd := exec.Command("bash", "-c", command)
@@ -43,7 +49,7 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 		}
 	}
 
-	// Verify the solution
+	// * 5. Verify the solution
 	{
 		steps, err := strconv.Atoi(strings.Split(instanceName, "_")[2])
 		if err != nil {
@@ -67,7 +73,7 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 		}
 	}
 
-	// Report the instance's completion
+	// * 6. Report the instance's completion
 	var (
 		completedInstancesCount uint = 0
 		totalInstancesCount     int  = 0
@@ -98,10 +104,16 @@ func CryptoMiniSat(filepath string, context *types.BenchmarkContext, instanceInd
 }
 
 func CryptoMiniSatCmd(filepath string) string {
+	binPath := config.Get().Paths.Bin.CryptoMiniSat
+	if !utils.FileExists(binPath) {
+		log.Fatal("CryptoMiniSAT doesn't exist. Did you forget to compile it?")
+	}
+
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s --verb=0 %s > %scryptominisat_%ssol", config.Get().Paths.Bin.CryptoMiniSat, filepath, constants.SolutionsDirPath, instanceName)
+	command := fmt.Sprintf("%s --verb=0 %s > %scryptominisat_%ssol",
+		binPath, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
 }
@@ -113,10 +125,15 @@ func Kissat(filepath string, context *types.BenchmarkContext, instanceIndex uint
 }
 
 func KissatCmd(filepath string) string {
+	binPath := config.Get().Paths.Bin.Kissat
+	if !utils.FileExists(binPath) {
+		log.Fatal("Kissat doesn't exist. Did you forget to compile it?")
+	}
+
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -q %s > %skissat_%ssol", config.Get().Paths.Bin.Kissat, filepath, constants.SolutionsDirPath, instanceName)
+	command := fmt.Sprintf("%s -q %s > %skissat_%ssol", binPath, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
 }
@@ -128,10 +145,15 @@ func Cadical(filepath string, context *types.BenchmarkContext, instanceIndex uin
 }
 
 func CadicalCmd(filepath string) string {
+	binPath := config.Get().Paths.Bin.Cadical
+	if !utils.FileExists(binPath) {
+		log.Fatal("CaDiCaL doesn't exist. Did you forget to compile it?")
+	}
+
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -q %s > %scadical_%ssol", config.Get().Paths.Bin.Cadical, filepath, constants.SolutionsDirPath, instanceName)
+	command := fmt.Sprintf("%s -q %s > %scadical_%ssol", binPath, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
 }
@@ -143,10 +165,15 @@ func MapleSat(filepath string, context *types.BenchmarkContext, instanceIndex ui
 }
 
 func MapleSatCmd(filepath string) string {
+	binPath := config.Get().Paths.Bin.MapleSat
+	if !utils.FileExists(binPath) {
+		log.Fatal("MapleSAT doesn't exist. Did you forget to compile it?")
+	}
+
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -verb=0 %s %smaplesat_%ssol", config.Get().Paths.Bin.MapleSat, filepath, constants.SolutionsDirPath, instanceName)
+	command := fmt.Sprintf("%s -verb=0 %s %smaplesat_%ssol", binPath, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
 }
@@ -158,10 +185,15 @@ func XnfSat(filepath string, context *types.BenchmarkContext, instanceIndex uint
 }
 
 func XnfSatCmd(filepath string) string {
+	binPath := config.Get().Paths.Bin.XnfSat
+	if !utils.FileExists(binPath) {
+		log.Fatal("XNFSAT doesn't exist. Did you forget to compile it?")
+	}
+
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s --witness --verbose=0 %s > %sxnfsat_%ssol", config.Get().Paths.Bin.XnfSat, filepath, constants.SolutionsDirPath, instanceName)
+	command := fmt.Sprintf("%s --witness --verbose=0 %s > %sxnfsat_%ssol", binPath, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
 }
@@ -173,19 +205,29 @@ func Glucose(filepath string, context *types.BenchmarkContext, instanceIndex uin
 }
 
 func GlucoseCmd(filepath string) string {
+	binPath := config.Get().Paths.Bin.Glucose
+	if !utils.FileExists(binPath) {
+		log.Fatal("Glucose doesn't exist. Did you forget to compile it?")
+	}
+
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s -verb=0 %s %sglucose_%ssol", config.Get().Paths.Bin.Glucose, filepath, constants.SolutionsDirPath, instanceName)
+	command := fmt.Sprintf("%s -verb=0 %s %sglucose_%ssol", binPath, filepath, constants.SolutionsDirPath, instanceName)
 
 	return command
 }
 
 func March(filepath string, cubeVars uint) {
+	binPath := config.Get().Paths.Bin.March
+	if !utils.FileExists(binPath) {
+		log.Fatal("March doesn't exist. Did you forget to compile it?")
+	}
+
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s %s -n %d -o %s%sicnf", config.Get().Paths.Bin.March, filepath, cubeVars, constants.EncodingsDirPath, instanceName)
+	command := fmt.Sprintf("%s %s -n %d -o %s%sicnf", binPath, filepath, cubeVars, constants.EncodingsDirPath, instanceName)
 	if err := exec.Command("bash", "-c", command).Run(); err != nil {
 		log.Fatal("Failed to generate cubes with March", err)
 	}
