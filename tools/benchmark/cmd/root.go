@@ -273,6 +273,7 @@ func init() {
 }
 
 func Execute() {
+	// Process the configuration from config.toml
 	config.ProcessConfig()
 
 	if err := rootCmd.Execute(); err != nil {
