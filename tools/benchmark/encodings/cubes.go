@@ -6,59 +6,60 @@ import (
 	"benchmark/utils"
 	"errors"
 	"fmt"
-	"math"
 	"os"
-	"strconv"
 	"strings"
+
+	"github.com/samber/lo"
 )
 
 func GenerateSubProblem(instanceName string, i int) error {
-	// Read the instance
+	// * 1. Read the instance
 	instance_, err := os.ReadFile(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, instanceName))
 	if err != nil {
 		return err
 	}
 	instance := string(instance_)
 
-	// Open the .icnf file
-	iCnfFile, err := os.Open(fmt.Sprintf("%s%s.icnf", constants.EncodingsDirPath, instanceName))
+	// * 2. Open the cubes file
+	cubesFile, err := os.Open(fmt.Sprintf("%s%s.icnf", constants.EncodingsDirPath, instanceName))
 	if err != nil {
 		return err
 	}
-	defer iCnfFile.Close()
+	defer cubesFile.Close()
 
-	// Generate the subproblem
-	cube, _, _ := utils.ReadLine(iCnfFile, i)
+	// * 3. Get the cube
+	cube, _, _ := utils.ReadLine(cubesFile, i)
 
-	// Generate the clause
-	clause := strings.TrimPrefix(cube, "a ")
+	// * 4. Generate unit clauses from the literals in the cube
+	cubeClauses_ := strings.Split(strings.TrimPrefix(cube, "a "), " ")
+	cubeClauses := lo.Map(cubeClauses_[:len(cubeClauses_)-1], func(s string, _ int) string {
+		return s + " 0"
+	})
 
-	// Grab the CNF as a starting point for the cube
-	head, body, _ := strings.Cut(instance, "\n")
-	headerSegments := strings.Split(head, " ")
-	numVars, _ := strconv.Atoi(headerSegments[2])
-	numClauses, _ := strconv.Atoi(headerSegments[3])
+	// * 5. Get the num. of variables and clauses along with the body
 
-	// Generate a new header with an incremented number of clauses
-	clauseSegments := strings.Split(clause, " ")
-	newNumVar := numVars
-	for _, clauseSegment := range clauseSegments {
-		var_, _ := strconv.Atoi(clauseSegment)
-		newNumVar = int(math.Max(float64(var_), float64(numVars)))
-	}
-	newHeader := fmt.Sprintf("p cnf %d %d", newNumVar, numClauses+1)
+	var numVars, numClauses int
+	var body string
+	fmt.Sscanf(instance, "p %d %d\n%s", &numVars, &numClauses, &body)
 
-	// Write the cube
-	cubeFileName := fmt.Sprintf("%scube%d_%s.cnf", constants.EncodingsDirPath, i, instanceName)
-	cubeFile, err := os.OpenFile(cubeFileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	// * 6. Generate a new header with an increased number of clauses
+	newHeader := fmt.Sprintf("p cnf %d %d", numClauses, numClauses+len(cubeClauses))
+
+	// * 7. Write the subproblem
+	subProblemFileName := fmt.Sprintf("%scube%d_%s.cnf", constants.EncodingsDirPath, i, instanceName)
+	subProblemFile, err := os.OpenFile(subProblemFileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		return errors.New("failed to create the cubes file")
+		return errors.New("failed to create the subproblem file")
 	}
-	defer cubeFile.Close()
+	defer subProblemFile.Close()
 
-	_, err = cubeFile.WriteString(fmt.Sprintf("%s\n%s%s\n", newHeader, body, clause))
+	_, err = subProblemFile.WriteString(
+		fmt.Sprintf("%s\n%s%s\n",
+			newHeader,
+			body,
+			strings.Join(cubeClauses, "\n")))
 	if err != nil {
-		return errors.New("failed to add the clause to the cube file")
+		return errors.New("failed to add the clause to the subproblem file")
 	}
 
 	return nil
