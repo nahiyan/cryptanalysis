@@ -37,15 +37,15 @@ func GenerateSubProblem(instanceName string, i int) error {
 	})
 
 	// * 5. Get the num. of variables and clauses along with the body
-
 	var numVars, numClauses int
-	var body string
-	fmt.Sscanf(instance, "p %d %d\n%s", &numVars, &numClauses, &body)
+	fmt.Sscanf(instance, "p cnf %d %d\n", &numVars, &numClauses)
+	n := len(fmt.Sprintf("p cnf %d %d\n", numVars, numClauses))
+	body := instance[n:]
 
 	// * 6. Generate a new header with an increased number of clauses
-	newHeader := fmt.Sprintf("p cnf %d %d", numClauses, numClauses+len(cubeClauses))
+	newHeader := fmt.Sprintf("p cnf %d %d", numVars, numClauses+len(cubeClauses))
 
-	// * 7. Write the subproblem
+	// * 7. Write the subproblem file
 	subProblemFileName := fmt.Sprintf("%scube%d_%s.cnf", constants.EncodingsDirPath, i, instanceName)
 	subProblemFile, err := os.OpenFile(subProblemFileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
@@ -53,13 +53,12 @@ func GenerateSubProblem(instanceName string, i int) error {
 	}
 	defer subProblemFile.Close()
 
-	_, err = subProblemFile.WriteString(
+	if _, err := subProblemFile.WriteString(
 		fmt.Sprintf("%s\n%s%s\n",
 			newHeader,
 			body,
-			strings.Join(cubeClauses, "\n")))
-	if err != nil {
-		return errors.New("failed to add the clause to the subproblem file")
+			strings.Join(cubeClauses, "\n"))); err != nil {
+		return errors.New("failed to add the clauses to the subproblem file")
 	}
 
 	return nil
