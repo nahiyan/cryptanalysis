@@ -77,7 +77,7 @@ func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, 
 									xorOption = 0
 								}
 
-								if context.IsCubeEnabled {
+								if context.CubeParams != nil {
 									iCnfFile, err := os.Open(fmt.Sprintf("%s%s.icnf", constants.EncodingsDirPath, InstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, nil)))
 									if err != nil {
 										log.Fatal("Failed to read .icnf file")

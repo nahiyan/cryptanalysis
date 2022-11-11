@@ -18,8 +18,9 @@ import (
 )
 
 var variationsXor_, variationsHashes_, variationsAdders_, variationsSatSolvers_, variationsDobbertin_, variationsDobbertinBits_, variationsSteps_ string
-var instanceMaxTime, maxConcurrentInstancesCount, cubeVars, digest, generateEncodings, sessionId uint
+var instanceMaxTime, maxConcurrentInstancesCount, digest, generateEncodings, sessionId, cubeCutoffVars, cubeSelectionCount uint
 var cleanResults, isCubeEnabled bool
+var cubeSelectionSeed int
 
 var rootCmd = &cobra.Command{
 	Use:   "benchmark",
@@ -225,8 +226,12 @@ func processFlags() types.CommandContext {
 	}
 
 	// Cubing
-	context.IsCubeEnabled = isCubeEnabled
-	context.CubeVars = cubeVars
+	if isCubeEnabled {
+		context.CubeParams = new(types.CubeParams)
+		context.CubeParams.CutoffVars = cubeCutoffVars
+		context.CubeParams.Seed = cubeSelectionSeed
+		context.CubeParams.SelectionSize = cubeSelectionCount
+	}
 
 	// Digest
 	context.Digest = digest
@@ -251,8 +256,12 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&variationsSteps_, "var-steps", "31-39", "Comma-separated variations of the values and/or ranges of steps")
 	rootCmd.PersistentFlags().UintVar(&instanceMaxTime, "max-time", 5000, "Maximum time in seconds for each instance to run")
 	rootCmd.PersistentFlags().BoolVar(&cleanResults, "clean-results", false, "Remove leftover results from previous sessions")
+
 	rootCmd.PersistentFlags().BoolVar(&isCubeEnabled, "cube", false, "Produce cubes from the instances and solve them")
-	rootCmd.PersistentFlags().UintVar(&cubeVars, "cube-vars", 3000, "Number of variables as a threshold for cube generation. Ignored if the cubes flag is not set")
+	rootCmd.PersistentFlags().UintVar(&cubeCutoffVars, "cube-cutoff-vars", 3000, "Number of variables as a threshold for cube generation")
+	rootCmd.PersistentFlags().UintVar(&cubeSelectionCount, "cube-selection-count", 1000, "Number of cubes to select randomly for solvin")
+	rootCmd.PersistentFlags().IntVar(&cubeSelectionSeed, "cube-selection-seed", 0, "Random for the randomization of cube selection")
+
 	rootCmd.PersistentFlags().UintVar(&generateEncodings, "generate-encodings", 1, "Flag whether to generate encodings or prior to solving")
 	rootCmd.PersistentFlags().UintVar(&sessionId, "session-id", 0, "ID of a pre-existing session")
 

@@ -175,9 +175,8 @@ func Run(context *types.CommandContext) {
 	if context.GenerateEncodings == 1 {
 		fmt.Println("Generating encodings")
 		encodings.Generate(types.EncodingsGenContext{
-			Variations:    context.Variations,
-			IsCubeEnabled: context.IsCubeEnabled,
-			CubeVars:      context.CubeVars,
+			Variations: context.Variations,
+			CubeParams: context.CubeParams,
 		})
 		fmt.Println("Done")
 	}

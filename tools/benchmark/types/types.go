@@ -10,16 +10,21 @@ type Variations struct {
 	VariationsHashes        []string
 }
 
+type CubeParams struct {
+	CutoffVars    uint // The max. variable count for cutoff
+	Seed          int  // Seed for random selection of cubes
+	SelectionSize uint // Number of cubes in the selection
+}
+
 type CommandContext struct {
 	Variations
-	IsCubeEnabled               bool
-	CubeVars                    uint
 	InstanceMaxTime             uint
 	MaxConcurrentInstancesCount uint
 	CleanResults                bool
 	Digest                      uint
 	GenerateEncodings           uint
 	SessionId                   uint
+	CubeParams                  *CubeParams
 }
 
 type BenchmarkContext struct {
@@ -29,8 +34,7 @@ type BenchmarkContext struct {
 
 type EncodingsGenContext struct {
 	Variations
-	IsCubeEnabled bool
-	CubeVars      uint
+	CubeParams *CubeParams
 }
 
 type Config struct {

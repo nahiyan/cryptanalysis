@@ -60,9 +60,9 @@ func Generate(context types.EncodingsGenContext) {
 							}
 
 							// * 4. Conditional: Generate cubes if flagged
-							if context.IsCubeEnabled {
+							if context.CubeParams != nil {
 								// Generate cubes
-								generateCubes(instanceName, context.CubeVars)
+								generateCubes(instanceName, context.CubeParams.CutoffVars)
 							}
 						}
 					}
