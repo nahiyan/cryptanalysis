@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -90,7 +91,8 @@ func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, 
 									}
 
 									// Randomly select N cubes to solve
-									randomCubeIndices := rand.Perm(cubesCount)[:context.CubeParams.SelectionSize]
+									randomCubeSelectionCount := int(math.Min(float64(cubesCount), float64(context.CubeParams.SelectionSize)))
+									randomCubeIndices := rand.Perm(randomCubeSelectionCount)[:randomCubeSelectionCount]
 
 									for _, cubeIndex := range randomCubeIndices {
 										cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin, dobbertinBits, lo.ToPtr(uint(cubeIndex)))
