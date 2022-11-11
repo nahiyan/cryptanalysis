@@ -12,7 +12,6 @@ type Variations struct {
 
 type CubeParams struct {
 	CutoffVars    uint // The max. variable count for cutoff
-	Seed          int  // Seed for random selection of cubes
 	SelectionSize uint // Number of cubes in the selection
 }
 
@@ -25,6 +24,7 @@ type CommandContext struct {
 	GenerateEncodings           uint
 	SessionId                   uint
 	CubeParams                  *CubeParams
+	Seed                        int64 // Seed for random selection of cubes
 }
 
 type BenchmarkContext struct {

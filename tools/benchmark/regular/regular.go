@@ -7,11 +7,13 @@ import (
 	"benchmark/types"
 	"benchmark/utils"
 	"fmt"
+	"math/rand"
 	"time"
 )
 
 func Run(context *types.CommandContext) {
-	// TODO: Register session in the database
+	// Set the seed
+	rand.Seed(context.Seed)
 
 	// Generate encodings
 	if context.GenerateEncodings == 1 {
@@ -22,6 +24,8 @@ func Run(context *types.CommandContext) {
 		})
 		fmt.Println("Done")
 	}
+
+	// TODO: Register session in the database
 
 	// Count the number of instances for determining the progress
 	instancesCount := utils.InstancesCount(context)

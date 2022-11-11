@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path"
@@ -170,6 +171,9 @@ func Run(context *types.CommandContext) {
 
 		return
 	}
+
+	// Set the seed
+	rand.Seed(context.Seed)
 
 	// Generate encodings
 	if context.GenerateEncodings == 1 {
