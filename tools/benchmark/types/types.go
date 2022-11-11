@@ -19,6 +19,7 @@ type CommandContext struct {
 	CleanResults                bool
 	Digest                      uint
 	GenerateEncodings           uint
+	SessionId                   uint
 }
 
 type BenchmarkContext struct {
