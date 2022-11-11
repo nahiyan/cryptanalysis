@@ -234,6 +234,9 @@ func processFlags() types.CommandContext {
 	// Generate encodings
 	context.GenerateEncodings = generateEncodings
 
+	// Session ID
+	context.SessionId = sessionId
+
 	return context
 }
 
@@ -251,6 +254,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&isCubeEnabled, "cube", false, "Produce cubes from the instances and solve them")
 	rootCmd.PersistentFlags().UintVar(&cubeVars, "cube-vars", 3000, "Number of variables as a threshold for cube generation. Ignored if the cubes flag is not set")
 	rootCmd.PersistentFlags().UintVar(&generateEncodings, "generate-encodings", 1, "Flag whether to generate encodings or prior to solving")
+	rootCmd.PersistentFlags().UintVar(&sessionId, "session-id", 0, "ID of a pre-existing session")
 
 	regularCmd.Flags().UintVar(&maxConcurrentInstancesCount, "max-instances", 50, "Maximum number of instances to run concurrently")
 	slurmCmd.Flags().UintVar(&digest, "digest", 0, "The ID of the finished slurm job that needs to be digested")
