@@ -11,6 +11,8 @@ import (
 )
 
 func Run(context *types.CommandContext) {
+	// TODO: Register session in the database
+
 	// Generate encodings
 	if context.GenerateEncodings == 1 {
 		fmt.Println("Generating encodings")
