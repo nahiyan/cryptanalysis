@@ -90,18 +90,28 @@ func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, 
 										log.Fatal("Failed to count the cubes")
 									}
 
-									// Randomly select N cubes to solve
-									randomCubeSelectionCount := int(math.Min(float64(cubesCount), float64(context.CubeParams.SelectionSize)))
-									randomCubeIndices := rand.Perm(randomCubeSelectionCount)[:randomCubeSelectionCount]
+									if context.CubeParams.CubeIndex == 0 {
+										// Randomly select N cubes to solve
+										randomCubeSelectionCount := int(math.Min(float64(cubesCount), float64(context.CubeParams.SelectionSize)))
+										randomCubeIndices := lo.Map(rand.Perm(randomCubeSelectionCount), func(index, i2 int) int {
+											return index + 1
+										})[:randomCubeSelectionCount]
 
-									for _, cubeIndex := range randomCubeIndices {
-										cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin, dobbertinBits, lo.ToPtr(uint(cubeIndex)))
-										i += 1
+										for _, cubeIndex := range randomCubeIndices {
+											cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin, dobbertinBits, lo.ToPtr(uint(cubeIndex)))
+										}
+									} else {
+										if context.CubeParams.CubeIndex > uint(cubesCount) {
+											log.Fatal("Cube doesn't exist")
+										}
+
+										cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin, dobbertinBits, lo.ToPtr(context.CubeParams.CubeIndex))
 									}
 								} else {
 									cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin, dobbertinBits, nil)
-									i += 1
 								}
+
+								i += 1
 							}
 						}
 					}
