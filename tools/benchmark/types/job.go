@@ -5,5 +5,8 @@ import "gorm.io/gorm"
 type Job struct {
 	gorm.Model
 	FileName string `gorm:"index,file_name"`
-	SlurmId  uint   `gorm:"slurm_id"`
+	IdSlurm  uint   `gorm:"id_slurm"`
+
+	SessionID int
+	Session
 }
