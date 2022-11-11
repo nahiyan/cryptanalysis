@@ -20,7 +20,7 @@ import (
 var variationsXor_, variationsHashes_, variationsAdders_, variationsSatSolvers_, variationsDobbertin_, variationsDobbertinBits_, variationsSteps_ string
 var instanceMaxTime, maxConcurrentInstancesCount, digest, generateEncodings, sessionId, cubeCutoffVars, cubeSelectionCount uint
 var cleanResults, isCubeEnabled bool
-var cubeSelectionSeed int
+var seed int64
 
 var rootCmd = &cobra.Command{
 	Use:   "benchmark",
@@ -229,9 +229,11 @@ func processFlags() types.CommandContext {
 	if isCubeEnabled {
 		context.CubeParams = new(types.CubeParams)
 		context.CubeParams.CutoffVars = cubeCutoffVars
-		context.CubeParams.Seed = cubeSelectionSeed
 		context.CubeParams.SelectionSize = cubeSelectionCount
 	}
+
+	// Seed
+	context.Seed = seed
 
 	// Digest
 	context.Digest = digest
@@ -259,9 +261,9 @@ func init() {
 
 	rootCmd.PersistentFlags().BoolVar(&isCubeEnabled, "cube", false, "Produce cubes from the instances and solve them")
 	rootCmd.PersistentFlags().UintVar(&cubeCutoffVars, "cube-cutoff-vars", 3000, "Number of variables as a threshold for cube generation")
-	rootCmd.PersistentFlags().UintVar(&cubeSelectionCount, "cube-selection-count", 1000, "Number of cubes to select randomly for solvin")
-	rootCmd.PersistentFlags().IntVar(&cubeSelectionSeed, "cube-selection-seed", 0, "Random for the randomization of cube selection")
+	rootCmd.PersistentFlags().UintVar(&cubeSelectionCount, "cube-selection-count", 1000, "Number of cubes to select randomly for solving")
 
+	rootCmd.PersistentFlags().Int64Var(&seed, "seed", 1, "Seed for the randomization")
 	rootCmd.PersistentFlags().UintVar(&generateEncodings, "generate-encodings", 1, "Flag whether to generate encodings or prior to solving")
 	rootCmd.PersistentFlags().UintVar(&sessionId, "session-id", 0, "ID of a pre-existing session")
 
