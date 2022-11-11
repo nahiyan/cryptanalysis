@@ -17,20 +17,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var variationsXor_ string
-var variationsHashes_ string
-var variationsAdders_ string
-var variationsSatSolvers_ string
-var variationsDobbertin_ string
-var variationsDobbertinBits_ string
-var variationsSteps_ string
-var instanceMaxTime uint
-var maxConcurrentInstancesCount uint
-var cleanResults bool
-var isCubeEnabled bool
-var cubeVars uint
-var digest uint
-var generateEncodings uint
+var variationsXor_, variationsHashes_, variationsAdders_, variationsSatSolvers_, variationsDobbertin_, variationsDobbertinBits_, variationsSteps_ string
+var instanceMaxTime, maxConcurrentInstancesCount, cubeVars, digest, generateEncodings, sessionId uint
+var cleanResults, isCubeEnabled bool
 
 var rootCmd = &cobra.Command{
 	Use:   "benchmark",
