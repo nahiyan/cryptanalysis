@@ -266,7 +266,7 @@ func init() {
 	rootCmd.PersistentFlags().UintVar(&cubeIndex, "cube-index", 0, "Index of a specific cube to solve")
 
 	rootCmd.PersistentFlags().Int64Var(&seed, "seed", 1, "Seed for the randomization")
-	rootCmd.PersistentFlags().UintVar(&generateEncodings, "generate-encodings", 1, "Flag whether to generate encodings or prior to solving")
+	rootCmd.PersistentFlags().UintVar(&generateEncodings, "generate-encodings", 1, "Flag whether to generate encodings prior to solving")
 	rootCmd.PersistentFlags().UintVar(&sessionId, "session-id", 0, "ID of a pre-existing session")
 
 	regularCmd.Flags().UintVar(&maxConcurrentInstancesCount, "max-instances", 50, "Maximum number of instances to run concurrently")
