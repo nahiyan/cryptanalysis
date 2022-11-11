@@ -73,22 +73,26 @@ func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, 
 									continue
 								}
 
+								// TODO: Replace the .icnf format with .cubes
 								// No XOR for SAT Solvers other than CryptoMiniSAT and XNFSAT
 								if xorOption == 1 && satSolver != constants.ArgCryptoMiniSat && satSolver != constants.ArgXnfSat {
 									xorOption = 0
 								}
 
 								if context.CubeParams != nil {
-									iCnfFile, err := os.Open(fmt.Sprintf("%s%s.icnf", constants.EncodingsDirPath, InstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, nil)))
+									cubesFile, err := os.Open(fmt.Sprintf("%s%s.icnf", constants.EncodingsDirPath, InstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, nil)))
 									if err != nil {
 										log.Fatal("Failed to read .icnf file")
 									}
-									linesCount, err := CountLines(iCnfFile)
+									cubesCount, err := CountLines(cubesFile)
 									if err != nil {
 										log.Fatal("Failed to count the cubes")
 									}
 
-									for _, cubeIndex := range MakeRange(1, linesCount) {
+									// Randomly select N cubes to solve
+									randomCubeIndices := rand.Perm(cubesCount)[:context.CubeParams.SelectionSize]
+
+									for _, cubeIndex := range randomCubeIndices {
 										cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin, dobbertinBits, lo.ToPtr(uint(cubeIndex)))
 										i += 1
 									}
