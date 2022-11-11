@@ -13,6 +13,7 @@ type Variations struct {
 type CubeParams struct {
 	CutoffVars    uint // The max. variable count for cutoff
 	SelectionSize uint // Number of cubes in the selection
+	CubeIndex     uint // Index of a specific cube to solve
 }
 
 type CommandContext struct {
