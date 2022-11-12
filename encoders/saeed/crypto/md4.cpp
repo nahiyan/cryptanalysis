@@ -168,7 +168,7 @@ void MD4::encode()
         // Dobbertin's constant
         unsigned int k = 0xffffffff;
         int q_indices[12] = {
-            16, 20, 24, 28,
+            16, 20, 24, 28, // q[16] = Q[13] (from [Debapratim De et al. 2007])
             17, 21, 25, 29,
             18, 22, 26, 30
         };
