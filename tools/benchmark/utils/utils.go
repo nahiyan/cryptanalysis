@@ -91,13 +91,19 @@ func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, 
 									}
 
 									if context.CubeParams.CubeIndex == 0 {
-										// Randomly select N cubes to solve
-										randomCubeSelectionCount := int(math.Min(float64(cubesCount), float64(context.CubeParams.SelectionSize)))
-										randomCubeIndices := lo.Map(rand.Perm(cubesCount), func(index, i2 int) int {
+										// Shuffled list of cubes
+										cubes := lo.Map(rand.Perm(cubesCount), func(index, i2 int) int {
 											return index + 1
-										})[:randomCubeSelectionCount]
+										})
 
-										for _, cubeIndex := range randomCubeIndices {
+										if context.CubeParams.SelectionSize != 0 {
+											// Randomly select N cubes to solve
+											randomCubeSelectionCount := int(math.Min(float64(cubesCount), float64(context.CubeParams.SelectionSize)))
+
+											cubes = cubes[:randomCubeSelectionCount]
+										}
+
+										for _, cubeIndex := range cubes {
 											cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin, dobbertinBits, lo.ToPtr(uint(cubeIndex)))
 										}
 									} else {
