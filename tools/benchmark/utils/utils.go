@@ -93,7 +93,7 @@ func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, 
 									if context.CubeParams.CubeIndex == 0 {
 										// Randomly select N cubes to solve
 										randomCubeSelectionCount := int(math.Min(float64(cubesCount), float64(context.CubeParams.SelectionSize)))
-										randomCubeIndices := lo.Map(rand.Perm(randomCubeSelectionCount), func(index, i2 int) int {
+										randomCubeIndices := lo.Map(rand.Perm(cubesCount), func(index, i2 int) int {
 											return index + 1
 										})[:randomCubeSelectionCount]
 
