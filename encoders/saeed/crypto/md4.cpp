@@ -166,10 +166,14 @@ void MD4::encode()
     // Dobbertin's constraints
     if (dobbertin) {
         // Dobbertin's constant
-        unsigned int k = 0;
-        int q_indices[12] = { 13, 17, 18, 20, 21, 22, 24, 25, 26, 28, 29, 30 };
+        unsigned int k = 0xffffffff;
+        int q_indices[12] = {
+            16, 20, 24, 28,
+            17, 21, 25, 29,
+            18, 22, 26, 30
+        };
         // Index of q that needs relaxation
-        int p = 13;
+        int p = 16;
 
         for (int& i : q_indices) {
             if (i == p && bits != 32) {
