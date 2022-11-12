@@ -40,7 +40,7 @@ func generateJobs(context *types.CommandContext) []string {
 		instanceName := utils.InstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, cubeIndex)
 
 		// Write the file for the job
-		body := fmt.Sprintf("%s regular --var-steps %d --var-xor %d --var-dobbertin %d --var-dobbertin-bits %d --var-adders %s --var-hashes %s --var-sat-solvers %s --generate-encodings 0 %s --seed %d", config.Get().Paths.Bin.Benchmark, steps, xorOption, dobbertin, dobbertinBits, adderType, hash, satSolver_, func(cubeParams *types.CubeParams) string {
+		body := fmt.Sprintf("%s regular --max-time %d  --var-steps %d --var-xor %d --var-dobbertin %d --var-dobbertin-bits %d --var-adders %s --var-hashes %s --var-sat-solvers %s --generate-encodings 0 %s --seed %d", config.Get().Paths.Bin.Benchmark, context.InstanceMaxTime, steps, xorOption, dobbertin, dobbertinBits, adderType, hash, satSolver_, func(cubeParams *types.CubeParams) string {
 			if cubeParams == nil {
 				return ""
 			}
