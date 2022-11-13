@@ -27,3 +27,9 @@ const (
 
 	ErrOneJobScheduleFailed = "failed to schedule one of the jobs"
 )
+
+const (
+	Valid        = "valid"
+	Invalid      = "invalid"
+	Undetermined = "undetermined"
+)

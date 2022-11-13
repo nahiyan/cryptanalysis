@@ -17,6 +17,9 @@ import (
 )
 
 func invokeSatSolver(command string, satSolver string, context_ *types.BenchmarkContext, filepath string, startTime time.Time, instanceIndex uint, maxTime uint) {
+	messages := make([]string, 0)
+	validity := constants.Undetermined
+
 	// * 1. Check if the solution analyzer exists
 	if !utils.FileExists(config.Get().Paths.Bin.SolutionAnalyzer) {
 		log.Fatal("Solution analyzer doesn't exist. Did you forget to compile it?")
@@ -30,50 +33,53 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 		exitCode = exiterr.ExitCode()
 	}
 
-	// * 3. Log down to a file
 	duration := time.Since(startTime)
+	// TODO: Improve the way the instance name is generated
 	instanceName := strings.TrimSuffix(path.Base(filepath), ".cnf")
-	benchmarkLogFilePath := "benchmark_" + instanceName + "_" + satSolver + ".csv"
-	validResultsLogFilePath := "valid_results_" + instanceName + "_" + satSolver + ".csv"
-	verificationLogFilePath := "verification_" + instanceName + "_" + satSolver + ".csv"
 
-	logRecord := []string{satSolver, instanceName, fmt.Sprintf("%.2f", duration.Seconds()), strconv.Itoa(exitCode)}
-	utils.AppendLog(benchmarkLogFilePath, logRecord)
-
-	// * 4. Normalize the solution
+	// * 3. Normalize the solution
+	isNormalized := false
 	{
 		command := fmt.Sprintf("%s %s%s_%s.sol normalize > /tmp/%s_%s.sol && cat /tmp/%s_%s.sol > %s%s_%s.sol", config.Get().Paths.Bin.SolutionAnalyzer, constants.SolutionsDirPath, satSolver, instanceName, satSolver, instanceName, satSolver, instanceName, constants.SolutionsDirPath, satSolver, instanceName)
 		cmd := exec.Command("bash", "-c", command)
 		if err := cmd.Run(); err != nil {
-			utils.AppendLog(verificationLogFilePath, []string{satSolver, instanceName, fmt.Sprintf("Normalization failed: %s %s", err.Error(), cmd.String())})
+			messages = append(messages, fmt.Sprintf("Normalization failed: %s %s", err.Error(), cmd.String()))
+		} else {
+			isNormalized = true
 		}
 	}
 
-	// * 5. Verify the solution
-	{
+	// * 4. Validate the solution
+	if isNormalized {
+		unknownError := false
+
+		// TODO: Write a better method to get the number of steps
 		steps, err := strconv.Atoi(strings.Split(instanceName, "_")[2])
 		if err != nil {
-			utils.AppendLog(verificationLogFilePath, []string{satSolver, instanceName, "Verification failed"})
+			unknownError = true
 		}
 
 		command := fmt.Sprintf("%s %d < %s%s_%s.sol", config.Get().Paths.Bin.Verifier, steps, constants.SolutionsDirPath, satSolver, instanceName)
 		cmd := exec.Command("bash", "-c", command)
 		output, err := cmd.Output()
 		if err != nil {
-			utils.AppendLog(verificationLogFilePath, []string{satSolver, instanceName, "Verification failed"})
+			unknownError = true
 		}
 
 		if strings.Contains(string(output), "Solution's hash matches the target!") {
-			utils.AppendLog(verificationLogFilePath, []string{satSolver, instanceName, "Valid"})
-			utils.AppendLog(validResultsLogFilePath, logRecord)
+			validity = constants.Valid
 		} else if strings.Contains(string(output), "Solution's hash DOES NOT match the target:") || strings.Contains(string(output), "Result is UNSAT!") {
-			utils.AppendLog(verificationLogFilePath, []string{satSolver, instanceName, "Verification failed"})
+			validity = constants.Invalid
 		} else {
-			utils.AppendLog(verificationLogFilePath, []string{satSolver, instanceName, fmt.Sprintf("Unknown error: %s", output)})
+			unknownError = true
+		}
+
+		if unknownError {
+			messages = append(messages, "Error in the validation process")
 		}
 	}
 
-	// * 6. Report the instance's completion
+	// * 5. Report the instance's completion
 	var (
 		completedInstancesCount uint = 0
 		totalInstancesCount     int  = 0
@@ -91,7 +97,9 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 	}
 	completedInstancesCount += 1
 
-	fmt.Printf("[%d/%d] %s \t %s \t %.2fs \t exit code: %d\n", completedInstancesCount, totalInstancesCount, satSolver, instanceName, duration.Seconds(), exitCode)
+	fmt.Printf("[%d/%d] %s_%s %.2fs %d %s\n", completedInstancesCount, totalInstancesCount, satSolver, instanceName, duration.Seconds(), exitCode, validity)
+
+	utils.AppendLog(satSolver, instanceName, duration, messages, exitCode, validity)
 
 	context_.RunningInstances -= 1
 	context_.Progress[satSolver][instanceIndex] = true

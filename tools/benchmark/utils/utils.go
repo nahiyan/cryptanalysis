@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/sha1"
-	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
@@ -14,8 +13,6 @@ import (
 	"math"
 	"math/rand"
 	"os"
-	"os/exec"
-	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -29,30 +26,6 @@ func MakeRange(min, max int) []int {
 		a[i] = min + i
 	}
 	return a
-}
-
-func AppendLog(filename string, records []string) {
-	f, err := os.OpenFile(path.Join(constants.LogsDirPath, filename), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic("Failed to write logs: " + err.Error())
-	}
-
-	csvWriter := csv.NewWriter(f)
-	csvWriter.Write(records)
-	csvWriter.Flush()
-
-	f.Close()
-}
-
-func AppendBenchmarkLog(records []string) {
-	AppendLog(constants.BenchmarkLogFileName, records)
-}
-func AppendValidResultsLog(records []string) {
-	AppendLog(constants.ValidResultsLogFileName, records)
-}
-
-func AppendVerificationLog(records []string) {
-	AppendLog(constants.VerificationLogFileName, records)
 }
 
 func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, uint, string, uint, string, uint, uint, *uint)) {
@@ -165,52 +138,6 @@ func InstancesCount(commandContext *types.CommandContext) uint {
 	})
 
 	return count
-}
-
-func AggregateLogs() {
-	AppendBenchmarkLog([]string{"SAT Solver", "Instance Name", "Time", "Exit Code"})
-	AppendValidResultsLog([]string{"SAT Solver", "Instance Name", "Time", "Exit Code"})
-	AppendVerificationLog([]string{"SAT Solver", "Instance Name", "Result"})
-
-	items, _ := os.ReadDir(constants.LogsDirPath)
-	for _, item := range items {
-		if item.IsDir() || path.Ext(item.Name()) != ".csv" || lo.Contains([]string{"benchmark.csv", "verification.csv", "valid_results.csv"}, item.Name()) {
-			continue
-		}
-
-		// Open the file as CSV
-		filePath := path.Join(constants.LogsDirPath, item.Name())
-		fileReader, err := os.Open(filePath)
-		if err != nil {
-			continue
-		}
-
-		csvReader := csv.NewReader(fileReader)
-		record, err := csvReader.Read()
-		if err != nil {
-			continue
-		}
-
-		fileReader.Close()
-
-		fmt.Println(item.Name())
-		if strings.HasPrefix(item.Name(), "verification") {
-			AppendVerificationLog(record)
-		} else if strings.HasPrefix(item.Name(), "benchmark") {
-			AppendBenchmarkLog(record)
-		} else if strings.HasPrefix(item.Name(), "valid_results") {
-			AppendValidResultsLog(record)
-		}
-	}
-
-	// Remove the individual logs
-	for _, item := range items {
-		if lo.Contains([]string{"benchmark.csv", "verification.csv", "valid_results.csv"}, item.Name()) || item.Name() == ".gitignore" {
-			continue
-		}
-
-		exec.Command("bash", "-c", fmt.Sprintf("rm %s%s", constants.LogsDirPath, item.Name())).Run()
-	}
 }
 
 func EncodingsFileName(steps uint, adderType string, xorOption uint, hash string, dobbertin, dobbertinBits uint, cubeIndex *uint) string {
