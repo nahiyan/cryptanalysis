@@ -53,10 +53,15 @@ func Generate(context types.EncodingsGenContext) {
 								return 0
 							}(isDobbertinEnabled), dobbertinRelaxationBits, nil)
 
-							// * 3. Drive the encoder
-							cmd := exec.Command("bash", "-c", fmt.Sprintf("%s%s -A %s -r %d -f md4 -a preimage -t %s%s --bits %d > %sencodings/%s.cnf", config.Get().Paths.Bin.Encoder, xorFlag, utils.ResolveAdderType(adderType), steps, hash, dobbertinFlag, dobbertinRelaxationBits, constants.ResultsDirPath, instanceName))
-							if err := cmd.Run(); err != nil {
-								log.Fatal("Failed to generate encodings for ", instanceName)
+							// * 3. Drive the encoder if the encoding doesn't exist
+							encodingFilePath := fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, instanceName)
+							if !utils.FileExists(encodingFilePath) {
+								cmd := exec.Command("bash", "-c", fmt.Sprintf("%s%s -A %s -r %d -f md4 -a preimage -t %s%s --bits %d > %s", config.Get().Paths.Bin.Encoder, xorFlag, utils.ResolveAdderType(adderType), steps, hash, dobbertinFlag, dobbertinRelaxationBits, encodingFilePath))
+								if err := cmd.Run(); err != nil {
+									log.Fatal("Failed to generate encodings for ", instanceName)
+								}
+							} else {
+								fmt.Println("Encoding already exists")
 							}
 
 							// * 4. Conditional: Generate cubes if flagged

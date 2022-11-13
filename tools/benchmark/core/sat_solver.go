@@ -19,28 +19,38 @@ import (
 func invokeSatSolver(command string, satSolver string, context_ *types.BenchmarkContext, filepath string, startTime time.Time, instanceIndex uint, maxTime uint) {
 	messages := make([]string, 0)
 	validity := constants.Undetermined
+	// TODO: Improve the way the instance name is generated
+	instanceName := strings.TrimSuffix(path.Base(filepath), ".cnf")
+	solutionFilePath := fmt.Sprintf("%s%s_%s.sol", constants.SolutionsDirPath, satSolver, instanceName)
 
 	// * 1. Check if the solution analyzer exists
 	if !utils.FileExists(config.Get().Paths.Bin.SolutionAnalyzer) {
 		log.Fatal("Solution analyzer doesn't exist. Did you forget to compile it?")
 	}
 
-	// * 2. Invoke the SAT solver
-	cmd := exec.Command("timeout", strconv.Itoa(int(maxTime)), "bash", "-c", command)
-	exitCode := 0
-	if err := cmd.Run(); err != nil {
-		exiterr, _ := err.(*exec.ExitError)
-		exitCode = exiterr.ExitCode()
+	// * 2. Check if the solution already exists
+	isPreviouslySolved := false
+	if utils.FileExists(solutionFilePath) {
+		messages = append(messages, "Solution already exists")
+		isPreviouslySolved = true
 	}
 
-	duration := time.Since(startTime)
-	// TODO: Improve the way the instance name is generated
-	instanceName := strings.TrimSuffix(path.Base(filepath), ".cnf")
+	// * 3. Invoke the SAT solver
+	exitCode := 0
+	duration := time.Since(time.Now())
+	if !isPreviouslySolved {
+		cmd := exec.Command("timeout", strconv.Itoa(int(maxTime)), "bash", "-c", command)
+		if err := cmd.Run(); err != nil {
+			exiterr, _ := err.(*exec.ExitError)
+			exitCode = exiterr.ExitCode()
+		}
+		duration = time.Since(startTime)
+	}
 
-	// * 3. Normalize the solution
+	// * 4. Normalize the solution
 	isNormalized := false
-	{
-		command := fmt.Sprintf("%s %s%s_%s.sol normalize > /tmp/%s_%s.sol && cat /tmp/%s_%s.sol > %s%s_%s.sol", config.Get().Paths.Bin.SolutionAnalyzer, constants.SolutionsDirPath, satSolver, instanceName, satSolver, instanceName, satSolver, instanceName, constants.SolutionsDirPath, satSolver, instanceName)
+	if !isPreviouslySolved {
+		command := fmt.Sprintf("%s %s normalize > %s", config.Get().Paths.Bin.SolutionAnalyzer, solutionFilePath, solutionFilePath)
 		cmd := exec.Command("bash", "-c", command)
 		if err := cmd.Run(); err != nil {
 			messages = append(messages, fmt.Sprintf("Normalization failed: %s %s", err.Error(), cmd.String()))
@@ -49,8 +59,8 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 		}
 	}
 
-	// * 4. Validate the solution
-	if isNormalized {
+	// * 5. Validate the solution
+	if isNormalized || isPreviouslySolved {
 		unknownError := false
 
 		// TODO: Write a better method to get the number of steps
@@ -59,7 +69,7 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 			unknownError = true
 		}
 
-		command := fmt.Sprintf("%s %d < %s%s_%s.sol", config.Get().Paths.Bin.Verifier, steps, constants.SolutionsDirPath, satSolver, instanceName)
+		command := fmt.Sprintf("%s %d < %s", config.Get().Paths.Bin.Verifier, steps, solutionFilePath)
 		cmd := exec.Command("bash", "-c", command)
 		output, err := cmd.Output()
 		if err != nil {
@@ -79,7 +89,7 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 		}
 	}
 
-	// * 5. Report the instance's completion
+	// * 6. Report the instance's completion
 	var (
 		completedInstancesCount uint = 0
 		totalInstancesCount     int  = 0
@@ -96,6 +106,13 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 		totalInstancesCount += len(context_.Progress[satSolver_])
 	}
 	completedInstancesCount += 1
+
+	// * 7. Cleanup failed solutions (not SAT or UNSAT)
+	if validity == constants.Undetermined {
+		if err := exec.Command("bash", "-c", fmt.Sprintf("rm %s", solutionFilePath)).Run(); err != nil {
+			fmt.Println("Failed to cleanup an invalid solution file", err)
+		}
+	}
 
 	fmt.Printf("[%d/%d] %s_%s %.2fs %d %s\n", completedInstancesCount, totalInstancesCount, satSolver, instanceName, duration.Seconds(), exitCode, validity)
 
@@ -226,7 +243,7 @@ func GlucoseCmd(filepath string) string {
 	return command
 }
 
-func March(filepath string, cubeVars uint) {
+func March(filepath string, cubeCutoffVars uint) {
 	binPath := config.Get().Paths.Bin.March
 	if !utils.FileExists(binPath) {
 		log.Fatal("March doesn't exist. Did you forget to compile it?")
@@ -235,7 +252,7 @@ func March(filepath string, cubeVars uint) {
 	baseFileName := path.Base(filepath)
 	instanceName := baseFileName[:len(baseFileName)-3]
 
-	command := fmt.Sprintf("%s %s -n %d -o %s%sicnf", binPath, filepath, cubeVars, constants.EncodingsDirPath, instanceName)
+	command := fmt.Sprintf("%s %s -n %d -o %s%sicnf", binPath, filepath, cubeCutoffVars, constants.EncodingsDirPath, instanceName)
 	if err := exec.Command("bash", "-c", command).Run(); err != nil {
 		log.Fatal("Failed to generate cubes with March", err)
 	}

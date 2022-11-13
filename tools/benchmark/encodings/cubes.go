@@ -13,6 +13,11 @@ import (
 )
 
 func GenerateSubProblem(instanceName string, i int) error {
+	subProblemFilePath := fmt.Sprintf("%scube%d_%s.cnf", constants.EncodingsDirPath, i, instanceName)
+	if utils.FileExists(subProblemFilePath) {
+		return nil
+	}
+
 	// * 1. Read the instance
 	instance_, err := os.ReadFile(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, instanceName))
 	if err != nil {
@@ -46,8 +51,7 @@ func GenerateSubProblem(instanceName string, i int) error {
 	newHeader := fmt.Sprintf("p cnf %d %d", numVars, numClauses+len(cubeClauses))
 
 	// * 7. Write the subproblem file
-	subProblemFileName := fmt.Sprintf("%scube%d_%s.cnf", constants.EncodingsDirPath, i, instanceName)
-	subProblemFile, err := os.OpenFile(subProblemFileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	subProblemFile, err := os.OpenFile(subProblemFilePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		return errors.New("failed to create the subproblem file")
 	}
@@ -64,7 +68,12 @@ func GenerateSubProblem(instanceName string, i int) error {
 	return nil
 }
 
-func generateCubes(instanceName string, cubeVars uint) {
+func generateCubes(instanceName string, cubeCutoffVars uint) {
+	// Skip if the cubes already exist
+	if utils.FileExists(fmt.Sprintf("%s%s.icnf", constants.EncodingsDirPath, instanceName)) {
+		return
+	}
+
 	// Invoke March for generating the cubes that is held in an .icnf file
-	core.March(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, instanceName), cubeVars)
+	core.March(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, instanceName), cubeCutoffVars)
 }
