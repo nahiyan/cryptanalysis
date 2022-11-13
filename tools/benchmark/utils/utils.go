@@ -105,6 +105,7 @@ func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, 
 
 										for _, cubeIndex := range cubes {
 											cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin, dobbertinBits, lo.ToPtr(uint(cubeIndex)))
+											i += 1
 										}
 									} else {
 										if context.CubeParams.CubeIndex > uint(cubesCount) {
@@ -112,12 +113,12 @@ func LoopThroughVariations(context *types.CommandContext, cb func(uint, string, 
 										}
 
 										cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin, dobbertinBits, lo.ToPtr(context.CubeParams.CubeIndex))
+										i += 1
 									}
 								} else {
 									cb(i, satSolver, steps, hash, xorOption, adderType, dobbertin, dobbertinBits, nil)
+									i += 1
 								}
-
-								i += 1
 							}
 						}
 					}
