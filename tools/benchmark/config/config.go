@@ -20,7 +20,7 @@ func ProcessConfig() {
 	viper.SetDefault("Paths.Bin.March", "../../../sat-solvers/march_cu")
 	viper.SetDefault("Paths.Bin.SolutionAnalyzer", "../solution_analyzer/target/release/solution_analyzer")
 	viper.SetDefault("Paths.Bin.Encoder", "../../encoders/saeed/crypto/main")
-	viper.SetDefault("Paths.Bin.Verifier", "../../encoders/saeed/crypto/verify-md4")
+	viper.SetDefault("Paths.Bin.Validator", "../../encoders/saeed/crypto/verify-md4")
 	viper.SetDefault("Slurm.MaxJobs", 1000)
 
 	benchmarkAbsPath, err := filepath.Abs("./benchmark")

@@ -7,6 +7,7 @@ import (
 	"benchmark/utils"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"path"
 	"strconv"
@@ -29,10 +30,16 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 	}
 
 	// * 2. Check if the solution already exists
-	isPreviouslySolved := false
-	if utils.FileExists(solutionFilePath) {
+	isPreviouslySolved := func(solutionFilePath string) bool {
+		if !utils.FileExists(solutionFilePath) {
+			return false
+		}
+
+		stat, _ := os.Stat(solutionFilePath)
+		return stat.Size() == 0
+	}(solutionFilePath)
+	if isPreviouslySolved {
 		messages = append(messages, "Solution already exists")
-		isPreviouslySolved = true
 	}
 
 	// * 3. Invoke the SAT solver
@@ -49,7 +56,7 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 
 	// * 4. Normalize the solution
 	isNormalized := false
-	if !isPreviouslySolved {
+	{
 		command := fmt.Sprintf("%s %s normalize > %s", config.Get().Paths.Bin.SolutionAnalyzer, solutionFilePath, solutionFilePath)
 		cmd := exec.Command("bash", "-c", command)
 		if err := cmd.Run(); err != nil {
@@ -60,20 +67,18 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 	}
 
 	// * 5. Validate the solution
-	if isNormalized || isPreviouslySolved {
-		unknownError := false
-
+	if isNormalized {
 		// TODO: Write a better method to get the number of steps
 		steps, err := strconv.Atoi(strings.Split(instanceName, "_")[2])
 		if err != nil {
-			unknownError = true
+			messages = append(messages, "Error in the validation process: "+err.Error())
 		}
 
-		command := fmt.Sprintf("%s %d < %s", config.Get().Paths.Bin.Verifier, steps, solutionFilePath)
+		command := fmt.Sprintf("%s %d < %s", config.Get().Paths.Bin.Validator, steps, solutionFilePath)
 		cmd := exec.Command("bash", "-c", command)
 		output, err := cmd.Output()
 		if err != nil {
-			unknownError = true
+			messages = append(messages, "Error in the validation process: "+err.Error())
 		}
 
 		if strings.Contains(string(output), "Solution's hash matches the target!") {
@@ -81,11 +86,7 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 		} else if strings.Contains(string(output), "Solution's hash DOES NOT match the target:") || strings.Contains(string(output), "Result is UNSAT!") {
 			validity = constants.Invalid
 		} else {
-			unknownError = true
-		}
-
-		if unknownError {
-			messages = append(messages, "Error in the validation process")
+			messages = append(messages, "Error in the validation process: unknown")
 		}
 	}
 
