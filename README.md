@@ -27,7 +27,7 @@ So far, for the research, we'll be looking at the following variations of encodi
 - Adders such as counter chain, dot matrix, and espresso
 - n-step versions of MD4 with n ranging from 16 to 48
 - With and without Dobbertin's attack
-- Relaxation of one Dobbertin's constraint out of the 12 by W - 32 bits, where W is the word size that is always 32
+- Relaxation of one Dobbertin's constraint out of the 12 by $W - 32$ bits, where $W$ is the word size that is always 32
 
 ## Benchmark Tool
 
