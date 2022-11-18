@@ -68,7 +68,7 @@ func processFlags() types.CommandContext {
 		pieces := strings.Split(variationsAdders_, ",")
 		if len(pieces) == 1 || len(pieces) == 2 {
 			variationsAdders = lo.Filter(pieces, func(s string, i int) bool {
-				return s == constants.ArgCounterChain || s == constants.ArgDotMatrix
+				return s == constants.ArgCounterChain || s == constants.ArgDotMatrix || s == constants.ArgEspresso
 			})
 			context.VariationsAdders = variationsAdders
 		}

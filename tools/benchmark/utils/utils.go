@@ -126,6 +126,8 @@ func ResolveAdderType(shortcut string) string {
 		return "counter_chain"
 	case "dm":
 		return "dot_matrix"
+	case "esp":
+		return "espresso"
 	default:
 		return ""
 	}
