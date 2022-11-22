@@ -184,6 +184,54 @@ func CadicalCmd(filepath string) string {
 	return command
 }
 
+func CadicalSimplify(filePath string, passes uint, duration time.Duration) {
+	var pass uint = 1
+	inputFilePath := filePath
+	for {
+		fmt.Printf("Simplifying pass %d\n", pass)
+
+		simpInstancePath := filePath[:len(filePath)-4] + fmt.Sprintf("_cadical_simp%d.cnf", pass)
+
+		command := fmt.Sprintf("%s %s -o %s -t %.0f",
+			config.Get().Paths.Bin.Cadical, inputFilePath, simpInstancePath, duration.Seconds())
+		output, err := exec.Command("bash", "-c", command).Output()
+		if err != nil {
+			panic(fmt.Sprintf("Failed to simplify at pass %d", pass))
+		}
+
+		// TODO: Reconstruct any removed clauses containing the message or target hash variables
+
+		{
+			eliminatedVars := 0
+			if index := strings.Index(string(output), "c eliminated:"); index != -1 {
+				fmt.Sscanf(string(output)[index:], "c eliminated: %d", &eliminatedVars)
+			}
+			fmt.Printf("Eliminated %d variables\n", eliminatedVars)
+		}
+
+		// Break if this is the last pass
+		if passes != 0 && pass == passes {
+			break
+		}
+
+		// Break if the passes aren't eliminating any variable and the number of passes is set to auto
+		if passes == 0 {
+			eliminatedVars := 0
+			if index := strings.Index(string(output), "c eliminated:"); index != -1 {
+				fmt.Sscanf(string(output)[index:], "c eliminated: %d", &eliminatedVars)
+			}
+
+			if eliminatedVars == 0 {
+				break
+			}
+		}
+
+		inputFilePath = simpInstancePath
+
+		pass++
+	}
+}
+
 func MapleSat(filepath string, context *types.BenchmarkContext, instanceIndex uint, startTime time.Time, maxTime uint) {
 	command := MapleSatCmd(filepath)
 

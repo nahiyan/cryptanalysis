@@ -3,6 +3,7 @@ package cmd
 import (
 	"benchmark/config"
 	"benchmark/constants"
+	"benchmark/core"
 	"benchmark/regular"
 	"benchmark/slurm"
 	"benchmark/types"
@@ -12,13 +13,14 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 )
 
-var variationsXor_, variationsHashes_, variationsAdders_, variationsSatSolvers_, variationsDobbertin_, variationsDobbertinBits_, variationsSteps_ string
-var instanceMaxTime, maxConcurrentInstancesCount, digest, generateEncodings, sessionId, cubeCutoffVars, cubeSelectionCount, cubeIndex uint
+var variationsXor_, variationsHashes_, variationsAdders_, variationsSatSolvers_, variationsDobbertin_, variationsDobbertinBits_, variationsSteps_, simplifier, simplificationInstanceName string
+var instanceMaxTime, maxConcurrentInstancesCount, digest, generateEncodings, sessionId, cubeCutoffVars, cubeSelectionCount, cubeIndex, simplifierPasses uint
 var cleanResults, isCubeEnabled bool
 var seed int64
 
@@ -43,6 +45,18 @@ var regularCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		context := processFlags()
 		regular.Run(&context)
+	},
+}
+
+var simplifyCmd = &cobra.Command{
+	Use:   "simplify",
+	Short: "Simplify the encodings through preprocessing or in-processing",
+	Run: func(cmd *cobra.Command, args []string) {
+		context := processFlags()
+
+		if context.Simplification.Simplifier == constants.ArgCadical {
+			core.CadicalSimplify(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, context.Simplification.InstanceName), context.Simplification.Passes, time.Second*100)
+		}
 	},
 }
 
@@ -237,10 +251,16 @@ func processFlags() types.CommandContext {
 	// Session ID
 	context.SessionId = sessionId
 
+	// Simplification
+	context.Simplification.Simplifier = simplifier
+	context.Simplification.Passes = simplifierPasses
+	context.Simplification.InstanceName = simplificationInstanceName
+
 	return context
 }
 
 func init() {
+	// TODO: Feed directly to the command context
 	// Flags and arguments
 	rootCmd.PersistentFlags().StringVar(&variationsXor_, "var-xor", "0", "Comma-separated variations of XOR. Possible values: 0, 1")
 	rootCmd.PersistentFlags().StringVar(&variationsAdders_, "var-adders", "cc,dm", "Comma-separated variations of the adders. Possible values: cm, dm")
@@ -264,9 +284,14 @@ func init() {
 	regularCmd.Flags().UintVar(&maxConcurrentInstancesCount, "max-instances", 50, "Maximum number of instances to run concurrently")
 	slurmCmd.Flags().UintVar(&digest, "digest", 0, "The ID of the finished slurm job that needs to be digested")
 
+	simplifyCmd.Flags().StringVar(&simplifier, "simplifier", "cdc", "Name of the simplifier. Possible values: cdc")
+	simplifyCmd.Flags().UintVar(&simplifierPasses, "passes", 0, "Number of passes (100s) for simplification; 0 for auto.")
+	simplifyCmd.Flags().StringVar(&simplificationInstanceName, "instance-name", "", "Name of the instance to simplify")
+
 	// Commands
 	rootCmd.AddCommand(regularCmd)
 	rootCmd.AddCommand(slurmCmd)
+	rootCmd.AddCommand(simplifyCmd)
 }
 
 func Execute() {

@@ -16,6 +16,12 @@ type CubeParams struct {
 	CubeIndex     uint // Index of a specific cube to solve
 }
 
+type Simplification struct {
+	Passes       uint
+	Simplifier   string
+	InstanceName string
+}
+
 type CommandContext struct {
 	Variations
 	InstanceMaxTime             uint
@@ -26,6 +32,7 @@ type CommandContext struct {
 	SessionId                   uint
 	CubeParams                  *CubeParams
 	Seed                        int64 // Seed for random selection of cubes
+	Simplification
 }
 
 type BenchmarkContext struct {
