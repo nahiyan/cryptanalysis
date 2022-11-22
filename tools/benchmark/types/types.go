@@ -75,3 +75,10 @@ type SlurmJob struct {
 	}
 	Body string
 }
+
+type Range struct {
+	Start int
+	End   int
+}
+
+type Clause []int

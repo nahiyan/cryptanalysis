@@ -3,7 +3,7 @@ package cmd
 import (
 	"benchmark/config"
 	"benchmark/constants"
-	"benchmark/core"
+	"benchmark/encodings"
 	"benchmark/regular"
 	"benchmark/slurm"
 	"benchmark/types"
@@ -55,7 +55,7 @@ var simplifyCmd = &cobra.Command{
 		context := processFlags()
 
 		if context.Simplification.Simplifier == constants.ArgCadical {
-			core.CadicalSimplify(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, context.Simplification.InstanceName), context.Simplification.Passes, time.Second*100)
+			encodings.CadicalSimplify(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, context.Simplification.InstanceName), context.Simplification.Passes, time.Second*2)
 		}
 	},
 }
