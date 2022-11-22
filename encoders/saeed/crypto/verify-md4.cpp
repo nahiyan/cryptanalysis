@@ -52,15 +52,15 @@ int main(int argc, char** argv)
 
     /* Extracting the message words */
     unsigned w[16];
-    extract(w, 16, solution, 0);
+    extract(w, 16, solution, 0); // Extract 1-512 bits
 
     /* Extracting chaining value */
     unsigned cv[4];
-    extract(cv, 4, solution, 16 * 32);
+    extract(cv, 4, solution, 16 * 32); // Extract 513-640 bits
 
     /* Extracting the correct hash output */
     unsigned hash[4];
-    extract(hash, 4, solution, 16 * 32 + 4 * 32);
+    extract(hash, 4, solution, 16 * 32 + 4 * 32); // Extract 641-768 bits
 
     md4_comp(w, cv, rounds);
     bool matched = true;
