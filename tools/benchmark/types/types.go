@@ -20,6 +20,7 @@ type Simplification struct {
 	Passes       uint
 	Simplifier   string
 	InstanceName string
+	PassDuration uint
 }
 
 type CommandContext struct {

@@ -20,7 +20,7 @@ import (
 )
 
 var variationsXor_, variationsHashes_, variationsAdders_, variationsSatSolvers_, variationsDobbertin_, variationsDobbertinBits_, variationsSteps_, simplifier, simplificationInstanceName string
-var instanceMaxTime, maxConcurrentInstancesCount, digest, generateEncodings, sessionId, cubeCutoffVars, cubeSelectionCount, cubeIndex, simplifierPasses uint
+var instanceMaxTime, maxConcurrentInstancesCount, digest, generateEncodings, sessionId, cubeCutoffVars, cubeSelectionCount, cubeIndex, simplifierPasses, simplifierPassDuration uint
 var cleanResults, isCubeEnabled bool
 var seed int64
 
@@ -55,7 +55,7 @@ var simplifyCmd = &cobra.Command{
 		context := processFlags()
 
 		if context.Simplification.Simplifier == constants.ArgCadical {
-			encodings.CadicalSimplify(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, context.Simplification.InstanceName), context.Simplification.Passes, time.Second*2)
+			encodings.CadicalSimplify(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, context.Simplification.InstanceName), context.Simplification.Passes, time.Duration(context.Simplification.PassDuration)*time.Second)
 		}
 	},
 }
@@ -255,6 +255,7 @@ func processFlags() types.CommandContext {
 	context.Simplification.Simplifier = simplifier
 	context.Simplification.Passes = simplifierPasses
 	context.Simplification.InstanceName = simplificationInstanceName
+	context.Simplification.PassDuration = simplifierPassDuration
 
 	return context
 }
@@ -286,6 +287,7 @@ func init() {
 
 	simplifyCmd.Flags().StringVar(&simplifier, "simplifier", "cdc", "Name of the simplifier. Possible values: cdc")
 	simplifyCmd.Flags().UintVar(&simplifierPasses, "passes", 0, "Number of passes (100s) for simplification; 0 for auto.")
+	simplifyCmd.Flags().UintVar(&simplifierPassDuration, "pass-duration", 100, "Duration of simplifier passes in seconds")
 	simplifyCmd.Flags().StringVar(&simplificationInstanceName, "instance-name", "", "Name of the instance to simplify")
 
 	// Commands

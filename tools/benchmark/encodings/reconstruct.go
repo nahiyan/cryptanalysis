@@ -123,7 +123,7 @@ func Reconstruct(instanceFilePath, reconstStackFilePath string, ranges []types.R
 			return err
 		}
 
-		newInstance := strings.Join(lines, "\n")
+		newInstance := strings.Join(lines, "\n") + "\n"
 		if _, err := instanceFile.WriteString(newInstance); err != nil {
 			return err
 		}
