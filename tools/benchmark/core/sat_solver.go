@@ -57,7 +57,7 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 	// * 4. Normalize the solution
 	isNormalized := false
 	{
-		command := fmt.Sprintf("%s %s normalize > %s", config.Get().Paths.Bin.SolutionAnalyzer, solutionFilePath, solutionFilePath)
+		command := fmt.Sprintf("%s %s normalize > /tmp/%s.sol && cat /tmp/%s.sol > %s", config.Get().Paths.Bin.SolutionAnalyzer, solutionFilePath, path.Base(solutionFilePath), path.Base(solutionFilePath), solutionFilePath)
 		cmd := exec.Command("bash", "-c", command)
 		if err := cmd.Run(); err != nil {
 			messages = append(messages, fmt.Sprintf("Normalization failed: %s %s", err.Error(), cmd.String()))
