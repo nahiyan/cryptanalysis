@@ -42,7 +42,7 @@ class random_cube_data:
 def kill_unuseful_processes():
     sys_str = 'killall -9 ' + CNC_SOLVER
     o = os.popen(sys_str).read()
-    sys_str = 'killall -9 timelimit'
+    sys_str = 'killall -9 timeout'
     o = os.popen(sys_str).read()
 
 
@@ -148,7 +148,7 @@ def process_n(n: int, cnf_name: str):
     start_t = time.time()
     cubes_name = './cubes_n_' + \
         str(n) + '_' + cnf_name.replace('./', '').replace('.cnf', '')
-    system_str = 'timelimit -T 1 -t ' + str(int(MAX_CUBING_TIME)) + ' ' + CNC_SOLVER + ' ' + cnf_name + \
+    system_str = 'timeout ' + str(int(MAX_CUBING_TIME)) + ' ' + CNC_SOLVER + ' ' + cnf_name + \
         ' -n ' + str(n) + ' -o ' + cubes_name
     #print('system_str : ' + system_str)
     o = os.popen(system_str).read()
@@ -203,7 +203,7 @@ def process_cube_solver(cnf_name: str, n: int, cube: list, cube_index: int, task
         sys_str = solver + ' ' + known_cube_cnf_name + \
             ' ' + str(SOLVER_TIME_LIMIT)
     else:
-        sys_str = 'timelimit -T 1 -t ' + \
+        sys_str = 'timeout ' + \
             str(SOLVER_TIME_LIMIT) + ' ' + solver + ' ' + known_cube_cnf_name
     #print('system command : ' + sys_str)
     t = time.time()
