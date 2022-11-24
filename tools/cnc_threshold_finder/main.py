@@ -51,7 +51,7 @@ def kill_solver(solver):
     o = os.popen(sys_str).read()
 
 
-def remove_file(file_name):
+def remove_files(file_name):
     sys_str = 'rm -f ' + file_name
     o = os.popen(sys_str).read()
 
@@ -76,6 +76,7 @@ def get_free_vars(cnf_name):
     return free_vars
 
 
+# Reads the output of the CNC solver, e.g. March
 def parse_cubing_log(o):
     cubes = -1
     refuted_leaves = -1
@@ -145,15 +146,17 @@ def get_random_cubes(cubes_name):
         exit(1)
     return random_cubes, remaining_cubes_str
 
+# Generate the cubeset for the provided threshold and CNF
 
-def process_n(n: int, cnf_name: str):
+
+def generate_cubeset(n: int, cnf_name: str):
     print('n : %d' % n)
     start_t = time.time()
-    cubes_name = './cubes_n_' + \
+    cubes_name = './results/cubes/cubes_n_' + \
         str(n) + '_' + cnf_name.replace('./', '').replace('.cnf', '')
     system_str = 'timeout ' + str(int(MAX_CUBING_TIME)) + ' ' + CNC_SOLVER + ' ' + cnf_name + \
         ' -n ' + str(n) + ' -o ' + cubes_name
-    #print('system_str : ' + system_str)
+    # print('system_str : ' + system_str)
     o = os.popen(system_str).read()
     t = time.time() - start_t
     cubes_num = -1
@@ -161,12 +164,14 @@ def process_n(n: int, cnf_name: str):
     cubing_time = -1.0
     cubes_num, refuted_leaves = parse_cubing_log(o)
     cubing_time = float(t)
-    #print('elapsed_time : %.2f' % elapsed_time)
+    print('elapsed_time : %.2f' % elapsed_time)
 
     return n, cubes_num, refuted_leaves, cubing_time, cubes_name
 
+# Process the CNC solver's output and collect the results
 
-def collect_n_result(res):
+
+def collect_cubeset_result(res):
     global random_cubes_n
     global exit_cubes_creating
     global is_unsat_sample_solving
@@ -191,14 +196,14 @@ def collect_n_result(res):
                     for cube in remaining_cubes_str:
                         remaining_cubes_file.write(cube)
     else:
-        remove_file(cubes_name)
+        remove_files(cubes_name)
     if cubes_num > MAX_CUBES or cubing_time > MAX_CUBING_TIME:
         exit_cubes_creating = True
         logging.info('exit_cubes_creating : ' + str(exit_cubes_creating))
 
 
-def process_cube_solver(cnf_name: str, n: int, cube: list, cube_index: int, task_index: int, solver: str):
-    known_cube_cnf_name = './sample_cnf_n_' + \
+def solve_subproblem(cnf_name: str, n: int, cube: list, cube_index: int, task_index: int, solver: str):
+    known_cube_cnf_name = './results/subproblems/n_' + \
         str(n) + '_cube_' + str(cube_index) + \
         '_task_' + str(task_index) + '.cnf'
     add_cube(cnf_name, known_cube_cnf_name, cube)
@@ -219,17 +224,17 @@ def process_cube_solver(cnf_name: str, n: int, cube: list, cube_index: int, task
         sat_name = cnf_name.replace('./', '').replace('.cnf', '') + \
             '_n' + str(n) + '_' + solver + '_cube_index_' + str(cube_index)
         sat_name = sat_name.replace('./', '')
-        with open('!sat_' + sat_name, 'w') as ofile:
+        with open('results/solutions/!sat_' + sat_name, 'w') as ofile:
             ofile.write('*** SAT found\n')
             ofile.write(o)
     else:
         # remove cnf with known cube
-        remove_file(known_cube_cnf_name)
+        remove_files(known_cube_cnf_name)
 
     return n, cube_index, solver, solver_time, isSat
 
 
-def collect_cube_solver_result(res):
+def collect_subproblem_result(res):
     global results
     global stopped_solvers
     n = res[0]
@@ -265,7 +270,7 @@ if __name__ == '__main__':
         exit(1)
     cnf_name = sys.argv[1]
 
-    log_name = './find_n_' + \
+    log_name = './results/logs/find_n_' + \
         cnf_name.replace('./', '').replace('.', '') + '.log'
     print('log_name : ' + log_name)
     logging.basicConfig(filename=log_name, filemode='w', level=logging.INFO)
@@ -295,23 +300,24 @@ if __name__ == '__main__':
     logging.info('start n : %d ' % n)
 
     # prepare an output file
-    stat_name = 'stat_' + cnf_name
+    stat_name = cnf_name
     stat_name = stat_name.replace('.', '')
     stat_name = stat_name.replace('/', '')
+    stat_name = 'results/stat/' + stat_name
     stat_file = open(stat_name, 'w')
     stat_file.write('n cubes refuted-leaves cubing-time\n')
     stat_file.close()
 
     random_cubes_n = dict()
-    # use 1 CPU core if many cubes (much RAM)
+    # use 1 CPU core if many cubes to avoid excess memory usage
     if MAX_CUBES > 5000000:
         pool = mp.Pool(1)
     else:
         pool = mp.Pool(cpu_number)
     # find required n and their cubes numbers
     while not exit_cubes_creating:
-        pool.apply_async(process_n, args=(n, cnf_name),
-                         callback=collect_n_result)
+        pool.apply_async(generate_cubeset, args=(n, cnf_name),
+                         callback=collect_cubeset_result)
         while len(pool._cache) >= cpu_number:  # wait until any cpu is free
             time.sleep(2)
         n -= 10
@@ -335,7 +341,7 @@ if __name__ == '__main__':
 
     if is_unsat_sample_solving:
         # prepare file for results
-        sample_name = 'sample_results_' + cnf_name
+        sample_name = 'results/sample' + cnf_name
         sample_name = sample_name.replace('.', '')
         sample_name = sample_name.replace('/', '')
         sample_name += '.csv'
@@ -375,8 +381,8 @@ if __name__ == '__main__':
                         if '.sh' not in solver:
                             kill_solver(solver)
                         break
-                    pool2.apply_async(process_cube_solver, args=(
-                        cnf_name, n, cube, cube_index, task_index, solver), callback=collect_cube_solver_result)
+                    pool2.apply_async(solve_subproblem, args=(
+                        cnf_name, n, cube, cube_index, task_index, solver), callback=collect_subproblem_result)
                     task_index += 1
                     cube_index += 1
             time.sleep(2)
@@ -401,10 +407,10 @@ if __name__ == '__main__':
                                       (n, r[0], r[1], r[2]))
 
     # remove tmp files from solver's script
-    remove_file('./*.mincnf')
-    remove_file('./*.cubes')
-    remove_file('./*.ext')
-    remove_file('./*.icnf')
+    remove_files('./*.mincnf')
+    remove_files('./*.cubes')
+    remove_files('./*.ext')
+    remove_files('./*.icnf')
 
     elapsed_time = time.time() - start_time
     logging.info('elapsed_time : ' + str(elapsed_time))
