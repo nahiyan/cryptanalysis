@@ -23,6 +23,10 @@ type Simplification struct {
 	PassDuration uint
 }
 
+type Reconstruction struct {
+	InstanceName  string
+	StackFilePath string
+}
 type CommandContext struct {
 	Variations
 	InstanceMaxTime             uint
@@ -34,6 +38,7 @@ type CommandContext struct {
 	CubeParams                  *CubeParams
 	Seed                        int64 // Seed for random selection of cubes
 	Simplification
+	Reconstruction
 }
 
 type BenchmarkContext struct {

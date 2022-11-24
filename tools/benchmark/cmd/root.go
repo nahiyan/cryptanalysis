@@ -19,7 +19,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var variationsXor_, variationsHashes_, variationsAdders_, variationsSatSolvers_, variationsDobbertin_, variationsDobbertinBits_, variationsSteps_, simplifier, simplificationInstanceName string
+var variationsXor_, variationsHashes_, variationsAdders_, variationsSatSolvers_, variationsDobbertin_, variationsDobbertinBits_, variationsSteps_, simplifier, simplificationInstanceName, reconstructInstanceName, reconstructReconstructionStackPath string
 var instanceMaxTime, maxConcurrentInstancesCount, digest, generateEncodings, sessionId, cubeCutoffVars, cubeSelectionCount, cubeIndex, simplifierPasses, simplifierPassDuration uint
 var cleanResults, isCubeEnabled bool
 var seed int64
@@ -57,6 +57,16 @@ var simplifyCmd = &cobra.Command{
 		if context.Simplification.Simplifier == constants.ArgCadical {
 			encodings.CadicalSimplify(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, context.Simplification.InstanceName), context.Simplification.Passes, time.Duration(context.Simplification.PassDuration)*time.Second)
 		}
+	},
+}
+
+var reconstructCmd = &cobra.Command{
+	Use:   "reconstruct",
+	Short: "Reconstruct a solution from a reconstruction stack",
+	Run: func(cmd *cobra.Command, args []string) {
+		context := processFlags()
+
+		encodings.ReconstructSolution(context.Reconstruction.InstanceName, context.Reconstruction.StackFilePath, []types.Range{{Start: 1, End: 512}, {Start: 641, End: 768}})
 	},
 }
 
@@ -257,6 +267,10 @@ func processFlags() types.CommandContext {
 	context.Simplification.InstanceName = simplificationInstanceName
 	context.Simplification.PassDuration = simplifierPassDuration
 
+	// Reconstruction
+	context.Reconstruction.InstanceName = reconstructInstanceName
+	context.Reconstruction.StackFilePath = reconstructReconstructionStackPath
+
 	return context
 }
 
@@ -290,10 +304,14 @@ func init() {
 	simplifyCmd.Flags().UintVar(&simplifierPassDuration, "pass-duration", 100, "Duration of simplifier passes in seconds")
 	simplifyCmd.Flags().StringVar(&simplificationInstanceName, "instance-name", "", "Name of the instance to simplify")
 
+	reconstructCmd.Flags().StringVar(&reconstructInstanceName, "instance-name", "", "Instance name of the solution that needs reconstruction")
+	reconstructCmd.Flags().StringVarP(&reconstructReconstructionStackPath, "reconstruction-stack-path", "r", "reconstruction-stack.txt", "Path to the reconstruction stack")
+
 	// Commands
 	rootCmd.AddCommand(regularCmd)
 	rootCmd.AddCommand(slurmCmd)
 	rootCmd.AddCommand(simplifyCmd)
+	rootCmd.AddCommand(reconstructCmd)
 }
 
 func Execute() {

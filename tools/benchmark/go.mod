@@ -6,6 +6,7 @@ require (
 	github.com/samber/lo v1.29.0
 	github.com/spf13/cobra v1.6.0
 	github.com/spf13/viper v1.14.0
+	gonum.org/v1/gonum v0.12.0
 	gorm.io/driver/sqlite v1.4.3
 	gorm.io/gorm v1.24.1
 )

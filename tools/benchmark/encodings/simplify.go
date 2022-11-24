@@ -31,7 +31,7 @@ func CadicalSimplify(filePath string, passes uint, duration time.Duration) {
 		}
 
 		// Reconstruct any removed clauses containing the message or target hash variables
-		if err := Reconstruct(simpInstancePath, simpReconstStackFilePath, []types.Range{{Start: 1, End: 512}, {Start: 641, End: 768}}); err != nil {
+		if err := ReconstructEncoding(simpInstancePath, simpReconstStackFilePath, []types.Range{{Start: 1, End: 512}, {Start: 641, End: 768}}); err != nil {
 			panic("Failed to reconstruct the simplified file: " + err.Error())
 		}
 
