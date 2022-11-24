@@ -56,6 +56,9 @@ def remove_file(file_name):
     o = os.popen(sys_str).read()
 
 
+# Free variables are the variables that are actually in the CNF. For example, we can have the following variables in the encoding: 1, 2, 800, 801, with the CNF header stating a count of 801 variables. However, the number of free variables would be 4.
+
+
 def get_free_vars(cnf_name):
     free_vars = []
     with open(cnf_name) as cnf:
