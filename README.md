@@ -84,6 +84,11 @@ The rest of the documentation for summarization can be accessed through `solutio
 
 A small Python script that uses matplotlib for generating cactus plot is housed in `tools/cactus_plot` that is in the process of refactoring to be compatible with the recent major changes of the benchmark tool. It simply takes an aggregated log through stdin and plots the results of various SAT solvers in a cactus/survival plot, like so: `python generate.py < benchmark.log`, resulting in a PNG image of the plot.
 
+## Cube & Conquer Cutoff Threshold Finder
+
+Generates cubesets using various cutoff thresholds (number of max. variables) within constraints. For each cubeset, it takes a random sample set of size N to estimate the time to solve the sub-problems generated from the cubes.
+
 # Credits
 
 - `encoders/saeed` is a modified and trimmed version of https://github.com/saeednj/SAT-encoding
+- `tools/cnc_threshold_finder` is a modified version of the CNC threshold calculator in https://github.com/olegzaikin/MD4-CnC
