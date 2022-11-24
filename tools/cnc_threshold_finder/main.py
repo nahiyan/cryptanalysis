@@ -19,7 +19,7 @@ import logging
 
 version = "1.1.8"
 
-CNC_SOLVER = 'march_cu'
+CNC_SOLVER = '../../../sat-solvers/march_cu'
 MAX_CUBING_TIME = 86400.0
 MIN_CUBES = 1000
 MAX_CUBES = 1000000
@@ -31,7 +31,7 @@ cnf_name = ''
 stat_name = ''
 start_time = 0.0
 
-solvers = ['kissat_sc2021']
+solvers = ['../../../sat-solvers/kissat']
 
 
 class random_cube_data:
