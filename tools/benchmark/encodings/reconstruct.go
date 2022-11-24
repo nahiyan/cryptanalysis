@@ -138,9 +138,7 @@ func ReconstructEncoding(instanceFilePath, reconstStackFilePath string, ranges [
 }
 
 func ReconstructSolution(instanceName, reconstStackFilePath string, ranges []types.Range) error {
-	// TODO: Use binary to store the 3 or 4 variations in a single byte
 	variableVariations := make(map[int][]int)
-	// lines := []string{}
 
 	// * 1. Read the reconstruction stack file and determine the literals that need to be preserved
 	reconstStackFile, err := os.OpenFile(reconstStackFilePath, os.O_RDONLY, 0600)
@@ -267,6 +265,7 @@ func ReconstructSolution(instanceName, reconstStackFilePath string, ranges []typ
 			return err
 		}
 		output := string(output_)
+
 		// * 8. Check if it's the valid solution
 		if strings.Contains(output, "Solution's hash matches the target!") {
 			if err := os.WriteFile(solutionFilePath, []byte(newSolution), 0644); err != nil {
