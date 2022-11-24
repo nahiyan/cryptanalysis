@@ -270,7 +270,7 @@ if __name__ == '__main__':
         exit(1)
     cnf_name = sys.argv[1]
 
-    log_name = './results/logs/find_n_' + \
+    log_name = './results/logs/' + \
         cnf_name.replace('./', '').replace('.', '') + '.log'
     print('log_name : ' + log_name)
     logging.basicConfig(filename=log_name, filemode='w', level=logging.INFO)
