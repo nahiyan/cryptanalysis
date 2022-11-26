@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"benchmark/cnc"
 	"benchmark/config"
 	"benchmark/constants"
 	"benchmark/encodings"
@@ -19,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var variationsXor_, variationsHashes_, variationsAdders_, variationsSatSolvers_, variationsDobbertin_, variationsDobbertinBits_, variationsSteps_, simplifier, simplificationInstanceName, reconstructInstanceName, reconstructReconstructionStackPath string
+var variationsXor_, variationsHashes_, variationsAdders_, variationsSatSolvers_, variationsDobbertin_, variationsDobbertinBits_, variationsSteps_, simplifier, simplificationInstanceName, reconstructInstanceName, reconstructReconstructionStackPath, findCncThresholdInstanceName string
 var instanceMaxTime, maxConcurrentInstancesCount, digest, generateEncodings, sessionId, cubeCutoffVars, cubeSelectionCount, cubeIndex, simplifierPasses, simplifierPassDuration uint
 var cleanResults, isCubeEnabled, simplifierReconstruct bool
 var seed int64
@@ -71,6 +72,16 @@ var reconstructCmd = &cobra.Command{
 		context := processFlags()
 
 		encodings.ReconstructSolution(context.Reconstruction.InstanceName, context.Reconstruction.StackFilePath, []types.Range{{Start: 1, End: 512}, {Start: 641, End: 768}})
+	},
+}
+
+var findCncThresholdCmd = &cobra.Command{
+	Use:   "find-cnc-threshold",
+	Short: "Find cutoff threshold for Cube & Conquer",
+	Run: func(cmd *cobra.Command, args []string) {
+		context := processFlags()
+
+		cnc.FindThreshold(context)
 	},
 }
 
@@ -277,6 +288,10 @@ func processFlags() types.CommandContext {
 	context.Reconstruction.InstanceName = reconstructInstanceName
 	context.Reconstruction.StackFilePath = reconstructReconstructionStackPath
 
+	// Find CnC Threshold
+
+	context.FindCncThreshold.InstanceName = findCncThresholdInstanceName
+
 	return context
 }
 
@@ -314,11 +329,14 @@ func init() {
 	reconstructCmd.Flags().StringVar(&reconstructInstanceName, "instance-name", "", "Instance name of the solution that needs reconstruction")
 	reconstructCmd.Flags().StringVarP(&reconstructReconstructionStackPath, "reconstruction-stack-path", "r", "reconstruction-stack.txt", "Path to the reconstruction stack")
 
+	findCncThresholdCmd.Flags().StringVar(&findCncThresholdInstanceName, "instance-name", "", "Name of the instance to find the CnC threshold for")
+
 	// Commands
 	rootCmd.AddCommand(regularCmd)
 	rootCmd.AddCommand(slurmCmd)
 	rootCmd.AddCommand(simplifyCmd)
 	rootCmd.AddCommand(reconstructCmd)
+	rootCmd.AddCommand(findCncThresholdCmd)
 }
 
 func Execute() {
