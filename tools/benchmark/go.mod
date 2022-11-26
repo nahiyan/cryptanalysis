@@ -3,6 +3,7 @@ module benchmark
 go 1.19
 
 require (
+	github.com/alitto/pond v1.8.2
 	github.com/samber/lo v1.29.0
 	github.com/spf13/cobra v1.6.0
 	github.com/spf13/viper v1.14.0
