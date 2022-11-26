@@ -28,6 +28,10 @@ type Reconstruction struct {
 	InstanceName  string
 	StackFilePath string
 }
+
+type FindCncThreshold struct {
+	InstanceName string
+}
 type CommandContext struct {
 	Variations
 	InstanceMaxTime             uint
@@ -40,6 +44,7 @@ type CommandContext struct {
 	Seed                        int64 // Seed for random selection of cubes
 	Simplification
 	Reconstruction
+	FindCncThreshold
 }
 
 type BenchmarkContext struct {
