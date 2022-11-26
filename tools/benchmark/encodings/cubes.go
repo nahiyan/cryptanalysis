@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/samber/lo"
 )
@@ -68,12 +69,12 @@ func GenerateSubProblem(instanceName string, i int) error {
 	return nil
 }
 
-func generateCubes(instanceName string, cubeCutoffVars uint) {
+func generateCubes(instanceName string, cutoffVars uint) {
 	// Skip if the cubes already exist
 	if utils.FileExists(fmt.Sprintf("%s%s.icnf", constants.EncodingsDirPath, instanceName)) {
 		return
 	}
 
 	// Invoke March for generating the cubes that is held in an .icnf file
-	core.March(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, instanceName), cubeCutoffVars)
+	core.March(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, instanceName), fmt.Sprintf("%s%s.icnf", constants.EncodingsDirPath, instanceName), cutoffVars, time.Second*5000)
 }
