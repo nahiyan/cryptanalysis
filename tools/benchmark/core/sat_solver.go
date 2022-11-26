@@ -244,19 +244,19 @@ func GlucoseCmd(filepath string) string {
 	return command
 }
 
-func March(filepath string, cubeCutoffVars uint) {
+func March(filePath string, outputPath string, cubeCutoffVars uint, maxTime time.Duration) string {
 	binPath := config.Get().Paths.Bin.March
 	if !utils.FileExists(binPath) {
 		log.Fatal("March doesn't exist. Did you forget to compile it?")
 	}
 
-	baseFileName := path.Base(filepath)
-	instanceName := baseFileName[:len(baseFileName)-3]
-
-	command := fmt.Sprintf("%s %s -n %d -o %s%sicnf", binPath, filepath, cubeCutoffVars, constants.EncodingsDirPath, instanceName)
-	if err := exec.Command("bash", "-c", command).Run(); err != nil {
+	command := fmt.Sprintf("timeout %d %s %s -n %d -o %s", int(maxTime.Seconds()), binPath, filePath, cubeCutoffVars, outputPath)
+	output_, err := exec.Command("bash", "-c", command).Output()
+	if err != nil {
 		log.Fatal("Failed to generate cubes with March", err)
 	}
+
+	return string(output_)
 }
 
 func AreAllInstancesCompleted(context *types.BenchmarkContext) bool {
