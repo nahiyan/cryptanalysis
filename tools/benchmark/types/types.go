@@ -21,6 +21,7 @@ type Simplification struct {
 	Simplifier   string
 	InstanceName string
 	PassDuration uint
+	Reconstruct  bool
 }
 
 type Reconstruction struct {

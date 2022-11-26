@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func CadicalSimplify(filePath string, passes uint, duration time.Duration) {
+func CadicalSimplify(filePath string, passes uint, duration time.Duration, reconstrut bool) {
 	var pass uint = 1
 	inputFilePath := filePath
 	for {
@@ -30,9 +30,11 @@ func CadicalSimplify(filePath string, passes uint, duration time.Duration) {
 			panic(fmt.Sprintf("Failed to simplify at pass %d: %s", pass, err.Error()))
 		}
 
-		// Reconstruct any removed clauses containing the message or target hash variables
-		if err := ReconstructEncoding(simpInstancePath, simpReconstStackFilePath, []types.Range{{Start: 1, End: 512}, {Start: 641, End: 768}}); err != nil {
-			panic("Failed to reconstruct the simplified file: " + err.Error())
+		// Optional: Reconstruct any removed clauses containing the message or target hash variables
+		if reconstrut {
+			if err := ReconstructEncoding(simpInstancePath, simpReconstStackFilePath, []types.Range{{Start: 1, End: 512}, {Start: 641, End: 768}}); err != nil {
+				panic("Failed to reconstruct the simplified file: " + err.Error())
+			}
 		}
 
 		{

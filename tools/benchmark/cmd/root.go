@@ -21,7 +21,7 @@ import (
 
 var variationsXor_, variationsHashes_, variationsAdders_, variationsSatSolvers_, variationsDobbertin_, variationsDobbertinBits_, variationsSteps_, simplifier, simplificationInstanceName, reconstructInstanceName, reconstructReconstructionStackPath string
 var instanceMaxTime, maxConcurrentInstancesCount, digest, generateEncodings, sessionId, cubeCutoffVars, cubeSelectionCount, cubeIndex, simplifierPasses, simplifierPassDuration uint
-var cleanResults, isCubeEnabled bool
+var cleanResults, isCubeEnabled, simplifierReconstruct bool
 var seed int64
 
 var rootCmd = &cobra.Command{
@@ -55,7 +55,11 @@ var simplifyCmd = &cobra.Command{
 		context := processFlags()
 
 		if context.Simplification.Simplifier == constants.ArgCadical {
-			encodings.CadicalSimplify(fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, context.Simplification.InstanceName), context.Simplification.Passes, time.Duration(context.Simplification.PassDuration)*time.Second)
+			encodings.CadicalSimplify(
+				fmt.Sprintf("%s%s.cnf", constants.EncodingsDirPath, context.Simplification.InstanceName),
+				context.Simplification.Passes,
+				time.Duration(context.Simplification.PassDuration)*time.Second,
+				simplifierReconstruct)
 		}
 	},
 }
@@ -233,6 +237,7 @@ func processFlags() types.CommandContext {
 	// Reset data
 	context.CleanResults = cleanResults
 
+	// TODO: Prevent executing commands here
 	// Remove leftover results
 	if context.CleanResults {
 		exec.Command("bash", "-c", fmt.Sprintf("rm %s*.csv", constants.LogsDirPath)).Run()
@@ -266,6 +271,7 @@ func processFlags() types.CommandContext {
 	context.Simplification.Passes = simplifierPasses
 	context.Simplification.InstanceName = simplificationInstanceName
 	context.Simplification.PassDuration = simplifierPassDuration
+	context.Simplification.Reconstruct = simplifierReconstruct
 
 	// Reconstruction
 	context.Reconstruction.InstanceName = reconstructInstanceName
@@ -303,6 +309,7 @@ func init() {
 	simplifyCmd.Flags().UintVar(&simplifierPasses, "passes", 0, "Number of passes (100s) for simplification; 0 for auto.")
 	simplifyCmd.Flags().UintVar(&simplifierPassDuration, "pass-duration", 100, "Duration of simplifier passes in seconds")
 	simplifyCmd.Flags().StringVar(&simplificationInstanceName, "instance-name", "", "Name of the instance to simplify")
+	simplifyCmd.Flags().BoolVar(&simplifierReconstruct, "reconstruct", false, "Reconstruct the CNF after every simplification pass")
 
 	reconstructCmd.Flags().StringVar(&reconstructInstanceName, "instance-name", "", "Instance name of the solution that needs reconstruction")
 	reconstructCmd.Flags().StringVarP(&reconstructReconstructionStackPath, "reconstruction-stack-path", "r", "reconstruction-stack.txt", "Path to the reconstruction stack")
