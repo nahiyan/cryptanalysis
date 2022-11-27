@@ -5,6 +5,7 @@ import (
 	"benchmark/constants"
 	"benchmark/types"
 	"benchmark/utils"
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -245,18 +246,25 @@ func GlucoseCmd(filepath string) string {
 }
 
 func March(filePath string, outputPath string, cubeCutoffVars uint, maxTime time.Duration) string {
+	cmd, cancel := MarchCmd(filePath, outputPath, cubeCutoffVars, maxTime)
+	output_, err := cmd.Output()
+	if err != nil {
+		log.Fatal("Failed to generate cubes with March", err)
+	}
+	defer cancel()
+
+	return string(output_)
+}
+
+func MarchCmd(filePath string, outputPath string, cubeCutoffVars uint, maxTime time.Duration) (*exec.Cmd, context.CancelFunc) {
 	binPath := config.Get().Paths.Bin.March
 	if !utils.FileExists(binPath) {
 		log.Fatal("March doesn't exist. Did you forget to compile it?")
 	}
 
-	command := fmt.Sprintf("timeout %d %s %s -n %d -o %s", int(maxTime.Seconds()), binPath, filePath, cubeCutoffVars, outputPath)
-	output_, err := exec.Command("bash", "-c", command).Output()
-	if err != nil {
-		log.Fatal("Failed to generate cubes with March", err)
-	}
-
-	return string(output_)
+	command := fmt.Sprintf("%s %s -n %d -o %s", binPath, filePath, cubeCutoffVars, outputPath)
+	context, cancel := context.WithTimeout(context.Background(), maxTime)
+	return exec.CommandContext(context, "bash", "-c", command), cancel
 }
 
 func AreAllInstancesCompleted(context *types.BenchmarkContext) bool {

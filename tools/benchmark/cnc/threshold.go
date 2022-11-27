@@ -5,12 +5,13 @@ import (
 	"benchmark/core"
 	"benchmark/encodings"
 	"benchmark/types"
-	"benchmark/utils"
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alitto/pond"
@@ -53,6 +54,8 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 	// Generate the cubes for varying thresholds
 	cubesets := []Cubeset{}
 	threshold := int(cnf.FreeVariables) - decrementSize
+	commands := make(map[int]*exec.Cmd)
+	lock := sync.Mutex{}
 	for threshold > 0 {
 		if threshold%10 != 0 {
 			threshold--
@@ -60,14 +63,29 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 		}
 
 		// Feed the instance to a lookahead solver
-		pool.Submit(func(threshold int) func() {
+		pool.Submit(func(threshold int, pool *pond.WorkerPool) func() {
 			return func() {
-				if utils.FileExists(instanceFilePath) {
-					return
-				}
+				// TODO: Add resume capability
+				// if utils.FileExists(instanceFilePath) {
+				// 	return
+				// }
 
 				outputFilePath := fmt.Sprintf("%sn%d%s.icnf", constants.EncodingsDirPath, threshold, context.FindCncThreshold.InstanceName)
-				output := core.March(instanceFilePath, outputFilePath, uint(threshold), lookaheadSolverMaxTime)
+				cmd, cancel := core.MarchCmd(instanceFilePath, outputFilePath, uint(threshold), lookaheadSolverMaxTime)
+				defer cancel()
+
+				lock.Lock()
+				commands[threshold] = cmd
+				lock.Unlock()
+
+				output_, err := cmd.Output()
+				if err != nil {
+					if err.Error() == "signal: killed" {
+						return
+					}
+					fmt.Printf("Failed to run March for n = %d\n", threshold)
+				}
+				output := string(output_)
 
 				cubeCount, refutedLeaves := ProcessMarchLog(output)
 				fmt.Println(threshold, cubeCount, refutedLeaves)
@@ -80,11 +98,32 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 						fmt.Println("Failed to remove the rejected cubeset: ", err)
 					}
 				}
+
+				// Stop the pool if we reach the max cube count
+				if cubeCount > uint(maxCubeCount) {
+					fmt.Println("Max cube exceeded; stopping the pool")
+					pool.Stop()
+				}
 			}
-		}(threshold))
+		}(threshold, pool))
 		threshold -= decrementSize
 	}
-	pool.StopAndWait()
+
+	for {
+		if !pool.Stopped() {
+			time.Sleep(time.Second * 1)
+			continue
+		}
+
+		for _, cmd := range commands {
+			if cmd != nil && cmd.Process != nil {
+				cmd.Process.Kill()
+			}
+		}
+
+		break
+	}
+	fmt.Println("All done")
 
 	// Go through the cubesets, starting from the one with possibly the least difficult cubes (most refuted leaves)
 	// for i := len(cubesets) - 1; i >= 0; i-- {
