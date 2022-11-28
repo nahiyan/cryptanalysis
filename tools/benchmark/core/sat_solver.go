@@ -165,6 +165,31 @@ func KissatCmd(filepath string) string {
 	return command
 }
 
+func KissatFromString(encoding string, maxDuration time.Duration, commands *[]*exec.Cmd) (int, time.Duration) {
+	binPath := config.Get().Paths.Bin.Kissat
+	if !utils.FileExists(binPath) {
+		log.Fatal("Kissat doesn't exist. Did you forget to compile it?")
+	}
+
+	command := fmt.Sprintf("%s -q < printf \"%s\"", binPath, encoding)
+	ctx, cancel := context.WithTimeout(context.Background(), maxDuration)
+	defer cancel()
+
+	startTime := time.Now()
+	cmd := exec.CommandContext(ctx, "bash", "-c", command)
+	if commands != nil {
+		*commands = append(*commands, cmd)
+	}
+
+	if err := cmd.Run(); err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			return exitError.ExitCode(), time.Since(startTime)
+		}
+	}
+
+	return 0, time.Since(startTime)
+}
+
 func Cadical(filepath string, context *types.BenchmarkContext, instanceIndex uint, startTime time.Time, maxTime uint) {
 	command := CadicalCmd(filepath)
 
