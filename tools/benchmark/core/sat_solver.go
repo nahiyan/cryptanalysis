@@ -165,18 +165,19 @@ func KissatCmd(filepath string) string {
 	return command
 }
 
-func KissatFromString(encoding string, maxDuration time.Duration, commands *[]*exec.Cmd) (int, time.Duration) {
+// TODO: Generalize the SAT Solver invokation
+func KissatWithStream(commandStructure *utils.CommandStructure, maxDuration time.Duration, commands *[]*exec.Cmd) (int, time.Duration) {
 	binPath := config.Get().Paths.Bin.Kissat
 	if !utils.FileExists(binPath) {
 		log.Fatal("Kissat doesn't exist. Did you forget to compile it?")
 	}
 
-	command := fmt.Sprintf("%s -q < printf \"%s\"", binPath, encoding)
+	commandString := commandStructure.FillWithCommand(fmt.Sprintf("%s -q", binPath)).String()
 	ctx, cancel := context.WithTimeout(context.Background(), maxDuration)
 	defer cancel()
 
 	startTime := time.Now()
-	cmd := exec.CommandContext(ctx, "bash", "-c", command)
+	cmd := exec.CommandContext(ctx, "bash", "-c", commandString)
 	if commands != nil {
 		*commands = append(*commands, cmd)
 	}
