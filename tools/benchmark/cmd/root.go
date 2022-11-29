@@ -20,11 +20,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var variationsXor_, variationsHashes_, variationsAdders_, variationsSatSolvers_, variationsDobbertin_, variationsDobbertinBits_, variationsSteps_, simplifier, simplificationInstanceName, reconstructInstanceName, reconstructReconstructionStackPath, findCncThresholdInstanceName string
+var variationsXor_, variationsHashes_, variationsAdders_, variationsSatSolvers_, variationsDobbertin_, variationsDobbertinBits_, variationsSteps_, simplifier, simplificationInstanceName, reconstructInstanceName, reconstructReconstructionStackPath string
 var instanceMaxTime, maxConcurrentInstancesCount, digest, generateEncodings, sessionId, cubeCutoffVars, cubeSelectionCount, cubeIndex, simplifierPasses, simplifierPassDuration uint
 var cleanResults, isCubeEnabled, simplifierReconstruct bool
 var seed int64
 var genSubProblem types.GenSubProblem
+var findCncThreshold types.FindCncThreshold
 
 var rootCmd = &cobra.Command{
 	Use:   "benchmark",
@@ -308,10 +309,6 @@ func processFlags() types.CommandContext {
 	context.Reconstruction.InstanceName = reconstructInstanceName
 	context.Reconstruction.StackFilePath = reconstructReconstructionStackPath
 
-	// Find CnC Threshold
-
-	context.FindCncThreshold.InstanceName = findCncThresholdInstanceName
-
 	return context
 }
 
@@ -349,7 +346,11 @@ func init() {
 	reconstructCmd.Flags().StringVar(&reconstructInstanceName, "instance-name", "", "Instance name of the solution that needs reconstruction")
 	reconstructCmd.Flags().StringVarP(&reconstructReconstructionStackPath, "reconstruction-stack-path", "r", "reconstruction-stack.txt", "Path to the reconstruction stack")
 
-	findCncThresholdCmd.Flags().StringVar(&findCncThresholdInstanceName, "instance-name", "", "Name of the instance to find the CnC threshold for")
+	findCncThresholdCmd.Flags().StringVar(&findCncThreshold.InstanceName, "instance-name", "", "Name of the instance to find the CnC threshold for")
+	findCncThresholdCmd.Flags().UintVar(&findCncThreshold.NumWorkers, "num-workers", 16, "Number of workers in the pool for generating the cubes or ")
+	findCncThresholdCmd.Flags().UintVar(&findCncThreshold.SampleSize, "sample-size", 1000, "Size of the random sample from each cubeset for estimating the runtime on the full cubeset")
+	findCncThresholdCmd.Flags().UintVar(&findCncThreshold.MaxCubes, "max-cubes", 1000000, "Max number of cubes to consider for finding the estimate of a cubeset")
+	findCncThresholdCmd.Flags().UintVar(&findCncThreshold.MinRefutedLeaves, "min-refuted-leaves", 500, "Min number of refuted to consider for finding the estimate of a cubeset")
 
 	genSubProblemCmd.Flags().StringVar(&genSubProblem.InstanceName, "instance-name", "", "Name of the instance to generate the sub-problem for")
 	genSubProblemCmd.Flags().UintVar(&genSubProblem.CubeIndex, "cube-index", 0, "Index of the cube to generate the sub-problem for")
