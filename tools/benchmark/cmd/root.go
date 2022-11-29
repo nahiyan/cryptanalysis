@@ -24,6 +24,7 @@ var variationsXor_, variationsHashes_, variationsAdders_, variationsSatSolvers_,
 var instanceMaxTime, maxConcurrentInstancesCount, digest, generateEncodings, sessionId, cubeCutoffVars, cubeSelectionCount, cubeIndex, simplifierPasses, simplifierPassDuration uint
 var cleanResults, isCubeEnabled, simplifierReconstruct bool
 var seed int64
+var genSubProblem types.GenSubProblem
 
 var rootCmd = &cobra.Command{
 	Use:   "benchmark",
@@ -81,7 +82,26 @@ var findCncThresholdCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		context := processFlags()
 
-		cnc.FindThreshold(context)
+		bestThreshold, bestEstimate := cnc.FindThreshold(context)
+		fmt.Printf("Best threshold, n = %d, with an estimated time of %s\n", bestThreshold, bestEstimate.String())
+	},
+}
+
+var genSubProblemCmd = &cobra.Command{
+	Use:   "gen-subproblem",
+	Short: "Generate a subproblem from a specific cube",
+	Run: func(cmd *cobra.Command, args []string) {
+		var threshold *uint
+		if genSubProblem.Threshold != 0 {
+			threshold = lo.ToPtr(genSubProblem.Threshold)
+		}
+
+		subproblem, err := encodings.GenerateSubProblemAsStringWithThreshold(genSubProblem.InstanceName, int(genSubProblem.CubeIndex), threshold)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Println(subproblem)
 	},
 }
 
@@ -331,12 +351,17 @@ func init() {
 
 	findCncThresholdCmd.Flags().StringVar(&findCncThresholdInstanceName, "instance-name", "", "Name of the instance to find the CnC threshold for")
 
+	genSubProblemCmd.Flags().StringVar(&genSubProblem.InstanceName, "instance-name", "", "Name of the instance to generate the sub-problem for")
+	genSubProblemCmd.Flags().UintVar(&genSubProblem.CubeIndex, "cube-index", 0, "Index of the cube to generate the sub-problem for")
+	genSubProblemCmd.Flags().UintVar(&genSubProblem.Threshold, "threshold", 0, "Threshold of the cubeset using which to generate the sub-problem")
+
 	// Commands
 	rootCmd.AddCommand(regularCmd)
 	rootCmd.AddCommand(slurmCmd)
 	rootCmd.AddCommand(simplifyCmd)
 	rootCmd.AddCommand(reconstructCmd)
 	rootCmd.AddCommand(findCncThresholdCmd)
+	rootCmd.AddCommand(genSubProblemCmd)
 }
 
 func Execute() {
