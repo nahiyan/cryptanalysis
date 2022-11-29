@@ -5,7 +5,11 @@ import (
 )
 
 const (
-	Pipe uint = iota
+	PipeVl  uint = iota // | "vertical line"
+	PipeLt              // < "less than"
+	PipeClt             // << "clobber less than"
+	PipeGt              // > "greater than"
+	PipeCgt             // >> "clobber greater than"
 	Command
 	Placeholder
 )
@@ -23,9 +27,13 @@ func NewCommand() *CommandStructure {
 	return &CommandStructure{}
 }
 
-func (c *CommandStructure) AddPipe() *CommandStructure {
+func (c *CommandStructure) AddPipe(type_ uint) *CommandStructure {
+	if type_ < PipeVl || type_ > PipeCgt {
+		type_ = PipeVl
+	}
+
 	c.segments = append(c.segments, Segment{
-		type_: Pipe,
+		type_: type_,
 	})
 
 	return c
@@ -66,9 +74,13 @@ func (c *CommandStructure) FillWithCommands(commands []string) *CommandStructure
 	})
 }
 
-func (c *CommandStructure) FillWithPipe() *CommandStructure {
+func (c *CommandStructure) FillWithPipe(type_ uint) *CommandStructure {
+	if type_ < PipeVl || type_ > PipeCgt {
+		type_ = PipeVl
+	}
+
 	return c.FillPlaceholder(Segment{
-		type_: Pipe,
+		type_: type_,
 	})
 }
 
@@ -88,7 +100,7 @@ func (c *CommandStructure) String() string {
 	string := ""
 	for _, segment := range c.segments {
 		switch segment.type_ {
-		case Pipe:
+		case PipeVl:
 			string += " | "
 		case Command:
 			string += strings.Join(segment.components, " ")

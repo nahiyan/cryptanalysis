@@ -218,7 +218,7 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 							// Generate the sub-problems command
 							subproblemCmd := fmt.Sprintf("%s gen-subproblem --instance-name %s --cube-index %d --threshold %d", config.Get().Paths.Bin.Benchmark, context.FindCncThreshold.InstanceName, cube, threshold)
 
-							command := utils.NewCommand().AddCommand(subproblemCmd).AddPipe().AddPlaceholder()
+							command := utils.NewCommand().AddCommand(subproblemCmd).AddPipe(utils.PipeVl).AddPlaceholder()
 
 							// Run the CDCL solver
 							exitCode, duration := core.KissatWithStream(command, cdclSolverMaxDuration, &commands)
