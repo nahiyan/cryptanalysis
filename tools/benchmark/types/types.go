@@ -78,7 +78,7 @@ type Config struct {
 			MapleSat         string
 			XnfSat           string
 			March            string
-			Validator        string
+			Verifier         string
 			SolutionAnalyzer string
 			Encoder          string
 			Benchmark        string

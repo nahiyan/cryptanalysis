@@ -260,7 +260,7 @@ func ReconstructSolution(instanceName, reconstStackFilePath string, ranges []typ
 		})
 
 		newSolution := "SAT\n" + strings.Join(newSolutionLiterals, " ") + " 0"
-		output_, err := exec.Command("bash", "-c", fmt.Sprintf("printf \"%s\" | %s %d", newSolution, config.Get().Paths.Bin.Validator, 43)).Output()
+		output_, err := exec.Command("bash", "-c", fmt.Sprintf("printf \"%s\" | %s %d", newSolution, config.Get().Paths.Bin.Verifier, 43)).Output()
 		if err != nil {
 			return err
 		}

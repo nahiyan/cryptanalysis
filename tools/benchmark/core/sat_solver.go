@@ -75,7 +75,7 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 			messages = append(messages, "Error in the validation process: "+err.Error())
 		}
 
-		command := fmt.Sprintf("%s %d < %s", config.Get().Paths.Bin.Validator, steps, solutionFilePath)
+		command := fmt.Sprintf("%s %d < %s", config.Get().Paths.Bin.Verifier, steps, solutionFilePath)
 		cmd := exec.Command("bash", "-c", command)
 		output, err := cmd.Output()
 		if err != nil {
