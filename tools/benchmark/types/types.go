@@ -32,6 +32,13 @@ type Reconstruction struct {
 type FindCncThreshold struct {
 	InstanceName string
 }
+
+type GenSubProblem struct {
+	InstanceName string
+	CubeIndex    uint
+	Threshold    uint
+}
+
 type CommandContext struct {
 	Variations
 	InstanceMaxTime             uint
