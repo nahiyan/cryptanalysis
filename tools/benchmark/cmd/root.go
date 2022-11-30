@@ -309,6 +309,8 @@ func processFlags() types.CommandContext {
 	context.Reconstruction.InstanceName = reconstructInstanceName
 	context.Reconstruction.StackFilePath = reconstructReconstructionStackPath
 
+	context.FindCncThreshold = findCncThreshold
+
 	return context
 }
 
