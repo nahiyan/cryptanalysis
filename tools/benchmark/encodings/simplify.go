@@ -13,7 +13,7 @@ func CadicalSimplify(filePath string, passes uint, duration time.Duration, recon
 	var pass uint = 1
 	inputFilePath := filePath
 	for {
-		fmt.Printf("Simplifying pass %d\n", pass)
+		fmt.Printf("Simplifier pass %d\n", pass)
 
 		simpInstancePath := filePath[:len(filePath)-4] + fmt.Sprintf("_cadical_simp%d.cnf", pass)
 		simpReconstStackFilePath := simpInstancePath[:len(simpInstancePath)-4] + "_reconst_stack.txt"
