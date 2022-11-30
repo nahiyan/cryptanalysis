@@ -229,7 +229,7 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 								runtimes = append(runtimes, duration)
 								lock.Unlock()
 							} else {
-								fmt.Println("Unexpected exit code: ", exitCode)
+								fmt.Printf("Unexpected exit code: %d\n", exitCode)
 							}
 
 							// Discard the pool if the solver times out

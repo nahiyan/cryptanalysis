@@ -105,3 +105,14 @@ type Range struct {
 }
 
 type Clause []int
+
+type SatSolverConfig struct {
+	Verifier     *func(interface{}) bool
+	SaveSolution bool
+	Log          bool
+}
+
+type SatSolverResult struct {
+	Verified bool
+	Valid    bool
+}

@@ -172,7 +172,60 @@ func KissatWithStream(commandStructure *utils.CommandStructure, maxDuration time
 		log.Fatal("Kissat doesn't exist. Did you forget to compile it?")
 	}
 
-	commandString := commandStructure.FillWithCommand(fmt.Sprintf("%s -q", binPath)).String()
+	command := commandStructure.FillWithCommand(fmt.Sprintf("%s -q", binPath)).String()
+	ctx, cancel := context.WithTimeout(context.Background(), maxDuration)
+	defer cancel()
+
+	startTime := time.Now()
+	cmd := exec.CommandContext(ctx, "bash", "-c", command)
+	if commands != nil {
+		*commands = append(*commands, cmd)
+	}
+
+	if err := cmd.Run(); err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if exitError.ExitCode() != 10 && exitError.ExitCode() != 20 {
+				fmt.Println(command)
+			}
+
+			return exitError.ExitCode(), time.Since(startTime)
+		}
+	}
+
+	return 0, time.Since(startTime)
+}
+
+// TODO: Finish and test this new generic SAT solver invoker
+func RunSatSolver(commandStructure *utils.CommandStructure, maxDuration time.Duration, solver string, config_ types.SatSolverConfig, commands *[]*exec.Cmd) (int, time.Duration) {
+	// Determine the bin path and solver command template
+	var binPath, solverCmdFormat string
+	switch solver {
+	case constants.Kissat:
+		binPath = config.Get().Paths.Bin.Kissat
+		solverCmdFormat = "%s -q"
+	case constants.Cadical:
+		binPath = config.Get().Paths.Bin.Cadical
+		solverCmdFormat = "%s --verb=0"
+	case constants.MapleSat:
+		// TODO: To output the solution, we need to provide it as an argument
+		binPath = config.Get().Paths.Bin.MapleSat
+		solverCmdFormat = "%s -verb=0"
+	case constants.CryptoMiniSat:
+		binPath = config.Get().Paths.Bin.CryptoMiniSat
+		solverCmdFormat = "%s --verb=0"
+	case constants.Glucose:
+		// TODO: To output the solution, we need to provide it as an argument
+		binPath = config.Get().Paths.Bin.Glucose
+		solverCmdFormat = "%s -verb=0"
+	}
+
+	// Check if the binary of the SAT solver exists
+	if !utils.FileExists(binPath) {
+		log.Fatalf("%s doesn't exist. Did you forget to compile it?", binPath)
+	}
+
+	solverCmd := fmt.Sprintf(solverCmdFormat, binPath)
+	commandString := commandStructure.FillWithCommand(solverCmd).String()
 	ctx, cancel := context.WithTimeout(context.Background(), maxDuration)
 	defer cancel()
 
