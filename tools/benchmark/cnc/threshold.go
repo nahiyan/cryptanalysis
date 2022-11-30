@@ -119,7 +119,7 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 					output := string(output_)
 
 					cubeCount, refutedLeaves := ProcessMarchLog(output)
-					fmt.Printf("Generated cubeset with n = %d, cube count = %d, and refuted leaves = %d", threshold, cubeCount, refutedLeaves)
+					fmt.Printf("Generated cubeset with n = %d, cube count = %d, and refuted leaves = %d\n", threshold, cubeCount, refutedLeaves)
 
 					// Add to the cubeset if it satisfies the constraints
 					if cubeCount <= uint(maxCubeCount) && refutedLeaves >= uint(minRefutedLeaves) {
