@@ -68,9 +68,9 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 	cubesets := []Cubeset{}
 	lock := sync.Mutex{}
 
-	fmt.Println("Generating cubesets for various thresholds")
 	// * 1. Generate the cubes for the selected thresholds
 	{
+		fmt.Println("Generating cubesets for various thresholds")
 		// Parse the encoding
 		cnf, err := encodings.Process(context.FindCncThreshold.InstanceName)
 		if err != nil {
