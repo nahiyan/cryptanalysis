@@ -224,15 +224,22 @@ func RunSatSolver(commandStructure *utils.CommandStructure, maxDuration time.Dur
 		log.Fatalf("%s doesn't exist. Did you forget to compile it?", binPath)
 	}
 
-	solverCmd := fmt.Sprintf(solverCmdFormat, binPath)
-	commandString := commandStructure.FillWithCommand(solverCmd).String()
 	ctx, cancel := context.WithTimeout(context.Background(), maxDuration)
 	defer cancel()
 
 	startTime := time.Now()
-	cmd := exec.CommandContext(ctx, "bash", "-c", commandString)
-	if commands != nil {
-		*commands = append(*commands, cmd)
+	cmd := exec.CommandContext(ctx, "bash", "-c", fmt.Sprintf(solverCmdFormat, binPath))
+	// Pipe the input to the SAT solver
+	if reader != nil {
+		stdinWriter, err := cmd.StdinPipe()
+		if err != nil {
+			fmt.Println("Failed to get stdin pipe", err)
+		}
+		io.TeeReader(reader, stdinWriter)
+	}
+
+	if callback != nil {
+		callback(cmd)
 	}
 
 	if err := cmd.Run(); err != nil {
