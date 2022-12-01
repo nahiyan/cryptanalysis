@@ -33,30 +33,15 @@ func ProcessMarchLog(log string) (uint, uint) {
 	return cubeCount, refutedLeaves
 }
 
-// Watches workers and the pool and kills the commands if necessary when the pool is stopped
-func ManageWorkers(pool *pond.WorkerPool, commands *[]*exec.Cmd) {
-	for {
-		if !pool.Stopped() && pool.RunningWorkers() > 0 {
-			time.Sleep(time.Second * 1)
-			continue
-		}
-
-		for {
-			time.Sleep(1 * time.Second)
-
-			for _, cmd := range *commands {
-				if cmd != nil && cmd.Process != nil {
-					cmd.Process.Kill()
-				}
-			}
-
-			if pool.RunningWorkers() == 0 {
-				break
-			}
-		}
-
-		break
+// Watches for stop signal and kills the command if such a signal is detected
+func WatchForStopSignal(stopSignal chan struct{}, cmd *exec.Cmd, started *bool, killed *bool) {
+	<-stopSignal
+	for !*started || cmd.Process == nil {
+		time.Sleep(time.Second)
 	}
+
+	cmd.Process.Kill()
+	*killed = true
 }
 
 func FindThreshold(context types.CommandContext) (uint, time.Duration) {
@@ -85,36 +70,62 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 		pool := pond.New(numWorkers, 1000)
 
 		threshold := int(cnf.FreeVariables) - decrementSize
-		commands := make([]*exec.Cmd, 0)
 
-		for threshold > 0 {
+		// Generate the thresholds
+		thresholds := []int{}
+		for threshold >= 0 {
 			if threshold%10 != 0 {
 				threshold--
 				continue
 			}
 
+			thresholds = append(thresholds, threshold)
+			threshold -= decrementSize
+
+		}
+
+		// Generate the stop signal channels
+		channels := make([]chan struct{}, 0)
+		for i := 0; i < len(thresholds); i++ {
+			channels = append(channels, make(chan struct{}))
+		}
+
+		// Create and submit the tasks
+		for i, threshold := range thresholds {
 			// Feed the instance to the lookahead solver
-			pool.Submit(func(threshold int, pool *pond.WorkerPool) func() {
+			pool.Submit(func(threshold int, stopSignal chan struct{}) func() {
 				return func() {
 					// TODO: Add resume capability
 					// if utils.FileExists(instanceFilePath) {
 					// 	return
 					// }
 
+					// Start the stop signal watcher
+					cmd := new(exec.Cmd)
+					started := false
+					killed := false
+					// go WatchForStopSignal(stopSignal, cmd, &started, &killed)
+					go func() {
+						<-stopSignal
+						for !started || cmd.Process == nil {
+							time.Sleep(time.Second)
+						}
+
+						cmd.Process.Kill()
+						killed = true
+					}()
+
 					outputFilePath := fmt.Sprintf("%sn%d_%s.icnf", constants.EncodingsDirPath, threshold, context.FindCncThreshold.InstanceName)
 					cmd, cancel := core.MarchCmd(instanceFilePath, outputFilePath, uint(threshold), lookaheadSolverMaxTime)
 					defer cancel()
 
-					lock.Lock()
-					commands = append(commands, cmd)
-					lock.Unlock()
-
+					started = true
 					output_, err := cmd.Output()
-					if err != nil {
-						if err.Error() == "signal: killed" {
-							return
-						}
-						fmt.Printf("Failed to run March for n = %d\n", threshold)
+					if err != nil && !killed {
+						fmt.Println(err)
+					}
+					if killed {
+						return
 					}
 					output := string(output_)
 
@@ -123,24 +134,42 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 
 					// Add to the cubeset if it satisfies the constraints
 					if cubeCount <= uint(maxCubeCount) && refutedLeaves >= uint(minRefutedLeaves) {
+						lock.Lock()
 						cubesets = append(cubesets, Cubeset{threshold: uint(threshold), cubeCount: cubeCount})
+						lock.Unlock()
 					} else {
-						if err := os.Remove(outputFilePath); err != nil {
+						if err := os.Remove(outputFilePath); err != nil && !killed {
 							fmt.Println("Failed to remove the rejected cubeset: ", err)
 						}
 					}
 
-					// Stop the pool if we reach the max cube count, assuming that it'd take longer time to generate more cubes
+					// Stop acceptng new jobs in the pool if we reach the max cube count, while also sending stop signals to the lower threshold jobs, since lower threshold means more cubes
 					if cubeCount > uint(maxCubeCount) {
+						// Stop the pool
 						fmt.Println("Max cube exceeded; stopping the pool")
 						pool.Stop()
+
+						// Send stop signal to all workers that will generate more cubes than the limit
+						_, channelIndex, _ := lo.FindIndexOf(channels, func(c chan struct{}) bool {
+							return c == stopSignal
+						})
+						for i, channel := range channels {
+							if i > channelIndex {
+								channel <- struct{}{}
+							}
+						}
 					}
+
+					// Stop the child goroutine
+					stopSignal <- struct{}{}
 				}
-			}(threshold, pool))
-			threshold -= decrementSize
+			}(threshold, channels[i]))
 		}
 
-		ManageWorkers(pool, &commands)
+		for pool.RunningWorkers() > 0 {
+			time.Sleep(time.Second)
+		}
+
 		fmt.Println("Finished generating the cubesets")
 	}
 
@@ -181,6 +210,21 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 	// 	},
 	// }
 
+	// cubesets = []Cubeset{
+	// 	{
+	// 		threshold: 3390,
+	// 		cubeCount: 31200,
+	// 	},
+	// 	{
+	// 		threshold: 3380,
+	// 		cubeCount: 46421,
+	// 	},
+	// 	{
+	// 		threshold: 3370,
+	// 		cubeCount: 68751,
+	// 	},
+	// }
+
 	type BestResult struct {
 		threshold uint
 		estimate  time.Duration
@@ -203,17 +247,22 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 
 			// Benchmark the subset of the cubeset
 			runtimes := make([]time.Duration, 0)
-			pool := pond.New(numWorkers, 1000)
-			commands := make([]*exec.Cmd, 0)
+			pool := pond.New(numWorkers, sampleSize)
+
+			// Create the stop signal channels
+			channels := make([]chan struct{}, 0)
+			for i := 0; i < sampleSize; i++ {
+				channels = append(channels, make(chan struct{}))
+			}
 
 			fmt.Printf("Benchmarking sample from cubeset with n = %d\n", cubeset.threshold)
 
 			// TODO: Manage workers for each cubeset in its own task group
 
 			// Add the CDCL commands to the pool
-			for _, cube := range cubeRandomSample {
+			for i, cube := range cubeRandomSample {
 				pool.Submit(
-					func(cube int, threshold uint) func() {
+					func(cube int, threshold uint, stopSignal chan struct{}) func() {
 						return func() {
 							// Generate the sub-problems command
 							subproblemCmd := fmt.Sprintf("%s gen-subproblem --instance-name %s --cube-index %d --threshold %d", config.Get().Paths.Bin.Benchmark, context.FindCncThreshold.InstanceName, cube, threshold)
@@ -239,10 +288,12 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 								timedOut = true
 							}
 						}
-					}(cube, cubeset.threshold))
+					}(cube, cubeset.threshold, channels[i]))
 			}
 
-			ManageWorkers(pool, &commands)
+			for pool.RunningWorkers() > 0 {
+				time.Sleep(time.Second)
+			}
 
 			if timedOut {
 				break
