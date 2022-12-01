@@ -1,7 +1,6 @@
 package cnc
 
 import (
-	"benchmark/config"
 	"benchmark/constants"
 	"benchmark/core"
 	"benchmark/encodings"
@@ -265,12 +264,15 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 					func(cube int, threshold uint, stopSignal chan struct{}) func() {
 						return func() {
 							// Generate the sub-problems command
-							subproblemCmd := fmt.Sprintf("%s gen-subproblem --instance-name %s --cube-index %d --threshold %d", config.Get().Paths.Bin.Benchmark, context.FindCncThreshold.InstanceName, cube, threshold)
-
-							command := utils.NewCommand().AddCommand(subproblemCmd).AddPipe(utils.PipeVl).AddPlaceholder()
+							subproblem, err := encodings.GenerateSubProblemAsStringWithThreshold(context.FindCncThreshold.InstanceName, cube, &threshold)
+							if err != nil {
+								fmt.Println("Failed to generate subproblem", err)
+								return
+							}
+							subproblemReader := strings.NewReader(subproblem)
 
 							// Run the CDCL solver
-							exitCode, duration := core.KissatWithStream(command, cdclSolverMaxDuration, &commands)
+							exitCode, duration := core.RunSatSolver(subproblemReader, cdclSolverMaxDuration, constants.Kissat, types.SatSolverConfig[string]{}, nil)
 							if exitCode == 10 || exitCode == 20 {
 								fmt.Printf("Tried CDCL on cube index = %d, n = %d with exit code = %d\n", cube, threshold, exitCode)
 								// Add the runtime
