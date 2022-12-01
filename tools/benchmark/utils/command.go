@@ -1,6 +1,9 @@
 package utils
 
 import (
+	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 )
 
@@ -108,4 +111,13 @@ func (c *CommandStructure) String() string {
 	}
 
 	return string
+}
+
+func KillProcess(pid int) error {
+	// fmt.Println("Stopping", pid)
+	return exec.Command("bash", "-c", fmt.Sprintf("pkill -P %d && kill -9 %d", os.Getpid(), pid)).Run()
+}
+
+func KillAllChildren() error {
+	return exec.Command("bash", "-c", fmt.Sprintf("pkill -P %d", os.Getpid())).Run()
 }
