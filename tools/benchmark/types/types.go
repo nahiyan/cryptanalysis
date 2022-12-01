@@ -106,8 +106,8 @@ type Range struct {
 
 type Clause []int
 
-type SatSolverConfig struct {
-	Verifier     *func(interface{}) bool
+type SatSolverConfig[T any] struct {
+	Verifier     func(T) bool
 	SaveSolution bool
 	Log          bool
 }
