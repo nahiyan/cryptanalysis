@@ -7,6 +7,7 @@ import (
 	"benchmark/utils"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -166,37 +167,37 @@ func KissatCmd(filepath string) string {
 }
 
 // TODO: Generalize the SAT Solver invokation
-func KissatWithStream(commandStructure *utils.CommandStructure, maxDuration time.Duration, commands *[]*exec.Cmd) (int, time.Duration) {
-	binPath := config.Get().Paths.Bin.Kissat
-	if !utils.FileExists(binPath) {
-		log.Fatal("Kissat doesn't exist. Did you forget to compile it?")
-	}
+// func KissatWithStream(commandStructure *utils.CommandStructure, maxDuration time.Duration, commands *[]*exec.Cmd) (int, time.Duration) {
+// 	binPath := config.Get().Paths.Bin.Kissat
+// 	if !utils.FileExists(binPath) {
+// 		log.Fatal("Kissat doesn't exist. Did you forget to compile it?")
+// 	}
 
-	command := commandStructure.FillWithCommand(fmt.Sprintf("%s -q", binPath)).String()
-	ctx, cancel := context.WithTimeout(context.Background(), maxDuration)
-	defer cancel()
+// 	command := commandStructure.FillWithCommand(fmt.Sprintf("%s -q", binPath)).String()
+// 	ctx, cancel := context.WithTimeout(context.Background(), maxDuration)
+// 	defer cancel()
 
-	startTime := time.Now()
-	cmd := exec.CommandContext(ctx, "bash", "-c", command)
-	if commands != nil {
-		*commands = append(*commands, cmd)
-	}
+// 	startTime := time.Now()
+// 	cmd := exec.CommandContext(ctx, "bash", "-c", command)
+// 	if commands != nil {
+// 		*commands = append(*commands, cmd)
+// 	}
 
-	if err := cmd.Run(); err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			if exitError.ExitCode() != 10 && exitError.ExitCode() != 20 {
-				fmt.Println(command)
-			}
+// 	if err := cmd.Run(); err != nil {
+// 		if exitError, ok := err.(*exec.ExitError); ok {
+// 			if exitError.ExitCode() != 10 && exitError.ExitCode() != 20 {
+// 				fmt.Println(command)
+// 			}
 
-			return exitError.ExitCode(), time.Since(startTime)
-		}
-	}
+// 			return exitError.ExitCode(), time.Since(startTime)
+// 		}
+// 	}
 
-	return 0, time.Since(startTime)
-}
+// 	return 0, time.Since(startTime)
+// }
 
 // TODO: Finish and test this new generic SAT solver invoker
-func RunSatSolver(commandStructure *utils.CommandStructure, maxDuration time.Duration, solver string, config_ types.SatSolverConfig, commands *[]*exec.Cmd) (int, time.Duration) {
+func RunSatSolver(reader io.Reader, maxDuration time.Duration, solver string, config_ types.SatSolverConfig[string], callback func(*exec.Cmd)) (int, time.Duration) {
 	// Determine the bin path and solver command template
 	var binPath, solverCmdFormat string
 	switch solver {
