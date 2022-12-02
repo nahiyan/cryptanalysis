@@ -311,20 +311,20 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 							}
 
 							// Discard the pool if the solver times out
-							if duration.Seconds() > cdclSolverMaxDuration.Seconds() {
-								lock.Lock()
-								fmt.Printf("Timed out for n = %d, stopping pool\n", threshold)
-								// pool.Stop()
-								// timedOut = true
+							// if duration.Seconds() > cdclSolverMaxDuration.Seconds() {
+							// lock.Lock()
+							// fmt.Printf("Timed out for n = %d, stopping pool\n", threshold)
+							// pool.Stop()
+							// timedOut = true
 
-								// Stop all the workers
-								for _, channel := range channels {
-									channel <- struct{}{}
-								}
-								lock.Lock()
+							// Stop all the workers
+							// for _, channel := range channels {
+							// 	channel <- struct{}{}
+							// }
+							// lock.Lock()
 
-								return
-							}
+							// return
+							// }
 
 							stopSignal <- struct{}{}
 						}
