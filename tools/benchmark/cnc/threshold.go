@@ -118,6 +118,7 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 					defer cancel()
 
 					started = true
+					startTime := time.Now()
 					output_, err := cmd.Output()
 					if err != nil && !killed {
 						fmt.Println(err)
@@ -126,9 +127,10 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 						return
 					}
 					output := string(output_)
+					duration := time.Since(startTime)
 
 					cubeCount, refutedLeaves := ProcessMarchLog(output)
-					fmt.Printf("Generated cubeset with n = %d, cube count = %d, and refuted leaves = %d\n", threshold, cubeCount, refutedLeaves)
+					fmt.Printf("Generated cubeset with n = %d, cube count = %d, and refuted leaves = %d in %s\n", threshold, cubeCount, refutedLeaves, duration)
 
 					// Add to the cubeset if it satisfies the constraints
 					if cubeCount <= uint(maxCubeCount) && refutedLeaves >= uint(minRefutedLeaves) {
@@ -232,11 +234,15 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 		estimate:  time.Duration(math.MaxInt64),
 	}
 
+	if len(cubesets) == 0 {
+		fmt.Println("No cubeset found eligible for the benchmark")
+	}
+
 	{
 		cdclSolverMaxDuration := time.Duration(5000 * time.Second)
 		sampleSize := int(context.FindCncThreshold.SampleSize)
 		// solver := constants.Kissat
-		timedOut := false
+		// timedOut := false
 		for i := len(cubesets) - 1; i >= 0; i-- {
 			cubeset := cubesets[i]
 
