@@ -290,7 +290,7 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 							}()
 
 							// Run the CDCL solver
-							exitCode, duration := core.RunSatSolver(subproblemReader, cdclSolverMaxDuration, constants.Kissat, types.SatSolverConfig[string]{}, func(c *exec.Cmd) {
+							exitCode, duration := core.RunSatSolver(subproblemReader, cdclSolverMaxDuration, solver, types.SatSolverConfig[string]{}, func(c *exec.Cmd) {
 								cmd = c
 							})
 
