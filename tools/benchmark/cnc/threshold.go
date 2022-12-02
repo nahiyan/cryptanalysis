@@ -335,9 +335,10 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 				time.Sleep(time.Second)
 			}
 
-			if timedOut {
-				break
-			}
+			// TODO: Remove this commented out timeout check
+			// if timedOut {
+			// 	continue
+			// }
 
 			// Note: Oleg finds estimate for the rest of the cubeset, but here we're finding for all
 			// Calculate the estimate
