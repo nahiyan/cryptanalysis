@@ -66,7 +66,7 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 		lookaheadSolverMaxTime := time.Second * 5000
 		maxCubeCount := int(context.FindCncThreshold.MaxCubes)
 		minRefutedLeaves := int(context.FindCncThreshold.MinRefutedLeaves)
-		pool := pond.New(numWorkers, 1000)
+		pool := pond.New(numWorkers, 1000, pond.IdleTimeout(100*time.Millisecond))
 
 		threshold := int(cnf.FreeVariables) - decrementSize
 
@@ -241,8 +241,10 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 	{
 		cdclSolverMaxDuration := time.Duration(5000 * time.Second)
 		sampleSize := int(context.FindCncThreshold.SampleSize)
-		// solver := constants.Kissat
-		// timedOut := false
+		solver := constants.Kissat
+		timedout := false
+		stopOnTimeout := false
+		numWorkersMultiplier := 1
 		for i := len(cubesets) - 1; i >= 0; i-- {
 			cubeset := cubesets[i]
 
@@ -251,7 +253,7 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 
 			// Benchmark the subset of the cubeset
 			runtimes := make([]time.Duration, 0)
-			pool := pond.New(numWorkers, sampleSize)
+			pool := pond.New(numWorkers*numWorkersMultiplier, sampleSize, pond.IdleTimeout(100*time.Millisecond))
 
 			// Create the stop signal channels
 			channels := make([]chan struct{}, 0)
