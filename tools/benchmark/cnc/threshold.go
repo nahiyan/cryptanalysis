@@ -307,14 +307,14 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 								runtimes = append(runtimes, duration)
 								lock.Unlock()
 							} else {
-								fmt.Printf("Unexpected exit code: %d\n", exitCode)
+								fmt.Printf("CDCL on cube index = %d, n = %d with exit code = %d timed out\n", cube, threshold, exitCode)
 							}
 
 							// Discard the pool if the solver times out
 							if duration.Seconds() > cdclSolverMaxDuration.Seconds() {
 								lock.Lock()
 								fmt.Printf("Timed out for n = %d, stopping pool\n", threshold)
-								pool.Stop()
+								// pool.Stop()
 								// timedOut = true
 
 								// Stop all the workers
