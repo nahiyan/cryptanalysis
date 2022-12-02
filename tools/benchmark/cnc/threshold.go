@@ -315,7 +315,7 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 								lock.Lock()
 								fmt.Printf("Timed out for n = %d, stopping pool\n", threshold)
 								pool.Stop()
-								timedOut = true
+								// timedOut = true
 
 								// Stop all the workers
 								for _, channel := range channels {
