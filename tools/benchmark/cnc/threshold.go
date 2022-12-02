@@ -44,7 +44,7 @@ func WatchForStopSignal(stopSignal chan struct{}, cmd *exec.Cmd, started *bool, 
 }
 
 func FindThreshold(context types.CommandContext) (uint, time.Duration) {
-	numWorkers := int(context.FindCncThreshold.NumWorkers)
+	numWorkersLookahead := int(context.FindCncThreshold.NumWorkers)
 	type Cubeset struct {
 		threshold uint
 		cubeCount uint
@@ -66,7 +66,7 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 		lookaheadSolverMaxTime := time.Second * 5000
 		maxCubeCount := int(context.FindCncThreshold.MaxCubes)
 		minRefutedLeaves := int(context.FindCncThreshold.MinRefutedLeaves)
-		pool := pond.New(numWorkers, 1000, pond.IdleTimeout(100*time.Millisecond))
+		pool := pond.New(numWorkersLookahead, 1000, pond.IdleTimeout(100*time.Millisecond))
 
 		threshold := int(cnf.FreeVariables) - decrementSize
 
@@ -244,7 +244,7 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 		solver := constants.Kissat
 		timedout := false
 		stopOnTimeout := false
-		numWorkersMultiplier := 1
+		numWorkersCdcl := int(context.FindCncThreshold.NumWorkers)
 		for i := len(cubesets) - 1; i >= 0; i-- {
 			cubeset := cubesets[i]
 
@@ -253,7 +253,7 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 
 			// Benchmark the subset of the cubeset
 			runtimes := make([]time.Duration, 0)
-			pool := pond.New(numWorkers*numWorkersMultiplier, sampleSize, pond.IdleTimeout(100*time.Millisecond))
+			pool := pond.New(numWorkersCdcl, sampleSize, pond.IdleTimeout(100*time.Millisecond))
 
 			// Create the stop signal channels
 			channels := make([]chan struct{}, 0)
@@ -345,7 +345,7 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 			// Calculate the estimate
 			estimateInSeconds := (lo.SumBy(runtimes, func(duration time.Duration) float64 {
 				return duration.Seconds()
-			}) / (float64(numWorkers * sampleSize))) * float64(cubeset.cubeCount)
+			}) / (float64(numWorkersCdcl * sampleSize))) * float64(cubeset.cubeCount)
 
 			// See if we can register it as the best estimate
 			if estimateInSeconds < bestResult.estimate.Seconds() {
