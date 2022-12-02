@@ -232,11 +232,7 @@ func RunSatSolver(reader io.Reader, maxDuration time.Duration, solver string, co
 	cmd := exec.CommandContext(ctx, "bash", "-c", fmt.Sprintf(solverCmdFormat, binPath))
 	// Pipe the input to the SAT solver
 	if reader != nil {
-		stdinWriter, err := cmd.StdinPipe()
-		if err != nil {
-			fmt.Println("Failed to get stdin pipe", err)
-		}
-		io.TeeReader(reader, stdinWriter)
+		cmd.Stdin = reader
 	}
 
 	if callback != nil {

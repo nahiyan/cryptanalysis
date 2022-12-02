@@ -101,8 +101,7 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 
 					// Start the stop signal watcher
 					cmd := new(exec.Cmd)
-					started := false
-					killed := false
+					var started, killed = false, false
 					// go WatchForStopSignal(stopSignal, cmd, &started, &killed)
 					go func() {
 						<-stopSignal
@@ -271,10 +270,32 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 							}
 							subproblemReader := strings.NewReader(subproblem)
 
+							// Spawn a watcher for the stop signal
+							var cmd *exec.Cmd
+							var started, killed = false, false
+							go func() {
+								<-stopSignal
+								for !started || cmd == nil || cmd.Process == nil {
+									time.Sleep(time.Second)
+								}
+
+								cmd.Process.Kill()
+								killed = true
+							}()
+
 							// Run the CDCL solver
-							exitCode, duration := core.RunSatSolver(subproblemReader, cdclSolverMaxDuration, constants.Kissat, types.SatSolverConfig[string]{}, nil)
+							exitCode, duration := core.RunSatSolver(subproblemReader, cdclSolverMaxDuration, constants.Kissat, types.SatSolverConfig[string]{}, func(c *exec.Cmd) {
+								cmd = c
+							})
+
+							if killed {
+								return
+							}
+
+							// Add runtime if the CDCL resulted in SAT or UNSAT
 							if exitCode == 10 || exitCode == 20 {
-								fmt.Printf("Tried CDCL on cube index = %d, n = %d with exit code = %d\n", cube, threshold, exitCode)
+								fmt.Printf("CDCL on cube index = %d, n = %d with exit code = %d took %s\n", cube, threshold, exitCode, duration.String())
+
 								// Add the runtime
 								lock.Lock()
 								runtimes = append(runtimes, duration)
@@ -285,10 +306,21 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 
 							// Discard the pool if the solver times out
 							if duration.Seconds() > cdclSolverMaxDuration.Seconds() {
+								lock.Lock()
 								fmt.Printf("Timed out for n = %d, stopping pool\n", threshold)
 								pool.Stop()
 								timedOut = true
+
+								// Stop all the workers
+								for _, channel := range channels {
+									channel <- struct{}{}
+								}
+								lock.Lock()
+
+								return
 							}
+
+							stopSignal <- struct{}{}
 						}
 					}(cube, cubeset.threshold, channels[i]))
 			}
