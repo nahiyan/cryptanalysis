@@ -30,11 +30,13 @@ type Reconstruction struct {
 }
 
 type FindCncThreshold struct {
-	InstanceName     string
-	NumWorkers       uint
-	SampleSize       uint
-	MaxCubes         uint
-	MinRefutedLeaves uint
+	InstanceName        string
+	NumWorkersLookahead uint
+	NumWorkersCdcl      uint
+	SampleSize          uint
+	MaxCubes            uint
+	MinRefutedLeaves    uint
+	CdclTimeout         uint
 }
 
 type GenSubProblem struct {

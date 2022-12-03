@@ -349,10 +349,12 @@ func init() {
 	reconstructCmd.Flags().StringVarP(&reconstructReconstructionStackPath, "reconstruction-stack-path", "r", "reconstruction-stack.txt", "Path to the reconstruction stack")
 
 	findCncThresholdCmd.Flags().StringVar(&findCncThreshold.InstanceName, "instance-name", "", "Name of the instance to find the CnC threshold for")
-	findCncThresholdCmd.Flags().UintVar(&findCncThreshold.NumWorkers, "num-workers", 16, "Number of workers in the pool for generating the cubes or ")
+	findCncThresholdCmd.Flags().UintVar(&findCncThreshold.NumWorkersLookahead, "num-workers-lookahead", 16, "Number of workers in the Lookahead pool")
+	findCncThresholdCmd.Flags().UintVar(&findCncThreshold.NumWorkersCdcl, "num-workers-cdcl", 16, "Number of workers in the CDCL pool")
 	findCncThresholdCmd.Flags().UintVar(&findCncThreshold.SampleSize, "sample-size", 1000, "Size of the random sample from each cubeset for estimating the runtime on the full cubeset")
 	findCncThresholdCmd.Flags().UintVar(&findCncThreshold.MaxCubes, "max-cubes", 1000000, "Max number of cubes to consider for finding the estimate of a cubeset")
 	findCncThresholdCmd.Flags().UintVar(&findCncThreshold.MinRefutedLeaves, "min-refuted-leaves", 500, "Min number of refuted to consider for finding the estimate of a cubeset")
+	findCncThresholdCmd.Flags().UintVar(&findCncThreshold.CdclTimeout, "cdcl-timeout", 5000, "Max. number of seconds given to a CDCL instance")
 
 	genSubProblemCmd.Flags().StringVar(&genSubProblem.InstanceName, "instance-name", "", "Name of the instance to generate the sub-problem for")
 	genSubProblemCmd.Flags().UintVar(&genSubProblem.CubeIndex, "cube-index", 0, "Index of the cube to generate the sub-problem for")

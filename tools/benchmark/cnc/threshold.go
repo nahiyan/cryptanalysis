@@ -44,7 +44,7 @@ func WatchForStopSignal(stopSignal chan struct{}, cmd *exec.Cmd, started *bool, 
 }
 
 func FindThreshold(context types.CommandContext) (uint, time.Duration) {
-	numWorkersLookahead := int(context.FindCncThreshold.NumWorkers)
+	numWorkersLookahead := int(context.FindCncThreshold.NumWorkersLookahead)
 	type Cubeset struct {
 		threshold uint
 		cubeCount uint
@@ -239,12 +239,12 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 	}
 
 	{
-		cdclSolverMaxDuration := time.Duration(5000 * time.Second)
+		cdclSolverMaxDuration := time.Duration(context.FindCncThreshold.CdclTimeout * uint(time.Second))
 		sampleSize := int(context.FindCncThreshold.SampleSize)
 		solver := constants.Kissat
 		timedout := false
 		stopOnTimeout := false
-		numWorkersCdcl := int(context.FindCncThreshold.NumWorkers)
+		numWorkersCdcl := int(context.FindCncThreshold.NumWorkersCdcl)
 		for i := len(cubesets) - 1; i >= 0; i-- {
 			cubeset := cubesets[i]
 
