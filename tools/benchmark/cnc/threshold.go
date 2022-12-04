@@ -44,7 +44,6 @@ func WatchForStopSignal(stopSignal chan struct{}, cmd *exec.Cmd, started *bool, 
 }
 
 func FindThreshold(context types.CommandContext) (uint, time.Duration) {
-	numWorkersLookahead := int(context.FindCncThreshold.NumWorkersLookahead)
 	type Cubeset struct {
 		threshold uint
 		cubeCount uint
@@ -54,6 +53,7 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 
 	// * 1. Generate the cubes for the selected thresholds
 	{
+		numWorkersLookahead := int(context.FindCncThreshold.NumWorkersLookahead)
 		fmt.Println("Generating cubesets for various thresholds")
 		// Parse the encoding
 		cnf, err := encodings.Process(context.FindCncThreshold.InstanceName)
