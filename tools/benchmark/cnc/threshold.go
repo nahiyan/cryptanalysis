@@ -251,9 +251,13 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 			// Take a random sample from the cubeset
 			cubeRandomSample := utils.RandomCubes(int(cubeset.cubeCount), int(sampleSize))
 
-			// Benchmark the subset of the cubeset
-			runtimes := make([]time.Duration, 0)
-			pool := pond.New(numWorkersCdcl, sampleSize, pond.IdleTimeout(100*time.Millisecond))
+			// Prepare the benchmark data structure and the pool
+			type Result struct {
+				Runtime  time.Duration
+				ExitCode uint
+			}
+			results := make([]Result, 0)
+			pool := pond.New(numWorkersCdcl, sampleSize, pond.IdleTimeout(10*time.Millisecond))
 
 			// Create the stop signal channels
 			channels := make([]chan struct{}, 0)
@@ -301,15 +305,22 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 							}
 
 							// Add runtime if the CDCL resulted in SAT or UNSAT
+							message := fmt.Sprintf("CDCL on cube index = %d, n = %d with exit code = %d", cube, threshold, exitCode)
 							if exitCode == 10 || exitCode == 20 {
-								fmt.Printf("CDCL on cube index = %d, n = %d with exit code = %d took %s\n", cube, threshold, exitCode, duration.String())
+								fmt.Printf(message+" took %s\n", duration.String())
 
 								// Add the runtime
 								lock.Lock()
-								runtimes = append(runtimes, duration)
+								results = append(results, Result{
+									Runtime:  duration,
+									ExitCode: uint(exitCode),
+								})
 								lock.Unlock()
+							} else if duration.Seconds() > cdclSolverMaxDuration.Seconds() {
+								fmt.Println(message + " timed out")
 							} else {
-								fmt.Printf("CDCL on cube index = %d, n = %d with exit code = %d timed out\n", cube, threshold, exitCode)
+								// fmt.Println(cmd.String())
+								fmt.Println(message + ", which is unexpected")
 							}
 
 							// Discard the pool if the solver times out
