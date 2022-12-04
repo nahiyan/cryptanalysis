@@ -344,27 +344,44 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 					}(cube, cubeset.threshold, channels[i]))
 			}
 
+			// TODO: The pool should be reused instead of waiting for all the workers to die
 			for pool.RunningWorkers() > 0 {
-				time.Sleep(time.Second * 5)
+				time.Sleep(time.Second)
 			}
 
 			if stopOnTimeout && timedout {
 				continue
 			}
 
-			// Note: Oleg finds estimate for the rest of the cubeset, but here we're finding for all
-			// Calculate the estimate
-			estimateInSeconds := (lo.SumBy(runtimes, func(duration time.Duration) float64 {
-				return duration.Seconds()
-			}) / (float64(numWorkersCdcl * sampleSize))) * float64(cubeset.cubeCount)
+			totalDuration := lo.SumBy(results, func(item Result) time.Duration {
+				return item.Runtime
+			})
+			averageDuration := totalDuration / time.Duration(numWorkersCdcl*sampleSize)
+
+			// Note: Oleg finds the estimate for the rest of the cubeset, but here we're finding for all
+			estimatedTotalDuration := averageDuration * time.Duration(cubeset.cubeCount)
 
 			// See if we can register it as the best estimate
-			if estimateInSeconds < bestResult.estimate.Seconds() {
-				bestResult.estimate = time.Duration(time.Second * time.Duration(estimateInSeconds))
+			if estimatedTotalDuration < bestResult.estimate {
+				bestResult.estimate = estimatedTotalDuration
 				bestResult.threshold = cubeset.threshold
 			}
 
-			fmt.Printf("Found estimate of %s for n = %d and cube count of %d\n\n", bestResult.estimate.String(), bestResult.threshold, cubeset.cubeCount)
+			totalSat := lo.SumBy(results, func(item Result) uint {
+				if item.ExitCode == 10 {
+					return 1
+				}
+				return 0
+			})
+			totalUnsat := lo.SumBy(results, func(item Result) uint {
+				if item.ExitCode == 20 {
+					return 1
+				}
+
+				return 0
+			})
+
+			fmt.Printf("Found estimate of %s for n = %d and cube count of %d with %d SAT and %d UNSAT solutions\n\n", estimatedTotalDuration, cubeset.threshold, cubeset.cubeCount, totalSat, totalUnsat)
 		}
 	}
 
