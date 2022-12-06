@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"os/exec"
 	"path"
 	"strconv"
@@ -32,29 +31,29 @@ func invokeSatSolver(command string, satSolver string, context_ *types.Benchmark
 	}
 
 	// * 2. Check if the solution already exists
-	isPreviouslySolved := func(solutionFilePath string) bool {
-		if !utils.FileExists(solutionFilePath) {
-			return false
-		}
+	// isPreviouslySolved := func(solutionFilePath string) bool {
+	// 	if !utils.FileExists(solutionFilePath) {
+	// 		return false
+	// 	}
 
-		stat, _ := os.Stat(solutionFilePath)
-		return stat.Size() == 0
-	}(solutionFilePath)
-	if isPreviouslySolved {
-		messages = append(messages, "Solution already exists")
-	}
+	// 	stat, _ := os.Stat(solutionFilePath)
+	// 	return stat.Size() == 0
+	// }(solutionFilePath)
+	// if isPreviouslySolved {
+	// messages = append(messages, "Solution already exists")
+	// }
 
 	// * 3. Invoke the SAT solver
 	exitCode := 0
 	duration := time.Since(time.Now())
-	if !isPreviouslySolved {
-		cmd := exec.Command("timeout", strconv.Itoa(int(maxTime)), "bash", "-c", command)
-		if err := cmd.Run(); err != nil {
-			exiterr, _ := err.(*exec.ExitError)
-			exitCode = exiterr.ExitCode()
-		}
-		duration = time.Since(startTime)
+	// if !isPreviouslySolved {
+	cmd := exec.Command("timeout", strconv.Itoa(int(maxTime)), "bash", "-c", command)
+	if err := cmd.Run(); err != nil {
+		exiterr, _ := err.(*exec.ExitError)
+		exitCode = exiterr.ExitCode()
 	}
+	duration = time.Since(startTime)
+	// }
 
 	// * 4. Normalize the solution
 	isNormalized := false
@@ -165,36 +164,6 @@ func KissatCmd(filepath string) string {
 
 	return command
 }
-
-// TODO: Generalize the SAT Solver invokation
-// func KissatWithStream(commandStructure *utils.CommandStructure, maxDuration time.Duration, commands *[]*exec.Cmd) (int, time.Duration) {
-// 	binPath := config.Get().Paths.Bin.Kissat
-// 	if !utils.FileExists(binPath) {
-// 		log.Fatal("Kissat doesn't exist. Did you forget to compile it?")
-// 	}
-
-// 	command := commandStructure.FillWithCommand(fmt.Sprintf("%s -q", binPath)).String()
-// 	ctx, cancel := context.WithTimeout(context.Background(), maxDuration)
-// 	defer cancel()
-
-// 	startTime := time.Now()
-// 	cmd := exec.CommandContext(ctx, "bash", "-c", command)
-// 	if commands != nil {
-// 		*commands = append(*commands, cmd)
-// 	}
-
-// 	if err := cmd.Run(); err != nil {
-// 		if exitError, ok := err.(*exec.ExitError); ok {
-// 			if exitError.ExitCode() != 10 && exitError.ExitCode() != 20 {
-// 				fmt.Println(command)
-// 			}
-
-// 			return exitError.ExitCode(), time.Since(startTime)
-// 		}
-// 	}
-
-// 	return 0, time.Since(startTime)
-// }
 
 // TODO: Finish and test this new generic SAT solver invoker
 func RunSatSolver(reader io.Reader, maxDuration time.Duration, solver string, config_ types.SatSolverConfig[string], callback func(*exec.Cmd)) (int, time.Duration) {

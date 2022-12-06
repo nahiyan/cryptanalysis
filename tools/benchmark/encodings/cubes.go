@@ -16,7 +16,11 @@ import (
 func GenerateSubProblemAsStringWithThreshold(instanceName string, i int, threshold *uint) (string, error) {
 	subProblemFilePath := fmt.Sprintf("%scube%d_%s.cnf", constants.EncodingsDirPath, i, instanceName)
 	if utils.FileExists(subProblemFilePath) {
-		return "", nil
+		content, err := os.ReadFile(subProblemFilePath)
+		if err != nil {
+			return "", err
+		}
+		return string(content), nil
 	}
 
 	// * 1. Read the instance
