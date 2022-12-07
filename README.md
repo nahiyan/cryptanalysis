@@ -10,7 +10,7 @@ This repository houses various SAT DIMACS CNF encoders, tools for benchmarks usi
 
 ## Cube and Conquer
 
-On top of the Dobbertin's attack, cube and conquer is being experimented for encodings generated using both TRANSALG and Saeed's encoder with variation of adders, CNF simplification techniques, cutoff variables for cubing, random sampling for estimation, etc. March is used for generating the cubes, while CaDiCaL is used for the simplification.
+On top of the Dobbertin's attack, cube and conquer is being experimented for encodings generated using both TRANSALG and Saeed's encoder with variation of adders, CNF simplification techniques, cutoff variables for cubing, random sampling for estimation, etc. March is used for generating the cubes, while CaDiCaL and SatELite is used for the simplification.
 
 # Tools
 
