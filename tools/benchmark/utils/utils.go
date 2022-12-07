@@ -117,12 +117,14 @@ func ResolveSatSolverName(shortcut string) string {
 
 func ResolveAdderType(shortcut string) string {
 	switch shortcut {
-	case "cc":
+	case constants.ArgCounterChain:
 		return "counter_chain"
-	case "dm":
+	case constants.ArgDotMatrix:
 		return "dot_matrix"
-	case "esp":
+	case constants.ArgEspresso:
 		return "espresso"
+	case constants.ArgTwoOperand:
+		return "two_operand"
 	default:
 		return ""
 	}

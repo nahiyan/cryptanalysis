@@ -4,6 +4,7 @@ const (
 	ArgCounterChain  = "cc"
 	ArgDotMatrix     = "dm"
 	ArgEspresso      = "esp"
+	ArgTwoOperand    = "2op"
 	ArgCryptoMiniSat = "cms"
 	ArgKissat        = "ks"
 	ArgCadical       = "cdc"
