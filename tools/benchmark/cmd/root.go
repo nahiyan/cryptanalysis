@@ -318,7 +318,7 @@ func init() {
 	// TODO: Feed directly to the command context
 	// Flags and arguments
 	rootCmd.PersistentFlags().StringVar(&variationsXor_, "var-xor", "0", "Comma-separated variations of XOR. Possible values: 0, 1")
-	rootCmd.PersistentFlags().StringVar(&variationsAdders_, "var-adders", "cc,dm", "Comma-separated variations of the adders. Possible values: cm, dm")
+	rootCmd.PersistentFlags().StringVar(&variationsAdders_, "var-adders", "cc,dm", "Comma-separated variations of the adders. Possible values: cm, dm, esp, 2op")
 	rootCmd.PersistentFlags().StringVar(&variationsSatSolvers_, "var-sat-solvers", "cms,ks,cdc,gs,ms", "Comma-separated variations of the SAT solvers. Possible values: cms, ks, cdc, gs, ms, xnf")
 	rootCmd.PersistentFlags().StringVar(&variationsHashes_, "var-hashes", "ffffffffffffffffffffffffffffffff,00000000000000000000000000000000", "Comma-separated variations of the hashes. Possible values: ffffffffffffffffffffffffffffffff, 00000000000000000000000000000000")
 	rootCmd.PersistentFlags().StringVar(&variationsDobbertin_, "var-dobbertin", "0,1", "Comma-separated variations of the Dobbertin's attack. Possible values: 0, 1")
