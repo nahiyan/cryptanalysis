@@ -91,4 +91,4 @@ Generates cubesets using various cutoff thresholds (number of max. variables) wi
 # Credits
 
 - `encoders/saeed` is a modified and trimmed version of https://github.com/saeednj/SAT-encoding
-- `tools/cnc_threshold_finder` is a modified version of the CNC threshold calculator in https://github.com/olegzaikin/MD4-CnC
+- The threshold finding algorithm is a modified version of that found in https://github.com/olegzaikin/MD4-CnC
