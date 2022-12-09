@@ -121,6 +121,10 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 					startTime := time.Now()
 					output_, err := cmd.Output()
 					if err != nil && !killed {
+						// Any signal of termination indicates that the process was killed
+						if strings.HasPrefix(err.Error(), "signal: ") {
+							return
+						}
 						fmt.Println(err)
 					}
 					if killed {
