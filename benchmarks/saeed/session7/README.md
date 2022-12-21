@@ -10,7 +10,7 @@ Saeed's encoder with espresso adder has been used to generate the encoding, whic
 - 93000
 - 16161
 
-11 of the problems were found to be UNSAT, while the others timed out. The result is in `log.csv`.
+11 of the problems were found to be UNSAT, while the others timed out. The result is in `logs.csv`.
 
 However, with a seed value of 2, 2 SAT solutions could be found with 11 UNSAT ones.
 
