@@ -63,7 +63,7 @@ func FindThreshold(context types.CommandContext) (uint, time.Duration) {
 
 		decrementSize := 10
 		instanceFilePath := path.Join(constants.EncodingsDirPath, context.FindCncThreshold.InstanceName+".cnf")
-		lookaheadSolverMaxTime := time.Second * 5000
+		lookaheadSolverMaxTime := time.Second * 28800
 		maxCubeCount := int(context.FindCncThreshold.MaxCubes)
 		minRefutedLeaves := int(context.FindCncThreshold.MinRefutedLeaves)
 		pool := pond.New(numWorkersLookahead, 1000, pond.IdleTimeout(100*time.Millisecond))
