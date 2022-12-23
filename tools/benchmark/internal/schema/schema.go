@@ -1,7 +1,7 @@
 package schema
 
-import "benchmark/internal/pipelines"
+import "benchmark/internal/pipeline"
 
 type Schema struct {
-	Pipelines []pipelines.Pipeline
+	Pipeline []pipeline.Pipe
 }

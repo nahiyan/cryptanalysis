@@ -1,6 +1,7 @@
 package services
 
 import (
+	"benchmark/internal/pipeline/services"
 	"benchmark/internal/schema"
 	"fmt"
 	"log"
@@ -10,14 +11,16 @@ import (
 )
 
 type SchemaService struct {
-	Schema schema.Schema
+	Schema      schema.Schema
+	PipelineSvc *services.PipelineService
 }
 
 func NewSchemaService(i *do.Injector) (*SchemaService, error) {
-	return new(SchemaService), nil
+	pipelineSvc := do.MustInvoke[*services.PipelineService](i)
+	return &SchemaService{PipelineSvc: pipelineSvc}, nil
 }
 
-func (c *SchemaService) Process(filePath string) {
+func (schemaSvc *SchemaService) Process(filePath string) {
 	// Set config file
 	viper.SetConfigFile(filePath)
 	if err := viper.ReadInConfig(); err != nil {
@@ -25,9 +28,12 @@ func (c *SchemaService) Process(filePath string) {
 	}
 
 	// Unwrap the structure
-	if err := viper.Unmarshal(&c.Schema); err != nil {
+	if err := viper.Unmarshal(&schemaSvc.Schema); err != nil {
 		log.Fatal("Failed to unmarshal viper config")
 	}
 
-	fmt.Println(c.Schema)
+	fmt.Println(schemaSvc.Schema)
+
+	// Run the pipeline
+	schemaSvc.PipelineSvc.Run()
 }
