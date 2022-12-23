@@ -1,4 +1,4 @@
-package pipelines
+package pipeline
 
 const (
 	Encode = "encode"
@@ -23,7 +23,7 @@ type Variations struct {
 	Steps         []int
 }
 
-type Pipeline struct {
+type Pipe struct {
 	Type Type
 
 	// Type: encode
