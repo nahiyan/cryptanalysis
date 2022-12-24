@@ -13,21 +13,23 @@ const (
 type Type string
 type Platform string
 type Solver string
+type AdderType string
 
-type Variations struct {
+type Variation struct {
 	Xor           []int
 	Dobbertin     []int
 	DobbertinBits []int
-	Adders        []string
+	Adders        []AdderType
 	Hashes        []string
 	Steps         []int
+	Solvers       []Solver
 }
 
 type Pipe struct {
 	Type Type
 
 	// Type: encode
-	Variations
+	Variation
 
 	// Type: solve
 	Platform
