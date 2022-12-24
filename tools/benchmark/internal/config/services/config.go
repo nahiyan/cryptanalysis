@@ -14,7 +14,9 @@ type ConfigService struct {
 }
 
 func NewConfigService(i *do.Injector) (*ConfigService, error) {
-	return &ConfigService{}, nil
+	configSvc := &ConfigService{}
+	configSvc.Process()
+	return configSvc, nil
 }
 
 func (c *ConfigService) Process() {
