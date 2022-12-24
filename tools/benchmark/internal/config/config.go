@@ -12,7 +12,7 @@ type Config struct {
 			March            string
 			Verifier         string
 			SolutionAnalyzer string
-			Encoder          string
+			SaeedE           string
 			Benchmark        string
 		}
 	}
