@@ -33,7 +33,7 @@ func (c *ConfigService) Process() {
 	viper.SetDefault("Paths.Bin.XnfSat", "../../../sat-solvers/xnfsat")
 	viper.SetDefault("Paths.Bin.March", "../../../sat-solvers/march_cu")
 	viper.SetDefault("Paths.Bin.SolutionAnalyzer", "../solution_analyzer/target/release/solution_analyzer")
-	viper.SetDefault("Paths.Bin.Encoder", "../../encoders/saeed/crypto/main")
+	viper.SetDefault("Paths.Bin.SaeedE", "../../encoders/saeed/crypto/main")
 	viper.SetDefault("Paths.Bin.Verifier", "../../encoders/saeed/crypto/verify-md4")
 	viper.SetDefault("Paths.Bin.Benchmark", benchmarkBinAbsPath)
 
