@@ -3,6 +3,7 @@ package container
 import (
 	configServices "benchmark/internal/config/services"
 	encoderServices "benchmark/internal/encoder/services"
+	errorServices "benchmark/internal/error/services"
 	filesystemServices "benchmark/internal/filesystem/services"
 	pipelineServices "benchmark/internal/pipeline/services"
 	schemaServices "benchmark/internal/schema/services"
@@ -18,6 +19,7 @@ func InitInjector() *do.Injector {
 	do.Provide(injector, encoderServices.NewEncoderService)
 	do.Provide(injector, filesystemServices.NewFilesystemService)
 	do.Provide(injector, configServices.NewConfigService)
+	do.Provide(injector, errorServices.NewErrorService)
 
 	return injector
 }

@@ -1,10 +1,11 @@
 package services
 
 import (
-	configSvc "benchmark/internal/config/services"
+	configServices "benchmark/internal/config/services"
 	"benchmark/internal/encoder"
+	errorServices "benchmark/internal/error/services"
 	"benchmark/internal/filesystem"
-	"benchmark/internal/filesystem/services"
+	filesystemServices "benchmark/internal/filesystem/services"
 	"benchmark/internal/pipeline"
 	"fmt"
 	"log"
@@ -36,14 +37,16 @@ const (
 )
 
 type EncoderService struct {
-	configSvc     *configSvc.ConfigService
+	configSvc     *configServices.ConfigService
 	filesystemSvc filesystem.FilesystemService
+	errorSvc      *errorServices.ErrorService
 }
 
 func NewEncoderService(i *do.Injector) (*EncoderService, error) {
-	configSvc := do.MustInvoke[*configSvc.ConfigService](i)
-	filesystemSvc := do.MustInvoke[*services.FilesystemService](i)
-	return &EncoderService{configSvc: configSvc, filesystemSvc: filesystemSvc}, nil
+	configSvc := do.MustInvoke[*configServices.ConfigService](i)
+	filesystemSvc := do.MustInvoke[*filesystemServices.FilesystemService](i)
+	errorSvc := do.MustInvoke[*errorServices.ErrorService](i)
+	return &EncoderService{configSvc: configSvc, filesystemSvc: filesystemSvc, errorSvc: errorSvc}, nil
 }
 
 func (encoderSvc *EncoderService) GetInstanceName(steps int, adderType pipeline.AdderType, xor int, hash string, dobbertin, dobbertinBits int, cubeIndex *int) string {
@@ -100,6 +103,7 @@ func (encoderSvc *EncoderService) ResolveSaeedEAdderType(adderType pipeline.Adde
 func (encoderSvc *EncoderService) InvokeSaeedE(variations pipeline.Variation) []string {
 	config := &encoderSvc.configSvc.Config
 	filesystemSvc := encoderSvc.filesystemSvc
+	errorSvc := encoderSvc.errorSvc
 
 	// Check if the encoder exists
 	if !filesystemSvc.FileExists(config.Paths.Bin.SaeedE) {
@@ -138,21 +142,19 @@ func (encoderSvc *EncoderService) InvokeSaeedE(variations pipeline.Variation) []
 		}(xorOption)
 
 		// * Drive the encoder
-		cmd := exec.Command("bash", "-c",
+		cmd := exec.Command(
+			config.Paths.Bin.SaeedE,
 			fmt.Sprintf(
-				"%s%s -A %s -r %d -f md4 -a preimage -t %s%s --bits %d > %s",
-				config.Paths.Bin.SaeedE,
+				"%s -A %s -r %d -f md4 -a preimage -t %s%s --bits %d",
 				xorFlag,
 				encoderSvc.ResolveSaeedEAdderType(adderType),
 				steps,
 				hash,
 				dobbertinFlag,
-				dobbertinBits,
-				encodingFilePath))
-		if err := cmd.Run(); err != nil {
-			log.Fatal("Encoding generation failed:", instanceName)
-			return
-		}
+				dobbertinBits))
+		// outPipe, err := cmd.StdoutPipe()
+
+		errorSvc.CheckWithFatal(cmd.Run(), "Encoding generation failed: "+instanceName)
 	})
 
 	return encodings
