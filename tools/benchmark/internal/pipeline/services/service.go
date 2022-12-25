@@ -1,18 +1,9 @@
 package services
 
 import (
-	"benchmark/internal/encoder"
-	encoderServices "benchmark/internal/encoder/services"
 	"benchmark/internal/pipeline"
 	"fmt"
-
-	"github.com/samber/do"
 )
-
-type PipelineService struct {
-	EncoderSvc encoder.EncoderService
-	Pipeline   []pipeline.Pipe
-}
 
 const (
 	ListOfEncodings = "list_of_encodings"
@@ -20,13 +11,11 @@ const (
 	None            = "none"
 )
 
-type InputOutputType string
-
-func NewPipelineService(i *do.Injector) (*PipelineService, error) {
-	return &PipelineService{
-		EncoderSvc: do.MustInvoke[*encoderServices.EncoderService](i),
-	}, nil
+type Properties struct {
+	Pipeline []pipeline.Pipe
 }
+
+type InputOutputType string
 
 func getInputType(pipe pipeline.Pipe) InputOutputType {
 	switch pipe.Type {
@@ -74,7 +63,7 @@ func (pipelineSvc *PipelineService) TestRun() {
 	for _, pipe := range pipelineSvc.Pipeline {
 		switch pipe.Type {
 		case pipeline.Encode:
-			x := pipelineSvc.EncoderSvc.TestRun()
+			x := pipelineSvc.encoderSvc.TestRun()
 			fmt.Println(x)
 		}
 	}

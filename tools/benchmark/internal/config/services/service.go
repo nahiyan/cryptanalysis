@@ -5,21 +5,18 @@ import (
 	"log"
 	"path/filepath"
 
-	"github.com/samber/do"
 	"github.com/spf13/viper"
 )
 
-type ConfigService struct {
+type Properties struct {
 	Config config.Config
 }
 
-func NewConfigService(i *do.Injector) (*ConfigService, error) {
-	configSvc := &ConfigService{}
+func (configSvc *ConfigService) Init() {
 	configSvc.Process()
-	return configSvc, nil
 }
 
-func (c *ConfigService) Process() {
+func (configSvc *ConfigService) Process() {
 	configFilePath := "./config.toml"
 	benchmarkBinAbsPath, err := filepath.Abs("./benchmark")
 	if err != nil {
@@ -49,7 +46,7 @@ func (c *ConfigService) Process() {
 	}
 
 	// Unwrap the structure
-	if err := viper.Unmarshal(&c.Config); err != nil {
+	if err := viper.Unmarshal(&configSvc.Config); err != nil {
 		log.Fatal("Failed to unmarshal viper config")
 	}
 }

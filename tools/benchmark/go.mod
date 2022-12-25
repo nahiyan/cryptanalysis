@@ -12,6 +12,8 @@ require (
 	gorm.io/gorm v1.24.1
 )
 
+require github.com/iancoleman/strcase v0.2.0
+
 require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect

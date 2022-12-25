@@ -6,16 +6,7 @@ import (
 	"errors"
 	"io"
 	"os"
-
-	"github.com/samber/do"
 )
-
-type FilesystemService struct {
-}
-
-func NewFilesystemService(i *do.Injector) (*FilesystemService, error) {
-	return &FilesystemService{}, nil
-}
 
 func (filesystemSvc *FilesystemService) CountLines(r io.Reader) (int, error) {
 	buf := make([]byte, 32*1024)

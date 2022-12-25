@@ -1,23 +1,15 @@
 package services
 
 import (
-	"benchmark/internal/pipeline/services"
 	"benchmark/internal/schema"
 	"fmt"
 	"log"
 
-	"github.com/samber/do"
 	"github.com/spf13/viper"
 )
 
-type SchemaService struct {
-	Schema      schema.Schema
-	PipelineSvc *services.PipelineService
-}
-
-func NewSchemaService(i *do.Injector) (*SchemaService, error) {
-	pipelineSvc := do.MustInvoke[*services.PipelineService](i)
-	return &SchemaService{PipelineSvc: pipelineSvc}, nil
+type Properties struct {
+	Schema schema.Schema
 }
 
 func (schemaSvc *SchemaService) Process(filePath string) {
@@ -35,6 +27,6 @@ func (schemaSvc *SchemaService) Process(filePath string) {
 	fmt.Println(schemaSvc.Schema)
 
 	// Run the pipeline
-	schemaSvc.PipelineSvc.Pipeline = schemaSvc.Schema.Pipeline
-	schemaSvc.PipelineSvc.Run()
+	schemaSvc.pipelineSvc.Pipeline = schemaSvc.Schema.Pipeline
+	schemaSvc.pipelineSvc.Run()
 }

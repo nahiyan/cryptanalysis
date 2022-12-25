@@ -1,17 +1,11 @@
 package services
 
 import (
-	configServices "benchmark/internal/config/services"
 	"benchmark/internal/encoder"
-	errorServices "benchmark/internal/error/services"
-	"benchmark/internal/filesystem"
-	filesystemServices "benchmark/internal/filesystem/services"
 	"benchmark/internal/pipeline"
 	"fmt"
 	"log"
 	"os/exec"
-
-	"github.com/samber/do"
 )
 
 const (
@@ -35,19 +29,6 @@ const (
 	Glucose       = "glucose"
 	XnfSat        = "xnfsat"
 )
-
-type EncoderService struct {
-	configSvc     *configServices.ConfigService
-	filesystemSvc filesystem.FilesystemService
-	errorSvc      *errorServices.ErrorService
-}
-
-func NewEncoderService(i *do.Injector) (*EncoderService, error) {
-	configSvc := do.MustInvoke[*configServices.ConfigService](i)
-	filesystemSvc := do.MustInvoke[*filesystemServices.FilesystemService](i)
-	errorSvc := do.MustInvoke[*errorServices.ErrorService](i)
-	return &EncoderService{configSvc: configSvc, filesystemSvc: filesystemSvc, errorSvc: errorSvc}, nil
-}
 
 func (encoderSvc *EncoderService) GetInstanceName(steps int, adderType pipeline.AdderType, xor int, hash string, dobbertin, dobbertinBits int, cubeIndex *int) string {
 	return fmt.Sprintf("%smd4_%d_%s_xor%d_%s_dobbertin%d_b%d", func(cubeIndex *int) string {

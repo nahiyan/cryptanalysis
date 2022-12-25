@@ -5,9 +5,6 @@ import (
 	"log"
 )
 
-type ErrorService struct {
-}
-
 func (errorSvc *ErrorService) Check(err error, handler func(error) string) {
 	if err != nil {
 		fmt.Println("Error:", handler(err))
