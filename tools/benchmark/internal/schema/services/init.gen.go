@@ -1,24 +1,17 @@
 package services
 
 import (
-    "github.com/samber/do"
-    pipelineServices "benchmark/internal/pipeline/services"
-    
+	services "benchmark/internal/pipeline/services"
+	do "github.com/samber/do"
 )
 
 type SchemaService struct {
-    Properties
-    pipelineSvc *pipelineServices.PipelineService
+	pipelineSvc *services.PipelineService
+	Properties
 }
 
-func NewSchemaService(i *do.Injector) (*SchemaService, error) {
-    pipelineSvc := do.MustInvoke[*pipelineServices.PipelineService](i)
-
-    svc := &SchemaService{
-        pipelineSvc: pipelineSvc,
-    }
-
-    
-
+func NewSchemaService(injector *do.Injector) (*SchemaService, error) {
+	pipelineSvc := do.MustInvoke[*services.PipelineService](injector)
+	svc := &SchemaService{pipelineSvc: pipelineSvc}
 	return svc, nil
 }

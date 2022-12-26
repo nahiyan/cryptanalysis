@@ -1,20 +1,10 @@
 package services
 
-import (
-    "github.com/samber/do"
-    
-)
+import do "github.com/samber/do"
 
-type ErrorService struct {
-    
-}
+type ErrorService struct{}
 
-func NewErrorService(i *do.Injector) (*ErrorService, error) {
-
-    svc := &ErrorService{
-    }
-
-    
-
+func NewErrorService(injector *do.Injector) (*ErrorService, error) {
+	svc := &ErrorService{}
 	return svc, nil
 }

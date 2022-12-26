@@ -1,20 +1,13 @@
 package services
 
-import (
-    "github.com/samber/do"
-    
-)
+import do "github.com/samber/do"
 
 type ConfigService struct {
-    Properties
+	Properties
 }
 
-func NewConfigService(i *do.Injector) (*ConfigService, error) {
-
-    svc := &ConfigService{
-    }
-
-    svc.Init()
-
+func NewConfigService(injector *do.Injector) (*ConfigService, error) {
+	svc := &ConfigService{}
+	svc.Init()
 	return svc, nil
 }

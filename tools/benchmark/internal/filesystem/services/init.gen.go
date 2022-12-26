@@ -1,20 +1,10 @@
 package services
 
-import (
-    "github.com/samber/do"
-    
-)
+import do "github.com/samber/do"
 
-type FilesystemService struct {
-    
-}
+type FilesystemService struct{}
 
-func NewFilesystemService(i *do.Injector) (*FilesystemService, error) {
-
-    svc := &FilesystemService{
-    }
-
-    
-
+func NewFilesystemService(injector *do.Injector) (*FilesystemService, error) {
+	svc := &FilesystemService{}
 	return svc, nil
 }

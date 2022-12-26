@@ -1,24 +1,17 @@
 package services
 
 import (
-    "github.com/samber/do"
-    encoderServices "benchmark/internal/encoder/services"
-    
+	services "benchmark/internal/encoder/services"
+	do "github.com/samber/do"
 )
 
 type PipelineService struct {
-    Properties
-    encoderSvc *encoderServices.EncoderService
+	encoderSvc *services.EncoderService
+	Properties
 }
 
-func NewPipelineService(i *do.Injector) (*PipelineService, error) {
-    encoderSvc := do.MustInvoke[*encoderServices.EncoderService](i)
-
-    svc := &PipelineService{
-        encoderSvc: encoderSvc,
-    }
-
-    
-
+func NewPipelineService(injector *do.Injector) (*PipelineService, error) {
+	encoderSvc := do.MustInvoke[*services.EncoderService](injector)
+	svc := &PipelineService{encoderSvc: encoderSvc}
 	return svc, nil
 }

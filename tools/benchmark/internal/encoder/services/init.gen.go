@@ -1,32 +1,22 @@
 package services
 
 import (
-    "github.com/samber/do"
-    configServices "benchmark/internal/config/services"
-    filesystemServices "benchmark/internal/filesystem/services"
-    errorServices "benchmark/internal/error/services"
-    
+	services "benchmark/internal/config/services"
+	services2 "benchmark/internal/error/services"
+	services1 "benchmark/internal/filesystem/services"
+	do "github.com/samber/do"
 )
 
 type EncoderService struct {
-    
-    configSvc *configServices.ConfigService
-    filesystemSvc *filesystemServices.FilesystemService
-    errorSvc *errorServices.ErrorService
+	configSvc     *services.ConfigService
+	filesystemSvc *services1.FilesystemService
+	errorSvc      *services2.ErrorService
 }
 
-func NewEncoderService(i *do.Injector) (*EncoderService, error) {
-    configSvc := do.MustInvoke[*configServices.ConfigService](i)
-    filesystemSvc := do.MustInvoke[*filesystemServices.FilesystemService](i)
-    errorSvc := do.MustInvoke[*errorServices.ErrorService](i)
-
-    svc := &EncoderService{
-        configSvc: configSvc,
-        filesystemSvc: filesystemSvc,
-        errorSvc: errorSvc,
-    }
-
-    
-
+func NewEncoderService(injector *do.Injector) (*EncoderService, error) {
+	configSvc := do.MustInvoke[*services.ConfigService](injector)
+	filesystemSvc := do.MustInvoke[*services1.FilesystemService](injector)
+	errorSvc := do.MustInvoke[*services2.ErrorService](injector)
+	svc := &EncoderService{configSvc: configSvc, filesystemSvc: filesystemSvc, errorSvc: errorSvc}
 	return svc, nil
 }
