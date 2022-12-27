@@ -46,3 +46,18 @@ func (filesystemSvc *FilesystemService) FileExists(filePath string) bool {
 
 	return true
 }
+
+func (filesystemSvc *FilesystemService) WriteFromPipe(pipe io.Reader, filePath string) error {
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(pipe)
+	for scanner.Scan() {
+		file.WriteString(scanner.Text() + "\n")
+	}
+
+	return nil
+}
