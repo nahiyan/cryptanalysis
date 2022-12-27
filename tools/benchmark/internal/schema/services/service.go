@@ -27,6 +27,5 @@ func (schemaSvc *SchemaService) Process(filePath string) {
 	fmt.Println(schemaSvc.Schema)
 
 	// Run the pipeline
-	schemaSvc.pipelineSvc.Pipeline = schemaSvc.Schema.Pipeline
-	schemaSvc.pipelineSvc.Run()
+	schemaSvc.pipelineSvc.Run(schemaSvc.Schema.Pipeline)
 }
