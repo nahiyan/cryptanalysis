@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"benchmark/internal/container"
+	"benchmark/internal/injector"
 	schemaServices "benchmark/internal/schema/services"
 
 	"github.com/samber/do"
@@ -15,7 +15,7 @@ func initRunCmd() *cobra.Command {
 		Use:   "run",
 		Short: "Run the benchmark based on the defined pipeline",
 		Run: func(cmd *cobra.Command, args []string) {
-			injector := container.InitInjector()
+			injector := injector.New()
 			schemaSvc := do.MustInvoke[*schemaServices.SchemaService](injector)
 			schemaSvc.Process(schemaFilePath)
 		},
