@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	ListOfEncodings = "list_of_encodings"
-	ListOfSolutions = "list_of_solutions"
+	ListOfEncodings = "list[encoding]"
+	ListOfSolutions = "list[solution]"
 	None            = "none"
 )
 
@@ -16,8 +16,9 @@ type Properties struct {
 }
 
 type InputOutputType string
+type LoopHandler func(*pipeline.Pipe, *pipeline.Pipe)
 
-func getInputType(pipe pipeline.Pipe) InputOutputType {
+func getInputType(pipe *pipeline.Pipe) InputOutputType {
 	switch pipe.Type {
 	case pipeline.Encode:
 		return None
@@ -28,7 +29,7 @@ func getInputType(pipe pipeline.Pipe) InputOutputType {
 	return None
 }
 
-func getOutputType(pipe pipeline.Pipe) InputOutputType {
+func getOutputType(pipe *pipeline.Pipe) InputOutputType {
 	switch pipe.Type {
 	case pipeline.Encode:
 		return ListOfEncodings
@@ -41,35 +42,52 @@ func getOutputType(pipe pipeline.Pipe) InputOutputType {
 
 // Check if the pipelines can be connected
 func (pipelineSvc *PipelineService) Validate() {
-	for i, pipe := range pipelineSvc.Pipeline {
-		var nextPipeline *pipeline.Pipe
-		if len(pipelineSvc.Pipeline) < i+2 {
-			nextPipeline = &pipelineSvc.Pipeline[i+1]
-		}
-
-		if nextPipeline == nil {
-			break
+	pipelineSvc.Loop(pipelineSvc.Pipeline, func(pipe, nextPipe *pipeline.Pipe) {
+		if nextPipe == nil {
+			return
 		}
 
 		outputType := getOutputType(pipe)
-		nextPipelineInputType := getInputType(*nextPipeline)
+		nextPipelineInputType := getInputType(nextPipe)
 		if nextPipelineInputType != outputType {
 			panic("Incompatible pipeline: " + outputType + " can't fit into the expected input type " + nextPipelineInputType)
 		}
+	})
+}
+
+func (pipelineSvc *PipelineService) Loop(pipes []pipeline.Pipe, handler LoopHandler) {
+	for i, pipe := range pipes {
+		var nextPipe *pipeline.Pipe
+		if len(pipelineSvc.Pipeline) > i+1 {
+			nextPipe = &pipelineSvc.Pipeline[i+1]
+		}
+
+		handler(&pipe, nextPipe)
 	}
 }
 
 func (pipelineSvc *PipelineService) TestRun() {
-	for _, pipe := range pipelineSvc.Pipeline {
+	var lastValue interface{}
+
+	pipelineSvc.Loop(pipelineSvc.Pipeline, func(pipe, nextPipe *pipeline.Pipe) {
 		switch pipe.Type {
 		case pipeline.Encode:
-			x := pipelineSvc.encoderSvc.TestRun()
-			fmt.Println(x)
+			lastValue = pipelineSvc.encoderSvc.TestRun()
+			fmt.Println("Encode", lastValue)
+
+			if nextPipe == nil {
+				return
+			}
+
+		case pipeline.Solve:
+			pipelineSvc.solverSvc.Run(lastValue.([]string))
 		}
-	}
+	})
 }
 
-func (pipelineSvc *PipelineService) Run() {
+func (pipelineSvc *PipelineService) Run(pipes []pipeline.Pipe) {
+	pipelineSvc.Pipeline = pipes
+
 	pipelineSvc.Validate()
 	pipelineSvc.TestRun()
 }
