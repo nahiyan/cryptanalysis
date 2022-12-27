@@ -1,8 +1,12 @@
 package services
 
 import (
+	"benchmark/internal/consts"
+	encoderServices "benchmark/internal/encoder/services"
 	"benchmark/internal/pipeline"
+	"benchmark/internal/solver"
 	"fmt"
+	"time"
 )
 
 const (
@@ -67,12 +71,28 @@ func (pipelineSvc *PipelineService) Loop(pipes []pipeline.Pipe, handler LoopHand
 }
 
 func (pipelineSvc *PipelineService) TestRun() {
+	encodeVariation := pipeline.Variation{
+		Xor:           []int{0},
+		Dobbertin:     []int{0},
+		DobbertinBits: []int{32},
+		Adders:        []pipeline.AdderType{encoderServices.Espresso},
+		Hashes:        []string{"ffffffffffffffffffffffffffffffff", "00000000000000000000000000000000"},
+		Steps:         []int{16},
+	}
+
+	solveSettings := solver.Settings{
+		Solvers:  []solver.Solver{consts.Kissat, consts.MapleSat},
+		Timeout:  time.Duration(time.Second * 5),
+		Platform: consts.Regular,
+		Workers:  16,
+	}
+
 	var lastValue interface{}
 
 	pipelineSvc.Loop(pipelineSvc.Pipeline, func(pipe, nextPipe *pipeline.Pipe) {
 		switch pipe.Type {
 		case pipeline.Encode:
-			lastValue = pipelineSvc.encoderSvc.TestRun()
+			lastValue = pipelineSvc.encoderSvc.Run(encoderServices.SaeedE, encodeVariation)
 			fmt.Println("Encode", lastValue)
 
 			if nextPipe == nil {
@@ -80,7 +100,7 @@ func (pipelineSvc *PipelineService) TestRun() {
 			}
 
 		case pipeline.Solve:
-			pipelineSvc.solverSvc.Run(lastValue.([]string))
+			pipelineSvc.solverSvc.Run(lastValue.([]string), solveSettings)
 		}
 	})
 }

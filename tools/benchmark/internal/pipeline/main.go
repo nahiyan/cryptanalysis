@@ -5,11 +5,6 @@ const (
 	Solve  = "solve"
 )
 
-const (
-	Slurm   = "slurm"
-	Regular = "regular"
-)
-
 type Type string
 type Platform string
 type Solver string
@@ -35,4 +30,5 @@ type Pipe struct {
 	Platform
 	Solvers []Solver
 	Timeout int
+	Workers int
 }
