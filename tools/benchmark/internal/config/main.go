@@ -15,6 +15,8 @@ type Config struct {
 			SaeedE           string
 			Benchmark        string
 		}
+
+		Database string
 	}
 	Slurm struct {
 		MaxJobs uint

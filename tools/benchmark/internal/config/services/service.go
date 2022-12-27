@@ -36,6 +36,9 @@ func (configSvc *ConfigService) Process() {
 	viper.SetDefault("Paths.Bin.Verifier", "../../encoders/saeed/crypto/verify-md4")
 	viper.SetDefault("Paths.Bin.Benchmark", benchmarkBinAbsPath)
 
+	// Database
+	viper.SetDefault("Paths.Database", "./database")
+
 	// Slurm
 	viper.SetDefault("Slurm.MaxJobs", 1000)
 
