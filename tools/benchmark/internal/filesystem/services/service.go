@@ -3,6 +3,7 @@ package services
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"io"
 	"os"
@@ -60,4 +61,20 @@ func (filesystemSvc *FilesystemService) WriteFromPipe(pipe io.Reader, filePath s
 	}
 
 	return nil
+}
+
+func (filesystemSvc *FilesystemService) Checksum(filePath string) ([]byte, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	hash := sha256.New()
+	_, err = io.Copy(hash, file)
+	if err != nil {
+		return nil, err
+	}
+
+	return hash.Sum(nil), nil
 }

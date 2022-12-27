@@ -1,10 +1,16 @@
 package services
 
-import do "github.com/samber/do"
+import (
+	services "benchmark/internal/error/services"
+	do "github.com/samber/do"
+)
 
-type FilesystemService struct{}
+type FilesystemService struct {
+	errorSvc *services.ErrorService
+}
 
 func NewFilesystemService(injector *do.Injector) (*FilesystemService, error) {
-	svc := &FilesystemService{}
+	errorSvc := do.MustInvoke[*services.ErrorService](injector)
+	svc := &FilesystemService{errorSvc: errorSvc}
 	return svc, nil
 }
