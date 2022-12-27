@@ -10,26 +10,19 @@ import (
 	"strconv"
 )
 
+// Paths
 const (
 	SaeedE           = "saeed_e" // Short for Saeed's Encoder
 	ResultsDirPath   = "./results/"
 	EncodingsDirPath = ResultsDirPath + "encodings/"
 )
 
+// Adders
 const (
 	TwoOperand   = "two_operand"
 	DotMatrix    = "dot_matrix"
 	CounterChain = "counter_chain"
 	Espresso     = "espresso"
-)
-
-const (
-	CryptoMiniSat = "cryptominisat"
-	Cadical       = "cadical"
-	Kissat        = "kissat"
-	MapleSat      = "maplesat"
-	Glucose       = "glucose"
-	XnfSat        = "xnfsat"
 )
 
 func (encoderSvc *EncoderService) GetInstanceName(steps int, adderType pipeline.AdderType, xor int, hash string, dobbertin, dobbertinBits int, cubeIndex *int) string {
@@ -72,21 +65,19 @@ func (encoderSvc *EncoderService) OutputToFile(cmd *exec.Cmd, filePath string) {
 	filesystemSvc := encoderSvc.filesystemSvc
 	errorSvc := encoderSvc.errorSvc
 	instanceName := path.Base(filePath)
+	failureMsg := "Encoding generation failed: " + instanceName
 
 	pipe, err := cmd.StdoutPipe()
-	if err != nil {
-		fmt.Println(err)
-	}
+	errorSvc.Fatal(err, failureMsg)
 
 	err = cmd.Start()
-	errorSvc.Fatal(err, "Encoding generation failed: "+instanceName)
+	errorSvc.Fatal(err, failureMsg)
 
 	err = filesystemSvc.WriteFromPipe(pipe, filePath)
-	errorSvc.Fatal(err, "Encoding generation failed: "+instanceName)
+	errorSvc.Fatal(err, failureMsg)
 
 	err = cmd.Wait()
-	errorSvc.Fatal(err, "Encoding generation failed: "+instanceName)
-
+	errorSvc.Fatal(err, failureMsg)
 }
 
 func (encoderSvc *EncoderService) ResolveSaeedEAdderType(adderType pipeline.AdderType) pipeline.AdderType {
@@ -167,26 +158,10 @@ func (encoderSvc *EncoderService) InvokeSaeedE(variations pipeline.Variation) []
 	return encodings
 }
 
-func (encoderSvc *EncoderService) TestRun() []string {
-	pipe := pipeline.Pipe{
-		Variation: pipeline.Variation{
-			Xor:           []int{0},
-			Dobbertin:     []int{0},
-			DobbertinBits: []int{32},
-			Adders:        []pipeline.AdderType{Espresso},
-			Hashes:        []string{"ffffffffffffffffffffffffffffffff", "00000000000000000000000000000000"},
-			Steps:         []int{16},
-			Solvers:       []pipeline.Solver{Kissat},
-		},
-	}
-
-	return encoderSvc.Run(SaeedE, pipe)
-}
-
-func (encoderSvc *EncoderService) Run(name encoder.Name, pipe pipeline.Pipe) []string {
+func (encoderSvc *EncoderService) Run(name encoder.Name, variation pipeline.Variation) []string {
 	switch name {
 	case SaeedE:
-		return encoderSvc.InvokeSaeedE(pipe.Variation)
+		return encoderSvc.InvokeSaeedE(variation)
 	}
 
 	panic("Encoder not found: " + name)
