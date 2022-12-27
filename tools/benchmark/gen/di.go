@@ -99,12 +99,16 @@ func main() {
 	})
 	GenerateProvider(Provider{
 		Name:          "pipeline",
-		Dependencies:  []string{"encoder"},
+		Dependencies:  []string{"encoder", "solver"},
 		HasProperties: true,
 	})
 	GenerateProvider(Provider{
 		Name:          "schema",
 		Dependencies:  []string{"pipeline"},
 		HasProperties: true,
+	})
+	GenerateProvider(Provider{
+		Name:         "solver",
+		Dependencies: []string{},
 	})
 }
