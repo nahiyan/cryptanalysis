@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"path"
+	"strconv"
 )
 
 const (
@@ -66,6 +68,27 @@ func (encoderSvc *EncoderService) LoopThroughVariation(variations pipeline.Varia
 	}
 }
 
+func (encoderSvc *EncoderService) OutputToFile(cmd *exec.Cmd, filePath string) {
+	filesystemSvc := encoderSvc.filesystemSvc
+	errorSvc := encoderSvc.errorSvc
+	instanceName := path.Base(filePath)
+
+	pipe, err := cmd.StdoutPipe()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	err = cmd.Start()
+	errorSvc.Fatal(err, "Encoding generation failed: "+instanceName)
+
+	err = filesystemSvc.WriteFromPipe(pipe, filePath)
+	errorSvc.Fatal(err, "Encoding generation failed: "+instanceName)
+
+	err = cmd.Wait()
+	errorSvc.Fatal(err, "Encoding generation failed: "+instanceName)
+
+}
+
 func (encoderSvc *EncoderService) ResolveSaeedEAdderType(adderType pipeline.AdderType) pipeline.AdderType {
 	switch adderType {
 	case CounterChain:
@@ -84,7 +107,6 @@ func (encoderSvc *EncoderService) ResolveSaeedEAdderType(adderType pipeline.Adde
 func (encoderSvc *EncoderService) InvokeSaeedE(variations pipeline.Variation) []string {
 	config := &encoderSvc.configSvc.Config
 	filesystemSvc := encoderSvc.filesystemSvc
-	errorSvc := encoderSvc.errorSvc
 
 	// Check if the encoder exists
 	if !filesystemSvc.FileExists(config.Paths.Bin.SaeedE) {
@@ -97,7 +119,7 @@ func (encoderSvc *EncoderService) InvokeSaeedE(variations pipeline.Variation) []
 	encoderSvc.LoopThroughVariation(variations, func(steps int, hash string, xorOption int, adderType pipeline.AdderType, dobbertin, dobbertinBits int) {
 		instanceName := encoderSvc.GetInstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, nil)
 
-		encodingFilePath := fmt.Sprintf("%s%s.cnf", EncodingsDirPath, instanceName)
+		encodingFilePath := path.Join(EncodingsDirPath, instanceName+".cnf")
 		encodings = append(encodings, encodingFilePath)
 
 		// Skip if encoding already exists
@@ -125,17 +147,21 @@ func (encoderSvc *EncoderService) InvokeSaeedE(variations pipeline.Variation) []
 		// * Drive the encoder
 		cmd := exec.Command(
 			config.Paths.Bin.SaeedE,
-			fmt.Sprintf(
-				"%s -A %s -r %d -f md4 -a preimage -t %s%s --bits %d",
-				xorFlag,
-				encoderSvc.ResolveSaeedEAdderType(adderType),
-				steps,
-				hash,
-				dobbertinFlag,
-				dobbertinBits))
-		// outPipe, err := cmd.StdoutPipe()
-
-		errorSvc.CheckWithFatal(cmd.Run(), "Encoding generation failed: "+instanceName)
+			xorFlag,
+			"-A",
+			string(encoderSvc.ResolveSaeedEAdderType(adderType)),
+			"-r",
+			strconv.Itoa(steps),
+			"-f",
+			"md4",
+			"-a",
+			"preimage",
+			"-t",
+			hash,
+			dobbertinFlag,
+			"--bits",
+			strconv.Itoa(dobbertinBits))
+		encoderSvc.OutputToFile(cmd, encodingFilePath)
 	})
 
 	return encodings
@@ -148,7 +174,7 @@ func (encoderSvc *EncoderService) TestRun() []string {
 			Dobbertin:     []int{0},
 			DobbertinBits: []int{32},
 			Adders:        []pipeline.AdderType{Espresso},
-			Hashes:        []string{"ffffffffffffffffffffffffffffffff"},
+			Hashes:        []string{"ffffffffffffffffffffffffffffffff", "00000000000000000000000000000000"},
 			Steps:         []int{16},
 			Solvers:       []pipeline.Solver{Kissat},
 		},
