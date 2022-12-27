@@ -7,6 +7,7 @@ import (
 	filesystemServices "benchmark/internal/filesystem/services"
 	pipelineServices "benchmark/internal/pipeline/services"
 	schemaServices "benchmark/internal/schema/services"
+	solverServices "benchmark/internal/solver/services"
 
 	"github.com/samber/do"
 )
@@ -20,6 +21,7 @@ func InitInjector() *do.Injector {
 	do.Provide(injector, filesystemServices.NewFilesystemService)
 	do.Provide(injector, configServices.NewConfigService)
 	do.Provide(injector, errorServices.NewErrorService)
+	do.Provide(injector, solverServices.NewSolverService)
 
 	return injector
 }
