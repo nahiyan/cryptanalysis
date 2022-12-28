@@ -1,4 +1,4 @@
-//go:generate go run dependency_injection.go
+//go:generate go run dep_injection.go
 
 package main
 

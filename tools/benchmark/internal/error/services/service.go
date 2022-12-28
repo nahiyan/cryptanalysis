@@ -18,12 +18,6 @@ func (errorSvc *ErrorService) Fatal(err error, message string) {
 	}
 }
 
-// func (errorSvc *ErrorService) Panic(err error, handler func(error) string) {
-// 	if err != nil {
-// 		panic("Error:" + handler(err))
-// 	}
-// }
-
 func (errorSvc *ErrorService) Handle(err error, handler func(err error)) {
 	if err != nil {
 		handler(err)
