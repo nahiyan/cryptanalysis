@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/alitto/pond"
+	badger "github.com/dgraph-io/badger/v3"
 )
 
 type Properties struct {
@@ -91,6 +92,27 @@ func (solverSvc *SolverService) Loop(handler func(encoding string, solver solver
 	}
 }
 
+func (solverSvc *SolverService) ShouldSkip(encoding string, solver_ string) bool {
+	solutionSvc := solverSvc.solutionSvc
+	errorSvc := solverSvc.errorSvc
+
+	solution, err := solutionSvc.Find(encoding)
+	if err != nil && err != badger.ErrKeyNotFound {
+		errorSvc.Fatal(err, "Solver: failed to search the solution")
+	}
+
+	if err == nil && (solution.Result == consts.Sat || solution.Result == consts.Unsat) {
+		return true
+	}
+
+	// 10 seconds is the threshold
+	if err == nil && solution.Result == consts.Fail && (solverSvc.Settings.Timeout.Seconds()-solution.Runtime.Seconds()) < 10 {
+		return true
+	}
+
+	return false
+}
+
 func (solverSvc *SolverService) RunSlurm() {
 
 }
@@ -98,14 +120,28 @@ func (solverSvc *SolverService) RunSlurm() {
 func (solverSvc *SolverService) RunRegular() {
 	solutionSvc := solverSvc.solutionSvc
 
-	fmt.Println("Solver: Started")
+	fmt.Println("Solver: started")
 
 	pool := pond.New(solverSvc.Settings.Workers, 1000)
 	solverSvc.Loop(func(encoding string, solver_ solver.Solver) {
+		if solverSvc.ShouldSkip(encoding, string(solver_)) {
+			fmt.Println("Solver: skipped", encoding, "with "+string(solver_))
+		}
+
 		pool.Submit(func() {
+			// Invoke
 			runtime, result := solverSvc.Invoke(encoding, solver_)
 
-			// TODO: Store in database
+			resultString := "Fail"
+			if result == consts.Sat {
+				resultString = "SAT"
+			} else if result == consts.Unsat {
+				resultString = "UNSAT"
+			}
+
+			fmt.Println("Solver:", solver_, resultString, runtime, encoding)
+
+			// Store in the database
 			solutionSvc.Register(encoding, solver.Solution{
 				Runtime: runtime,
 				Result:  result,
@@ -114,7 +150,7 @@ func (solverSvc *SolverService) RunRegular() {
 	})
 	pool.StopAndWait()
 
-	fmt.Println("Solver: Stopped")
+	fmt.Println("Solver: stopped")
 }
 
 func (solverSvc *SolverService) Run(encodings []string, settings solver.Settings) {

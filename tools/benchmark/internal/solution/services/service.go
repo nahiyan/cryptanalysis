@@ -16,17 +16,30 @@ func (solutionSvc *SolutionService) Init() {
 	solutionSvc.Bucket = "solutions"
 }
 
-// func (solutionSvc *SolutionService) Find(encoding string) (solver.Result, error) {
-// 	filesystemSvc := solutionSvc.filesystemSvc
-// 	databaseSvc := solutionSvc.databaseSvc
+func (solutionSvc *SolutionService) Find(encoding string) (solver.Solution, error) {
+	filesystemSvc := solutionSvc.filesystemSvc
+	databaseSvc := solutionSvc.databaseSvc
 
-// 	checksum, err := filesystemSvc.Checksum(encoding)
-// 	if err != nil {
-// 		return solver.Result(0), err
-// 	}
+	checksum, err := filesystemSvc.Checksum(encoding)
+	if err != nil {
+		return solver.Solution{}, err
+	}
 
-// 	databaseSvc.Get(solutionSvc.Bucket, checksum)
-// }
+	data, err := databaseSvc.Get(solutionSvc.Bucket, checksum)
+	if err != nil {
+		return solver.Solution{}, err
+	}
+
+	buffer := bytes.NewBuffer(data)
+	decoder := gob.NewDecoder(buffer)
+
+	solution := solver.Solution{}
+	if err := decoder.Decode(&solution); err != nil {
+		return solver.Solution{}, err
+	}
+
+	return solution, nil
+}
 
 func (solutionSvc *SolutionService) Register(encoding string, solution solver.Solution) error {
 	databaseSvc := solutionSvc.databaseSvc

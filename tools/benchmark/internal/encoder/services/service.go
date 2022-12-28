@@ -115,7 +115,7 @@ func (encoderSvc *EncoderService) InvokeSaeedE(variations pipeline.Variation) []
 
 		// Skip if encoding already exists
 		if encoderSvc.filesystemSvc.FileExists(encodingFilePath) {
-			fmt.Println("Encoding already exists:", encodingFilePath)
+			fmt.Println("Encode: skipped", encodingFilePath)
 			return
 		}
 
