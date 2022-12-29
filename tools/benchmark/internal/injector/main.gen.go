@@ -7,7 +7,9 @@ import (
 	services2 "benchmark/internal/error/services"
 	services3 "benchmark/internal/filesystem/services"
 	services4 "benchmark/internal/pipeline/services"
+	services10 "benchmark/internal/random/services"
 	services5 "benchmark/internal/schema/services"
+	services9 "benchmark/internal/slurm/services"
 	services8 "benchmark/internal/solution/services"
 	services6 "benchmark/internal/solver/services"
 	do "github.com/samber/do"
@@ -24,5 +26,7 @@ func New() *do.Injector {
 	do.Provide(injector, services6.NewSolverService)
 	do.Provide(injector, services7.NewDatabaseService)
 	do.Provide(injector, services8.NewSolutionService)
+	do.Provide(injector, services9.NewSlurmService)
+	do.Provide(injector, services10.NewRandomService)
 	return injector
 }
