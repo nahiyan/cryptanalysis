@@ -11,7 +11,7 @@ import (
 func initRunCmd() *cobra.Command {
 	schemaFilePath := ""
 
-	runCmd := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Run the benchmark based on the defined pipeline",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -21,7 +21,7 @@ func initRunCmd() *cobra.Command {
 		},
 	}
 
-	runCmd.Flags().StringVarP(&schemaFilePath, "schema", "s", "schema.toml", "A schema is a TOML file that holds the pipelines for the benchmark")
+	cmd.Flags().StringVarP(&schemaFilePath, "schema", "s", "schema.toml", "A schema is a TOML file that holds the pipelines for the benchmark")
 
-	return runCmd
+	return cmd
 }
