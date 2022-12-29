@@ -1,6 +1,8 @@
 package solver
 
-import "time"
+import (
+	"time"
+)
 
 type Solver string
 type Platform int
@@ -16,4 +18,5 @@ type Settings struct {
 type Solution struct {
 	Runtime time.Duration
 	Result  Result
+	Solver  Solver
 }

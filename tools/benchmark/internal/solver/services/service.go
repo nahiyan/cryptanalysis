@@ -2,6 +2,7 @@ package services
 
 import (
 	"benchmark/internal/consts"
+	errorModule "benchmark/internal/error"
 	"benchmark/internal/solver"
 	"context"
 	"fmt"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/alitto/pond"
-	badger "github.com/dgraph-io/badger/v3"
 )
 
 type Properties struct {
@@ -96,8 +96,8 @@ func (solverSvc *SolverService) ShouldSkip(encoding string, solver_ string) bool
 	solutionSvc := solverSvc.solutionSvc
 	errorSvc := solverSvc.errorSvc
 
-	solution, err := solutionSvc.Find(encoding)
-	if err != nil && err != badger.ErrKeyNotFound {
+	solution, err := solutionSvc.Find(encoding, solver_)
+	if err != nil && err != errorModule.ErrKeyNotFound {
 		errorSvc.Fatal(err, "Solver: failed to search the solution")
 	}
 
@@ -126,7 +126,6 @@ func (solverSvc *SolverService) RunSlurm() {
 	})
 
 	timeout := int(solverSvc.Settings.Timeout.Seconds())
-
 	jobFilePath, err := slurmSvc.GenerateSlurmJob(
 		1,
 		1,
@@ -164,9 +163,10 @@ func (solverSvc *SolverService) RunRegular() {
 			fmt.Println("Solver:", solver_, resultString, runtime, encoding)
 
 			// Store in the database
-			solutionSvc.Register(encoding, solver.Solution{
+			solutionSvc.Register(encoding, solver_, solver.Solution{
 				Runtime: runtime,
 				Result:  result,
+				Solver:  solver_,
 			})
 		})
 	})
