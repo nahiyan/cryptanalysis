@@ -16,7 +16,7 @@ func (solutionSvc *SolutionService) Init() {
 	solutionSvc.Bucket = "solutions"
 }
 
-func (solutionSvc *SolutionService) Find(encoding string) (solver.Solution, error) {
+func (solutionSvc *SolutionService) Find(encoding string, solver_ string) (solver.Solution, error) {
 	filesystemSvc := solutionSvc.filesystemSvc
 	databaseSvc := solutionSvc.databaseSvc
 
@@ -25,7 +25,9 @@ func (solutionSvc *SolutionService) Find(encoding string) (solver.Solution, erro
 		return solver.Solution{}, err
 	}
 
-	data, err := databaseSvc.Get(solutionSvc.Bucket, checksum)
+	key := checksum
+	key = append(key, []byte("_"+solver_)...)
+	data, err := databaseSvc.Get(solutionSvc.Bucket, key)
 	if err != nil {
 		return solver.Solution{}, err
 	}
@@ -41,7 +43,7 @@ func (solutionSvc *SolutionService) Find(encoding string) (solver.Solution, erro
 	return solution, nil
 }
 
-func (solutionSvc *SolutionService) Register(encoding string, solution solver.Solution) error {
+func (solutionSvc *SolutionService) Register(encoding string, solver_ solver.Solver, solution solver.Solution) error {
 	databaseSvc := solutionSvc.databaseSvc
 	filesystemSvc := solutionSvc.filesystemSvc
 
@@ -56,7 +58,10 @@ func (solutionSvc *SolutionService) Register(encoding string, solution solver.So
 		return err
 	}
 
-	if err := databaseSvc.Set(solutionSvc.Bucket, checksum, buffer.Bytes()); err != nil {
+	key := checksum
+	key = append(key, []byte("_"+solver_)...)
+
+	if err := databaseSvc.Set(solutionSvc.Bucket, key, buffer.Bytes()); err != nil {
 		return err
 	}
 
