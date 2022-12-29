@@ -62,6 +62,19 @@ func (databaseSvc *DatabaseService) Set(bucket string, key []byte, value []byte)
 	return err
 }
 
+func (databaseSvc *DatabaseService) RemoveAll(bucket string) error {
+	err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
+		if err := tx.DeleteBucket([]byte(bucket)); err != nil {
+			return err
+		}
+
+		_, err := tx.CreateBucket([]byte(bucket))
+		return err
+	})
+
+	return err
+}
+
 func (databaseSvc *DatabaseService) Get(bucket string, key []byte) ([]byte, error) {
 	var value []byte
 	err := databaseSvc.db.View(func(tx *bolt.Tx) error {

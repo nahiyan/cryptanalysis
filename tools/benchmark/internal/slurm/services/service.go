@@ -15,13 +15,18 @@ func (slurmSvc *SlurmService) Init() {
 	slurmSvc.Bucket = "tasks"
 }
 
-func (slurmSvc *SlurmService) AddTask(task slurm.Task) error {
+func (slurmSvc *SlurmService) RemoveAll() error {
+	err := slurmSvc.databaseSvc.RemoveAll(slurmSvc.Bucket)
+	return err
+}
+
+func (slurmSvc *SlurmService) AddTask(id int, task slurm.Task) error {
 	data, err := slurmSvc.marshallingSvc.BinEncode(task)
 	if err != nil {
 		return err
 	}
 
-	err = slurmSvc.databaseSvc.Set(slurmSvc.Bucket, nil, data)
+	err = slurmSvc.databaseSvc.Set(slurmSvc.Bucket, []byte(strconv.Itoa(id)), data)
 	return err
 }
 
