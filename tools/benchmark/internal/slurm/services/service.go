@@ -41,10 +41,10 @@ func (slurmSvc *SlurmService) GetTask(id int) (slurm.Task, error) {
 	return task, err
 }
 
-func (slurmSvc *SlurmService) GenerateJob(nodes, cpuCores, memory, timeout int, command string) (string, error) {
+func (slurmSvc *SlurmService) GenerateJob(numTasks, maxConcurrentTasks, nodes, cpuCores, memory, timeout int, command string) (string, error) {
 	randomSvc := slurmSvc.randomSvc
 	config := slurmSvc.configSvc.Config
-	commandTmpl := "#!/bin/bash\n#SBATCH --nodes={{.Nodes}}\n#SBATCH --cpus-per-task={{.CpuCores}}\n#SBATCH --mem={{.Memory}}M\n#SBATCH --time=00:{{.GlobalTimeout}}\n\n{{.Command}}\n"
+	commandTmpl := "#!/bin/bash\n#SBATCH --nodes={{.Nodes}}\n#SBATCH --cpus-per-task={{.CpuCores}}\n#SBATCH --mem={{.Memory}}M\n#SBATCH --time=00:{{.GlobalTimeout}}\n#SBATCH --array=1-{{.NumTasks}}%{{.MaxConcurrentTasks}}\n\n{{.Command}}\n"
 
 	tmpl, err := template.New("tmpl").Parse(commandTmpl)
 	if err != nil {
@@ -62,13 +62,15 @@ func (slurmSvc *SlurmService) GenerateJob(nodes, cpuCores, memory, timeout int, 
 	defer jobFile.Close()
 
 	if err := tmpl.Execute(jobFile, map[string]interface{}{
-		"Nodes":         nodes,
-		"CpuCores":      cpuCores,
-		"Memory":        memory,
-		"Timeout":       timeout,
-		"GlobalTimeout": timeout + 5, // 5 extra seconds to gracefully shutdown
-		"BenchmarkBin":  config.Paths.Bin.Benchmark,
-		"Command":       command,
+		"Nodes":              nodes,
+		"CpuCores":           cpuCores,
+		"Memory":             memory,
+		"Timeout":            timeout,
+		"GlobalTimeout":      timeout + 5, // 5 extra seconds to gracefully shutdown
+		"BenchmarkBin":       config.Paths.Bin.Benchmark,
+		"Command":            command,
+		"NumTasks":           numTasks,
+		"MaxConcurrentTasks": maxConcurrentTasks,
 	}); err != nil {
 		return "", err
 	}

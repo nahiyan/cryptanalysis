@@ -147,8 +147,11 @@ func (solverSvc *SolverService) RunSlurm() {
 
 	fmt.Println("Solver: added", counter-1, "slurm tasks")
 
+	numTasks := counter
 	timeout := int(solverSvc.Settings.Timeout.Seconds())
 	jobFilePath, err := slurmSvc.GenerateJob(
+		numTasks,
+		config.Slurm.MaxJobs,
 		1,
 		1,
 		300,
