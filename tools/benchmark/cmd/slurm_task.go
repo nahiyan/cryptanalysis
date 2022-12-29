@@ -1,30 +1,39 @@
 package cmd
 
 import (
+	errorModule "benchmark/internal/error"
 	"benchmark/internal/injector"
+	slurmServices "benchmark/internal/slurm/services"
 	"benchmark/internal/solver"
-	solverSvc "benchmark/internal/solver/services"
+	solverServices "benchmark/internal/solver/services"
+	"log"
 
 	"github.com/samber/do"
 	"github.com/spf13/cobra"
 )
 
 func initSlurmTaskCmd() *cobra.Command {
-	var encoding, solver_ string
-	var taskId, timeout int
+	var taskId int
 
 	cmd := &cobra.Command{
 		Use:   "slurm-task",
-		Short: "Solve slurm task",
+		Short: "Run Slurm task",
 		Run: func(cmd *cobra.Command, args []string) {
 			injector := injector.New()
-			solverSvc := do.MustInvoke[*solverSvc.SolverService](injector)
-			solverSvc.Invoke(encoding, solver.Solver(solver_))
+			slurmSvc := do.MustInvoke[*slurmServices.SlurmService](injector)
+			solverSvc := do.MustInvoke[*solverServices.SolverService](injector)
+
+			task, err := slurmSvc.GetTask(taskId)
+			if err != nil && err == errorModule.ErrKeyNotFound {
+				log.Fatal("Task ID not found")
+			}
+
+			solverSvc.Settings.Timeout = task.Timeout
+			solverSvc.Invoke(task.Encoding, solver.Solver(task.Solver))
 		},
 	}
 
 	cmd.Flags().IntVarP(&taskId, "job-id", "j", 1, "ID of the job/task")
-	cmd.Flags().IntVarP(&timeout, "timeout", "t", 5000, "Timeout in seconds")
 
 	return cmd
 }
