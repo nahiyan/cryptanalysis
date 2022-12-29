@@ -6,6 +6,7 @@ import (
 	services1 "benchmark/internal/encoder/services"
 	services2 "benchmark/internal/error/services"
 	services3 "benchmark/internal/filesystem/services"
+	services11 "benchmark/internal/marshalling/services"
 	services4 "benchmark/internal/pipeline/services"
 	services10 "benchmark/internal/random/services"
 	services5 "benchmark/internal/schema/services"
@@ -28,5 +29,6 @@ func New() *do.Injector {
 	do.Provide(injector, services8.NewSolutionService)
 	do.Provide(injector, services9.NewSlurmService)
 	do.Provide(injector, services10.NewRandomService)
+	do.Provide(injector, services11.NewMarshallingService)
 	return injector
 }
