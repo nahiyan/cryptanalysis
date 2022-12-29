@@ -2,6 +2,7 @@ package services
 
 import (
 	errorModule "benchmark/internal/error"
+	"strconv"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -12,10 +13,14 @@ type Properties struct {
 }
 
 func (databaseSvc *DatabaseService) CreateBuckets() error {
+	buckets := []string{"solutions", "tasks"}
+
 	err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte("solutions"))
-		if err != nil {
-			return err
+		for _, bucket := range buckets {
+			_, err := tx.CreateBucketIfNotExists([]byte(bucket))
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil
