@@ -114,7 +114,28 @@ func (solverSvc *SolverService) ShouldSkip(encoding string, solver_ string) bool
 }
 
 func (solverSvc *SolverService) RunSlurm() {
+	slurmSvc := solverSvc.slurmSvc
+	errorSvc := solverSvc.errorSvc
+	config := solverSvc.configSvc.Config
 
+	solverSvc.Loop(func(encoding string, solver_ solver.Solver) {
+		if solverSvc.ShouldSkip(encoding, string(solver_)) {
+			fmt.Println("Solver: skipped", encoding, "with "+string(solver_))
+			return
+		}
+	})
+
+	timeout := int(solverSvc.Settings.Timeout.Seconds())
+
+	jobFilePath, err := slurmSvc.GenerateSlurmJob(
+		1,
+		1,
+		300,
+		timeout,
+		fmt.Sprintf("%s slurm-task -j ${SLURM_ARRAY_TASK_ID} -t %d", config.Paths.Bin.Benchmark, timeout))
+	errorSvc.Fatal(err, "Solver: failed to create slurm job file")
+
+	fmt.Println(jobFilePath)
 }
 
 func (solverSvc *SolverService) RunRegular() {
@@ -122,10 +143,11 @@ func (solverSvc *SolverService) RunRegular() {
 
 	fmt.Println("Solver: started")
 
-	pool := pond.New(solverSvc.Settings.Workers, 1000)
+	pool := pond.New(solverSvc.Settings.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 	solverSvc.Loop(func(encoding string, solver_ solver.Solver) {
 		if solverSvc.ShouldSkip(encoding, string(solver_)) {
 			fmt.Println("Solver: skipped", encoding, "with "+string(solver_))
+			return
 		}
 
 		pool.Submit(func() {
