@@ -98,15 +98,21 @@ func (solverSvc *SolverService) ShouldSkip(encoding string, solver_ solver.Solve
 	errorSvc := solverSvc.errorSvc
 
 	solution, err := solutionSvc.Find(encoding, solver_)
-	if err != nil && err != errorModule.ErrKeyNotFound {
-		errorSvc.Fatal(err, "Solver: failed to search the solution")
+
+	// Don't skip if there is no solution
+	if err == errorModule.ErrKeyNotFound {
+		return false
 	}
 
+	// Handle errors
+	errorSvc.Fatal(err, "Solver: failed to search the solution")
+
+	// Skip solved solutions
 	if err == nil && (solution.Result == consts.Sat || solution.Result == consts.Unsat) {
 		return true
 	}
 
-	// 10 seconds is the threshold
+	// Skip failed solutions: 10 seconds is the threshold
 	if err == nil && solution.Result == consts.Fail && (solverSvc.Settings.Timeout.Seconds()-solution.Runtime.Seconds()) < 10 {
 		return true
 	}
