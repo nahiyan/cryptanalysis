@@ -44,6 +44,17 @@ func (databaseSvc *DatabaseService) Init() {
 func (databaseSvc *DatabaseService) Set(bucket string, key []byte, value []byte) error {
 	err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucket))
+
+		// Set key to auto-incrementing ID if empty
+		if key == nil {
+			id, err := b.NextSequence()
+			if err != nil {
+				return err
+			}
+
+			key = []byte(strconv.Itoa(int(id)))
+		}
+
 		err := b.Put([]byte(key), []byte(value))
 		return err
 	})
