@@ -349,7 +349,7 @@ func init() {
 
 	// Commands
 	rootCmd.AddCommand(initRunCmd())
-	// rootCmd.AddCommand(slurmCmd)
+	rootCmd.AddCommand(initSlurmTaskCmd())
 	// rootCmd.AddCommand(simplifyCmd)
 	// rootCmd.AddCommand(reconstructCmd)
 	// rootCmd.AddCommand(genSubProblemCmd)
@@ -360,7 +360,4 @@ func Execute() {
 		fmt.Fprintf(os.Stderr, "Whoops. There was an error while executing your CLI '%s'", err)
 		os.Exit(1)
 	}
-
-	// Process the configuration from config.toml
-	// container.InitInjector()
 }
