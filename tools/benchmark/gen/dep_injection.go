@@ -44,7 +44,6 @@ func explodeType(type_ Type) explodedType {
 }
 
 func GenerateProvider(provider Provider) {
-
 	f := j.NewFile("services")
 
 	// Define the struct
@@ -177,7 +176,7 @@ func main() {
 		},
 		{
 			Name:          "solver",
-			Dependencies:  []string{"config", "filesystem", "error", "solution"},
+			Dependencies:  []string{"config", "filesystem", "error", "solution", "slurm"},
 			HasProperties: true,
 		},
 		{
@@ -192,6 +191,16 @@ func main() {
 			Type:            Service,
 			HasInitFunction: true,
 			HasProperties:   true,
+		},
+		{
+			Name:         "slurm",
+			Dependencies: []string{"error", "database", "config", "random"},
+			Type:         Service,
+		},
+		{
+			Name:         "random",
+			Dependencies: []string{"error"},
+			Type:         Service,
 		},
 	}
 
