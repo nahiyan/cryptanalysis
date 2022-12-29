@@ -29,7 +29,7 @@ func initSlurmTaskCmd() *cobra.Command {
 			}
 
 			solverSvc.Settings.Timeout = task.Timeout
-			solverSvc.Invoke(task.Encoding, solver.Solver(task.Solver))
+			solverSvc.TrackedInvoke(task.Encoding, solver.Solver(task.Solver))
 		},
 	}
 

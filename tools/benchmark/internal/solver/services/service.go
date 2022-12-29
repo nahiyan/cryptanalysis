@@ -119,18 +119,27 @@ func (solverSvc *SolverService) RunSlurm() {
 	errorSvc := solverSvc.errorSvc
 	config := solverSvc.configSvc.Config
 
+	err := slurmSvc.RemoveAll()
+	errorSvc.Fatal(err, "Solver: failed to clear slurm tasks")
+
+	counter := 1
 	solverSvc.Loop(func(encoding string, solver_ solver.Solver) {
 		if solverSvc.ShouldSkip(encoding, solver_) {
 			fmt.Println("Solver: skipped", encoding, "with "+string(solver_))
 			return
 		}
 
-		solverSvc.slurmSvc.AddTask(slurm.Task{
+		err := solverSvc.slurmSvc.AddTask(counter, slurm.Task{
 			Encoding: encoding,
 			Solver:   solver_,
 			Timeout:  solverSvc.Settings.Timeout,
 		})
+		errorSvc.Fatal(err, "Solver: failed to add slurm task")
+
+		counter++
 	})
+
+	fmt.Println("Solver: added", counter-1, "slurm tasks")
 
 	timeout := int(solverSvc.Settings.Timeout.Seconds())
 	jobFilePath, err := slurmSvc.GenerateJob(
@@ -144,8 +153,30 @@ func (solverSvc *SolverService) RunSlurm() {
 	fmt.Println(jobFilePath)
 }
 
-func (solverSvc *SolverService) RunRegular() {
+func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.Solver) {
 	solutionSvc := solverSvc.solutionSvc
+
+	// Invoke
+	runtime, result := solverSvc.Invoke(encoding, solver_)
+
+	resultString := "Fail"
+	if result == consts.Sat {
+		resultString = "SAT"
+	} else if result == consts.Unsat {
+		resultString = "UNSAT"
+	}
+
+	fmt.Println("Solver:", solver_, resultString, runtime, encoding)
+
+	// Store in the database
+	solutionSvc.Register(encoding, solver_, solver.Solution{
+		Runtime: runtime,
+		Result:  result,
+		Solver:  solver_,
+	})
+}
+
+func (solverSvc *SolverService) RunRegular() {
 
 	fmt.Println("Solver: started")
 
@@ -157,24 +188,7 @@ func (solverSvc *SolverService) RunRegular() {
 		}
 
 		pool.Submit(func() {
-			// Invoke
-			runtime, result := solverSvc.Invoke(encoding, solver_)
-
-			resultString := "Fail"
-			if result == consts.Sat {
-				resultString = "SAT"
-			} else if result == consts.Unsat {
-				resultString = "UNSAT"
-			}
-
-			fmt.Println("Solver:", solver_, resultString, runtime, encoding)
-
-			// Store in the database
-			solutionSvc.Register(encoding, solver_, solver.Solution{
-				Runtime: runtime,
-				Result:  result,
-				Solver:  solver_,
-			})
+			solverSvc.TrackedInvoke(encoding, solver_)
 		})
 	})
 	pool.StopAndWait()
