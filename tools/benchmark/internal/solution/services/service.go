@@ -2,8 +2,6 @@ package services
 
 import (
 	"benchmark/internal/solver"
-	"bytes"
-	"encoding/gob"
 )
 
 // TODO: Should use a repository for DB operations
@@ -16,7 +14,7 @@ func (solutionSvc *SolutionService) Init() {
 	solutionSvc.Bucket = "solutions"
 }
 
-func (solutionSvc *SolutionService) Find(encoding string, solver_ string) (solver.Solution, error) {
+func (solutionSvc *SolutionService) Find(encoding string, solver_ solver.Solver) (solver.Solution, error) {
 	filesystemSvc := solutionSvc.filesystemSvc
 	databaseSvc := solutionSvc.databaseSvc
 
@@ -25,19 +23,15 @@ func (solutionSvc *SolutionService) Find(encoding string, solver_ string) (solve
 		return solver.Solution{}, err
 	}
 
-	key := checksum
-	key = append(key, []byte("_"+solver_)...)
+	key := []byte(checksum + "_" + string(solver_))
 	data, err := databaseSvc.Get(solutionSvc.Bucket, key)
 	if err != nil {
 		return solver.Solution{}, err
 	}
 
-	buffer := bytes.NewBuffer(data)
-	decoder := gob.NewDecoder(buffer)
-
 	solution := solver.Solution{}
-	if err := decoder.Decode(&solution); err != nil {
-		return solver.Solution{}, err
+	if err := solutionSvc.marshallingSvc.BinDecode(data, &solution); err != nil {
+		return solution, err
 	}
 
 	return solution, nil
@@ -52,16 +46,13 @@ func (solutionSvc *SolutionService) Register(encoding string, solver_ solver.Sol
 		return err
 	}
 
-	var buffer bytes.Buffer
-	encoder := gob.NewEncoder(&buffer)
-	if err := encoder.Encode(solution); err != nil {
+	value, err := solutionSvc.marshallingSvc.BinEncode(solution)
+	if err != nil {
 		return err
 	}
 
-	key := checksum
-	key = append(key, []byte("_"+solver_)...)
-
-	if err := databaseSvc.Set(solutionSvc.Bucket, key, buffer.Bytes()); err != nil {
+	key := []byte(checksum + "_" + string(solver_))
+	if err := databaseSvc.Set(solutionSvc.Bucket, key, value); err != nil {
 		return err
 	}
 
