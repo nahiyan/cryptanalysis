@@ -1,25 +1,45 @@
 package services
 
 import (
-	badger "github.com/dgraph-io/badger/v3"
+	errorModule "benchmark/internal/error"
+	"time"
+
+	"github.com/boltdb/bolt"
 )
 
 type Properties struct {
-	db *badger.DB
+	db *bolt.DB
+}
+
+func (databaseSvc *DatabaseService) CreateBuckets() error {
+	err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte("solutions"))
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	return err
 }
 
 func (databaseSvc *DatabaseService) Init() {
 	errorSvc := databaseSvc.errorSvc
-	config := databaseSvc.configSvc.Config
-
-	db, err := badger.Open(badger.DefaultOptions(config.Paths.Database).WithValueLogFileSize(1024 * 1024 * 1))
+	db, err := bolt.Open("database.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
 	errorSvc.Fatal(err, "Database: failed to open")
 	databaseSvc.db = db
+
+	{
+		err := databaseSvc.CreateBuckets()
+		errorSvc.Fatal(err, "Database: failed to create buckets")
+	}
 }
 
 func (databaseSvc *DatabaseService) Set(bucket string, key []byte, value []byte) error {
-	err := databaseSvc.db.Update(func(txn *badger.Txn) error {
-		err := txn.Set(key, value)
+	err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bucket))
+		err := b.Put([]byte(key), []byte(value))
 		return err
 	})
 
@@ -27,22 +47,21 @@ func (databaseSvc *DatabaseService) Set(bucket string, key []byte, value []byte)
 }
 
 func (databaseSvc *DatabaseService) Get(bucket string, key []byte) ([]byte, error) {
-	value := []byte{}
+	var value []byte
+	err := databaseSvc.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bucket))
 
-	err := databaseSvc.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
-		if err != nil {
-			return err
+		value_ := b.Get([]byte(key))
+
+		// Treat empty value as non-existent
+		if len(value_) == 0 {
+			value = []byte{}
+			return errorModule.ErrKeyNotFound
 		}
 
-		err = item.Value(func(value_ []byte) error {
-			value = value_
-
-			return nil
-		})
-		if err != nil {
-			return err
-		}
+		// Copy the byte slice since BoltDB is a zero-copy database and the memory allocation may get reclaimed
+		value = make([]byte, len(value_))
+		copy(value, value_)
 
 		return nil
 	})
