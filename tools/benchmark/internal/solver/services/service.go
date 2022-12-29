@@ -3,6 +3,7 @@ package services
 import (
 	"benchmark/internal/consts"
 	errorModule "benchmark/internal/error"
+	"benchmark/internal/slurm"
 	"benchmark/internal/solver"
 	"context"
 	"fmt"
@@ -92,7 +93,7 @@ func (solverSvc *SolverService) Loop(handler func(encoding string, solver solver
 	}
 }
 
-func (solverSvc *SolverService) ShouldSkip(encoding string, solver_ string) bool {
+func (solverSvc *SolverService) ShouldSkip(encoding string, solver_ solver.Solver) bool {
 	solutionSvc := solverSvc.solutionSvc
 	errorSvc := solverSvc.errorSvc
 
@@ -119,14 +120,20 @@ func (solverSvc *SolverService) RunSlurm() {
 	config := solverSvc.configSvc.Config
 
 	solverSvc.Loop(func(encoding string, solver_ solver.Solver) {
-		if solverSvc.ShouldSkip(encoding, string(solver_)) {
+		if solverSvc.ShouldSkip(encoding, solver_) {
 			fmt.Println("Solver: skipped", encoding, "with "+string(solver_))
 			return
 		}
+
+		solverSvc.slurmSvc.AddTask(slurm.Task{
+			Encoding: encoding,
+			Solver:   solver_,
+			Timeout:  solverSvc.Settings.Timeout,
+		})
 	})
 
 	timeout := int(solverSvc.Settings.Timeout.Seconds())
-	jobFilePath, err := slurmSvc.GenerateSlurmJob(
+	jobFilePath, err := slurmSvc.GenerateJob(
 		1,
 		1,
 		300,
@@ -144,7 +151,7 @@ func (solverSvc *SolverService) RunRegular() {
 
 	pool := pond.New(solverSvc.Settings.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 	solverSvc.Loop(func(encoding string, solver_ solver.Solver) {
-		if solverSvc.ShouldSkip(encoding, string(solver_)) {
+		if solverSvc.ShouldSkip(encoding, solver_) {
 			fmt.Println("Solver: skipped", encoding, "with "+string(solver_))
 			return
 		}
