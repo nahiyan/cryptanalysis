@@ -6,6 +6,7 @@ import (
 	slurmServices "benchmark/internal/slurm/services"
 	"benchmark/internal/solver"
 	solverServices "benchmark/internal/solver/services"
+	"fmt"
 	"log"
 
 	"github.com/samber/do"
@@ -26,6 +27,11 @@ func initSlurmTaskCmd() *cobra.Command {
 			task, err := slurmSvc.GetTask(taskId)
 			if err != nil && err == errorModule.ErrKeyNotFound {
 				log.Fatal("Task ID not found")
+			}
+
+			if solverSvc.ShouldSkip(task.Encoding, task.Solver) {
+				fmt.Println("Slurk task: skipped", task.Solver, task.Encoding)
+				return
 			}
 
 			solverSvc.Settings.Timeout = task.Timeout
