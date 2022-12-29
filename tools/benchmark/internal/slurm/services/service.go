@@ -1,11 +1,42 @@
 package services
 
 import (
+	"benchmark/internal/slurm"
 	"os"
+	"strconv"
 	"text/template"
 )
 
-func (slurmSvc *SlurmService) GenerateSlurmJob(nodes, cpuCores, memory, timeout int, command string) (string, error) {
+type Properties struct {
+	Bucket string
+}
+
+func (slurmSvc *SlurmService) Init() {
+	slurmSvc.Bucket = "tasks"
+}
+
+func (slurmSvc *SlurmService) AddTask(task slurm.Task) error {
+	data, err := slurmSvc.marshallingSvc.BinEncode(task)
+	if err != nil {
+		return err
+	}
+
+	err = slurmSvc.databaseSvc.Set(slurmSvc.Bucket, nil, data)
+	return err
+}
+
+func (slurmSvc *SlurmService) GetTask(id int) (slurm.Task, error) {
+	task := slurm.Task{}
+	data, err := slurmSvc.databaseSvc.Get(slurmSvc.Bucket, []byte(strconv.Itoa(id)))
+	if err != nil {
+		return task, err
+	}
+
+	err = slurmSvc.marshallingSvc.BinDecode(data, &task)
+	return task, err
+}
+
+func (slurmSvc *SlurmService) GenerateJob(nodes, cpuCores, memory, timeout int, command string) (string, error) {
 	randomSvc := slurmSvc.randomSvc
 	config := slurmSvc.configSvc.Config
 	commandTmpl := "#!/bin/bash\n#SBATCH --nodes={{.Nodes}}\n#SBATCH --cpus-per-task={{.CpuCores}}\n#SBATCH --mem={{.Memory}}M\n#SBATCH --time=00:{{.GlobalTimeout}}\n\n{{.Command}}\n"
