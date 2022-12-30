@@ -6,7 +6,6 @@ import (
 	"benchmark/internal/pipeline"
 	"benchmark/internal/solver"
 	"fmt"
-	"time"
 )
 
 const (
@@ -28,6 +27,8 @@ func getInputType(pipe *pipeline.Pipe) InputOutputType {
 		return None
 	case pipeline.Solve:
 		return ListOfEncodings
+	case pipeline.Cube:
+		return ListOfEncodings
 	}
 
 	return None
@@ -38,6 +39,8 @@ func getOutputType(pipe *pipeline.Pipe) InputOutputType {
 	case pipeline.Encode:
 		return ListOfEncodings
 	case pipeline.Solve:
+		return ListOfSolutions
+	case pipeline.Cube:
 		return ListOfSolutions
 	}
 
@@ -80,12 +83,16 @@ func (pipelineSvc *PipelineService) TestRun() {
 		Steps:         []int{16},
 	}
 
-	solveSettings := solver.Settings{
+	solveSettings := pipeline.Solving{
 		Solvers:  []solver.Solver{consts.Kissat, consts.MapleSat},
-		Timeout:  time.Duration(time.Second * 5),
-		Platform: consts.Regular,
+		Timeout:  5,
+		Platform: consts.Slurm,
 		Workers:  16,
 	}
+
+	// cubeSettings := pipeline.Cubing{
+	// 	Platform: consts.Regular,
+	// }
 
 	var lastValue interface{}
 
@@ -101,6 +108,8 @@ func (pipelineSvc *PipelineService) TestRun() {
 
 		case pipeline.Solve:
 			pipelineSvc.solverSvc.Run(lastValue.([]string), solveSettings)
+			// case pipeline.Cube:
+			// 	pipelineSvc.cuberSvc.Run(lastValue.([]string))
 		}
 	})
 }
