@@ -10,8 +10,8 @@ const (
 )
 
 const (
-	Regular = iota
-	Slurm
+	General = "general"
+	Slurm   = "slurm"
 )
 
 const (

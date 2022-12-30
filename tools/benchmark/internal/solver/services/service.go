@@ -211,7 +211,7 @@ func (solverSvc *SolverService) Run(encodings []string, parameters pipeline.Solv
 	solverSvc.Parameters = parameters
 
 	switch parameters.Platform {
-	case consts.Regular:
+	case consts.General:
 		solverSvc.RunRegular()
 	case consts.Slurm:
 		solverSvc.RunSlurm()
