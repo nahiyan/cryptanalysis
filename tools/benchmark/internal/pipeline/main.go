@@ -13,7 +13,7 @@ type Platform int
 type Solver string
 type AdderType string
 
-type Variation struct {
+type Encoding struct {
 	Xor           []int
 	Dobbertin     []int
 	DobbertinBits []int
@@ -42,7 +42,7 @@ type Pipe struct {
 	Type Type
 
 	// Type: encode
-	Variation
+	Encoding
 
 	// Type: solve
 	Solving

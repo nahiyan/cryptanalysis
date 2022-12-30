@@ -41,7 +41,7 @@ func getOutputType(pipe *pipeline.Pipe) InputOutputType {
 	case pipeline.Solve:
 		return ListOfSolutions
 	case pipeline.Cube:
-		return ListOfSolutions
+		return ListOfEncodings
 	}
 
 	return None
@@ -74,7 +74,7 @@ func (pipelineSvc *PipelineService) Loop(pipes []pipeline.Pipe, handler LoopHand
 }
 
 func (pipelineSvc *PipelineService) TestRun() {
-	encodeVariation := pipeline.Variation{
+	encodeParameters := pipeline.Encoding{
 		Xor:           []int{0},
 		Dobbertin:     []int{0},
 		DobbertinBits: []int{32},
@@ -83,23 +83,25 @@ func (pipelineSvc *PipelineService) TestRun() {
 		Steps:         []int{16},
 	}
 
-	solveSettings := pipeline.Solving{
+	solveParameters := pipeline.Solving{
 		Solvers:  []solver.Solver{consts.Kissat, consts.MapleSat},
 		Timeout:  5,
 		Platform: consts.Slurm,
 		Workers:  16,
 	}
 
-	// cubeSettings := pipeline.Cubing{
-	// 	Platform: consts.Regular,
-	// }
+	cubeParameters := pipeline.Cubing{
+		Platform:   consts.Regular,
+		Timeout:    5,
+		Thresholds: []int{2170, 2160},
+	}
 
 	var lastValue interface{}
 
 	pipelineSvc.Loop(pipelineSvc.Pipeline, func(pipe, nextPipe *pipeline.Pipe) {
 		switch pipe.Type {
 		case pipeline.Encode:
-			lastValue = pipelineSvc.encoderSvc.Run(encoderServices.SaeedE, encodeVariation)
+			lastValue = pipelineSvc.encoderSvc.Run(encoderServices.SaeedE, encodeParameters)
 			fmt.Println("Encode", lastValue)
 
 			if nextPipe == nil {
@@ -107,9 +109,9 @@ func (pipelineSvc *PipelineService) TestRun() {
 			}
 
 		case pipeline.Solve:
-			pipelineSvc.solverSvc.Run(lastValue.([]string), solveSettings)
-			// case pipeline.Cube:
-			// 	pipelineSvc.cuberSvc.Run(lastValue.([]string))
+			pipelineSvc.solverSvc.Run(lastValue.([]string), solveParameters)
+		case pipeline.Cube:
+			pipelineSvc.cuberSvc.Run(lastValue.([]string), cubeParameters)
 		}
 	})
 }

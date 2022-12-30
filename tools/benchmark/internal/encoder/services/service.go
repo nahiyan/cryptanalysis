@@ -35,7 +35,7 @@ func (encoderSvc *EncoderService) GetInstanceName(steps int, adderType pipeline.
 	}(cubeIndex), steps, adderType, xor, hash, dobbertin, dobbertinBits)
 }
 
-func (encoderSvc *EncoderService) LoopThroughVariation(variations pipeline.Variation, cb func(int, string, int, pipeline.AdderType, int, int)) {
+func (encoderSvc *EncoderService) LoopThroughVariation(variations pipeline.Encoding, cb func(int, string, int, pipeline.AdderType, int, int)) {
 	for _, steps := range variations.Steps {
 		for _, hash := range variations.Hashes {
 			for _, xorOption := range variations.Xor {
@@ -95,7 +95,7 @@ func (encoderSvc *EncoderService) ResolveSaeedEAdderType(adderType pipeline.Adde
 	}
 }
 
-func (encoderSvc *EncoderService) InvokeSaeedE(variations pipeline.Variation) []string {
+func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []string {
 	config := &encoderSvc.configSvc.Config
 	filesystemSvc := encoderSvc.filesystemSvc
 
@@ -107,7 +107,7 @@ func (encoderSvc *EncoderService) InvokeSaeedE(variations pipeline.Variation) []
 	encodings := []string{}
 
 	// * Loop through the variations
-	encoderSvc.LoopThroughVariation(variations, func(steps int, hash string, xorOption int, adderType pipeline.AdderType, dobbertin, dobbertinBits int) {
+	encoderSvc.LoopThroughVariation(parameters, func(steps int, hash string, xorOption int, adderType pipeline.AdderType, dobbertin, dobbertinBits int) {
 		instanceName := encoderSvc.GetInstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, nil)
 
 		encodingFilePath := path.Join(EncodingsDirPath, instanceName+".cnf")
@@ -158,10 +158,10 @@ func (encoderSvc *EncoderService) InvokeSaeedE(variations pipeline.Variation) []
 	return encodings
 }
 
-func (encoderSvc *EncoderService) Run(name encoder.Name, variation pipeline.Variation) []string {
+func (encoderSvc *EncoderService) Run(name encoder.Name, parameters pipeline.Encoding) []string {
 	switch name {
 	case SaeedE:
-		return encoderSvc.InvokeSaeedE(variation)
+		return encoderSvc.InvokeSaeedE(parameters)
 	}
 
 	panic("Encoder not found: " + name)
