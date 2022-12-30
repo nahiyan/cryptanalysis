@@ -9,7 +9,7 @@ const (
 )
 
 type Type string
-type Platform int
+type Platform string
 type Solver string
 type AdderType string
 

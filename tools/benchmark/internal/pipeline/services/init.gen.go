@@ -11,7 +11,6 @@ type PipelineService struct {
 	encoderSvc *services.EncoderService
 	solverSvc  *services1.SolverService
 	cuberSvc   *services2.CuberService
-	Properties
 }
 
 func NewPipelineService(injector *do.Injector) (*PipelineService, error) {

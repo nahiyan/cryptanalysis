@@ -11,12 +11,9 @@ import (
 const (
 	ListOfEncodings = "list[encoding]"
 	ListOfSolutions = "list[solution]"
+	ListOfCubesets  = "list[cubeset]"
 	None            = "none"
 )
-
-type Properties struct {
-	Pipeline []pipeline.Pipe
-}
 
 type InputOutputType string
 type LoopHandler func(*pipeline.Pipe, *pipeline.Pipe)
@@ -41,15 +38,15 @@ func getOutputType(pipe *pipeline.Pipe) InputOutputType {
 	case pipeline.Solve:
 		return ListOfSolutions
 	case pipeline.Cube:
-		return ListOfEncodings
+		return ListOfCubesets
 	}
 
 	return None
 }
 
 // Check if the pipelines can be connected
-func (pipelineSvc *PipelineService) Validate() {
-	pipelineSvc.Loop(pipelineSvc.Pipeline, func(pipe, nextPipe *pipeline.Pipe) {
+func (pipelineSvc *PipelineService) Validate(pipes []pipeline.Pipe) {
+	pipelineSvc.Loop(pipes, func(pipe, nextPipe *pipeline.Pipe) {
 		if nextPipe == nil {
 			return
 		}
@@ -65,15 +62,15 @@ func (pipelineSvc *PipelineService) Validate() {
 func (pipelineSvc *PipelineService) Loop(pipes []pipeline.Pipe, handler LoopHandler) {
 	for i, pipe := range pipes {
 		var nextPipe *pipeline.Pipe
-		if len(pipelineSvc.Pipeline) > i+1 {
-			nextPipe = &pipelineSvc.Pipeline[i+1]
+		if len(pipes) > i+1 {
+			nextPipe = &pipes[i+1]
 		}
 
 		handler(&pipe, nextPipe)
 	}
 }
 
-func (pipelineSvc *PipelineService) TestRun() {
+func (pipelineSvc *PipelineService) TestRun(pipes []pipeline.Pipe) {
 	encodeParameters := pipeline.Encoding{
 		Xor:           []int{0},
 		Dobbertin:     []int{0},
@@ -91,17 +88,36 @@ func (pipelineSvc *PipelineService) TestRun() {
 	}
 
 	cubeParameters := pipeline.Cubing{
-		Platform:   consts.Regular,
+		Platform:   consts.General,
 		Timeout:    5,
 		Thresholds: []int{2170, 2160},
 	}
 
-	var lastValue interface{}
+	newPipeline := make([]pipeline.Pipe, 0)
+	for _, pipe := range pipes {
+		newPipe := pipeline.Pipe{Type: pipe.Type}
 
-	pipelineSvc.Loop(pipelineSvc.Pipeline, func(pipe, nextPipe *pipeline.Pipe) {
 		switch pipe.Type {
 		case pipeline.Encode:
-			lastValue = pipelineSvc.encoderSvc.Run(encoderServices.SaeedE, encodeParameters)
+			newPipe.Encoding = encodeParameters
+		case pipeline.Solve:
+			newPipe.Solving = solveParameters
+		case pipeline.Cube:
+			newPipe.Cubing = cubeParameters
+		}
+
+		newPipeline = append(newPipeline, newPipe)
+	}
+
+	pipelineSvc.RealRun(newPipeline)
+}
+
+func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
+	var lastValue interface{}
+	pipelineSvc.Loop(pipes, func(pipe, nextPipe *pipeline.Pipe) {
+		switch pipe.Type {
+		case pipeline.Encode:
+			lastValue = pipelineSvc.encoderSvc.Run(encoderServices.SaeedE, pipe.Encoding)
 			fmt.Println("Encode", lastValue)
 
 			if nextPipe == nil {
@@ -109,16 +125,16 @@ func (pipelineSvc *PipelineService) TestRun() {
 			}
 
 		case pipeline.Solve:
-			pipelineSvc.solverSvc.Run(lastValue.([]string), solveParameters)
+			pipelineSvc.solverSvc.Run(lastValue.([]string), pipe.Solving)
+
 		case pipeline.Cube:
-			pipelineSvc.cuberSvc.Run(lastValue.([]string), cubeParameters)
+			lastValue = pipelineSvc.cuberSvc.Run(lastValue.([]string), pipe.Cubing)
 		}
 	})
 }
 
 func (pipelineSvc *PipelineService) Run(pipes []pipeline.Pipe) {
-	pipelineSvc.Pipeline = pipes
-
-	pipelineSvc.Validate()
-	pipelineSvc.TestRun()
+	pipelineSvc.Validate(pipes)
+	pipelineSvc.TestRun(pipes)
+	// pipelineSvc.RealRun(pipes)
 }

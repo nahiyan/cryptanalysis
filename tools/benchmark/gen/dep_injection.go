@@ -165,9 +165,8 @@ func main() {
 			Dependencies: []string{"error"},
 		},
 		{
-			Name:          "pipeline",
-			Dependencies:  []string{"encoder", "solver", "cuber"},
-			HasProperties: true,
+			Name:         "pipeline",
+			Dependencies: []string{"encoder", "solver", "cuber"},
 		},
 		{
 			Name:          "schema",
