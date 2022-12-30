@@ -18,6 +18,7 @@ type Config struct {
 
 		Database string
 	}
+
 	Slurm struct {
 		MaxJobs int
 	}
