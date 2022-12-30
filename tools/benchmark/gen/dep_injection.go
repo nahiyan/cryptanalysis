@@ -166,7 +166,7 @@ func main() {
 		},
 		{
 			Name:          "pipeline",
-			Dependencies:  []string{"encoder", "solver"},
+			Dependencies:  []string{"encoder", "solver", "cuber"},
 			HasProperties: true,
 		},
 		{
@@ -206,6 +206,11 @@ func main() {
 		},
 		{
 			Name:         "marshalling",
+			Dependencies: []string{"error"},
+			Type:         Service,
+		},
+		{
+			Name:         "cuber",
 			Dependencies: []string{"error"},
 			Type:         Service,
 		},
