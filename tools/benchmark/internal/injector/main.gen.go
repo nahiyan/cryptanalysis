@@ -3,8 +3,10 @@ package injector
 import (
 	services "benchmark/internal/config/services"
 	services12 "benchmark/internal/cuber/services"
+	services13 "benchmark/internal/cubeset/services"
 	services7 "benchmark/internal/database/services"
 	services1 "benchmark/internal/encoder/services"
+	services14 "benchmark/internal/encoding/services"
 	services2 "benchmark/internal/error/services"
 	services3 "benchmark/internal/filesystem/services"
 	services11 "benchmark/internal/marshalling/services"
@@ -32,5 +34,7 @@ func New() *do.Injector {
 	do.Provide(injector, services10.NewRandomService)
 	do.Provide(injector, services11.NewMarshallingService)
 	do.Provide(injector, services12.NewCuberService)
+	do.Provide(injector, services13.NewCubesetService)
+	do.Provide(injector, services14.NewEncodingService)
 	return injector
 }

@@ -210,7 +210,19 @@ func main() {
 		},
 		{
 			Name:         "cuber",
-			Dependencies: []string{"error"},
+			Dependencies: []string{"error", "database", "filesystem", "config", "cubeset", "encoding"},
+			Type:         Service,
+		},
+		{
+			Name:            "cubeset",
+			Dependencies:    []string{"error", "database", "filesystem", "marshalling"},
+			Type:            Service,
+			HasProperties:   true,
+			HasInitFunction: true,
+		},
+		{
+			Name:         "encoding",
+			Dependencies: []string{"error", "filesystem"},
 			Type:         Service,
 		},
 	}
