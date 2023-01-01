@@ -32,6 +32,7 @@ type Solving struct {
 type Cubing struct {
 	MaxCubes         int
 	MinRefutedLeaves int
+	MinThreshold     int
 	Thresholds       []int
 	Workers          int
 	Timeout          int

@@ -187,7 +187,6 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 }
 
 func (solverSvc *SolverService) RunRegular() {
-
 	fmt.Println("Solver: started")
 
 	pool := pond.New(solverSvc.Parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
