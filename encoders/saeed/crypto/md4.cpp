@@ -4,6 +4,7 @@ MD4::MD4(int rnds, int dobbertin, int bits, bool initBlock)
     : MDHash(16, 4, rnds, initBlock)
 {
     this->dobbertin = dobbertin == 1;
+    this->bits = bits;
 }
 
 void MD4::encode()
@@ -167,6 +168,7 @@ void MD4::encode()
     if (dobbertin) {
         // Dobbertin's constant
         unsigned int k = 0xffffffff;
+
         int q_indices[12] = {
             16, 20, 24, 28, // q[16] = Q[13] (from [Debapratim De et al. 2007])
             17, 21, 25, 29,
@@ -174,7 +176,6 @@ void MD4::encode()
         };
         // Index of q that needs relaxation
         int p = 16;
-
         for (int& i : q_indices) {
             if (i == p && bits != 32) {
                 cnf.fixedValue(q[i] + (32 - bits), k + (32 - bits), bits);
