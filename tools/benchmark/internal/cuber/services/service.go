@@ -16,16 +16,16 @@ import (
 	"github.com/alitto/pond"
 )
 
-func (cuberSvc *CuberService) CubesFilePath(encoding string) string {
+func (cuberSvc *CuberService) CubesFilePath(encoding string, threshold int) string {
 	encodingDir, fileName := path.Split(encoding)
-	cubesFilePath := path.Join(encodingDir, fileName+".cubes")
+	cubesFilePath := path.Join(encodingDir, fmt.Sprintf("%s.n%d.cubes", fileName, threshold))
 
 	return cubesFilePath
 }
 
-func (cuberSvc *CuberService) ShouldCube(encoding string) bool {
+func (cuberSvc *CuberService) ShouldCube(encoding string, threshold int) bool {
 	filesystemSvc := cuberSvc.filesystemSvc
-	cubesFilePath := cuberSvc.CubesFilePath(encoding)
+	cubesFilePath := cuberSvc.CubesFilePath(encoding, threshold)
 
 	return !filesystemSvc.FileExists(cubesFilePath)
 }
@@ -61,7 +61,9 @@ func (cuberSvc *CuberService) TrackedInvoke(encoding string, threshold int, time
 		return err
 	}
 
-	cubesFilePath := cuberSvc.CubesFilePath(encoding)
+	fmt.Println("Cuber:", threshold, cubes, "cubes", refutedLeaves, "refuted leaves", runtime, encoding)
+
+	cubesFilePath := cuberSvc.CubesFilePath(encoding, threshold)
 	err = cubesetSvc.Register(cubesFilePath, cubeset.CubeSet{
 		Cubes:         cubes,
 		RefutedLeaves: refutedLeaves,
@@ -77,7 +79,7 @@ func (cuberSvc *CuberService) Invoke(encoding string, threshold int, timeout tim
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	cubesFilePath := cuberSvc.CubesFilePath(encoding)
+	cubesFilePath := cuberSvc.CubesFilePath(encoding, threshold)
 	cmd := exec.CommandContext(ctx, config.Paths.Bin.March, encoding, "-o", cubesFilePath, "-n", strconv.Itoa(threshold))
 
 	startTime := time.Now()
@@ -97,11 +99,6 @@ func (cuberSvc *CuberService) RunRegular(encodings []string, parameters pipeline
 
 	fmt.Println("Cuber: started")
 	for _, encoding := range encodings {
-		if !cuberSvc.ShouldCube(encoding) {
-			fmt.Println("Cuber: skipped", encoding)
-			continue
-		}
-
 		thresholds := parameters.Thresholds
 		if len(thresholds) == 0 {
 			freeVariables, _, err := cuberSvc.encodingSvc.Process(encoding)
@@ -122,10 +119,18 @@ func (cuberSvc *CuberService) RunRegular(encodings []string, parameters pipeline
 		}
 
 		for _, threshold := range thresholds {
-			pool.Submit(func() {
-				err := cuberSvc.TrackedInvoke(encoding, threshold, time.Duration(parameters.Timeout)*time.Second)
-				cuberSvc.errorSvc.Fatal(err, "Cuber: failed to cube")
-			})
+			if !cuberSvc.ShouldCube(encoding, threshold) {
+				fmt.Println("Cuber: skipped", threshold, encoding)
+				continue
+			}
+
+			pool.Submit(func(encoding string, threshold int) func() {
+				return func() {
+					err := cuberSvc.TrackedInvoke(encoding, threshold, time.Duration(parameters.Timeout)*time.Second)
+					cuberSvc.errorSvc.Fatal(err, "Cuber: failed to cube")
+					cubesFilePaths = append(cubesFilePaths, cuberSvc.CubesFilePath(encoding, threshold))
+				}
+			}(encoding, threshold))
 		}
 	}
 	pool.StopAndWait()
@@ -140,6 +145,7 @@ func (cuberSvc *CuberService) Run(encodings []string, parameters pipeline.Cubing
 	switch parameters.Platform {
 	case consts.General:
 		cubesets = cuberSvc.RunRegular(encodings, parameters)
+		fmt.Println(cubesets)
 	}
 
 	return cubesets
