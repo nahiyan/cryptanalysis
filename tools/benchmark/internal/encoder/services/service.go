@@ -7,14 +7,12 @@ import (
 	"log"
 	"os/exec"
 	"path"
-	"strconv"
+	"strings"
 )
 
 // Paths
 const (
-	SaeedE           = "saeed_e" // Short for Saeed's Encoder
-	ResultsDirPath   = "./results/"
-	EncodingsDirPath = ResultsDirPath + "encodings/"
+	SaeedE = "saeed_e" // Short for Saeed's Encoder
 )
 
 // Adders
@@ -101,7 +99,7 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []s
 
 	// Check if the encoder exists
 	if !filesystemSvc.FileExists(config.Paths.Bin.SaeedE) {
-		log.Fatal("Failed to find the encoder in the '" + config.Paths.Bin.SaeedE + "' directory. Can you ensure that you compiled it?")
+		log.Fatal("Failed to find the encoder in the path '" + config.Paths.Bin.SaeedE + "'. Can you ensure that you compiled it?")
 	}
 
 	encodings := []string{}
@@ -110,7 +108,7 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []s
 	encoderSvc.LoopThroughVariation(parameters, func(steps int, hash string, xorOption int, adderType pipeline.AdderType, dobbertin, dobbertinBits int) {
 		instanceName := encoderSvc.GetInstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, nil)
 
-		encodingFilePath := path.Join(EncodingsDirPath, instanceName+".cnf")
+		encodingFilePath := path.Join(parameters.OutputDir, instanceName+".cnf")
 		encodings = append(encodings, encodingFilePath)
 
 		// Skip if encoding already exists
@@ -121,7 +119,7 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []s
 
 		dobbertinFlag := func(enabled int) string {
 			if enabled == 1 {
-				return " --dobbertin"
+				return "--dobbertin"
 			}
 
 			return ""
@@ -129,7 +127,7 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []s
 
 		xorFlag := func(xorOption int) string {
 			if xorOption == 1 {
-				return " --xor"
+				return "--xor"
 			}
 
 			return ""
@@ -138,20 +136,17 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []s
 		// * Drive the encoder
 		cmd := exec.Command(
 			config.Paths.Bin.SaeedE,
-			xorFlag,
-			"-A",
-			string(encoderSvc.ResolveSaeedEAdderType(adderType)),
-			"-r",
-			strconv.Itoa(steps),
-			"-f",
-			"md4",
-			"-a",
-			"preimage",
-			"-t",
-			hash,
-			dobbertinFlag,
-			"--bits",
-			strconv.Itoa(dobbertinBits))
+			strings.Fields(
+				fmt.Sprintf(
+					"-A %s -r %d -f md4 -a preimage -t %s --bits %d %s %s",
+					string(encoderSvc.ResolveSaeedEAdderType(adderType)),
+					steps,
+					hash,
+					dobbertinBits,
+					xorFlag,
+					dobbertinFlag))...)
+
+		fmt.Println(cmd.String())
 		encoderSvc.OutputToFile(cmd, encodingFilePath)
 	})
 

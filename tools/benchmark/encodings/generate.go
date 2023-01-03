@@ -13,7 +13,7 @@ import (
 func Generate(context types.EncodingsGenContext) {
 	// * 1. Check if the executable exists
 	if !utils.FileExists(config.Get().Paths.Bin.Encoder) {
-		log.Fatal("Failed to find the encoder in the 'encoders/saeed/crypto' directory. Can you ensure that you compiled it?")
+		log.Fatal("Failed to find the encoder in the path 'encoders/saeed/crypto'. Can you ensure that you compiled it?")
 	}
 
 	// * 2. Loop through the variations
