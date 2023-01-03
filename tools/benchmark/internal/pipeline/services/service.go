@@ -5,7 +5,6 @@ import (
 	encoderServices "benchmark/internal/encoder/services"
 	"benchmark/internal/pipeline"
 	"benchmark/internal/solver"
-	"fmt"
 )
 
 const (
@@ -118,7 +117,6 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 		switch pipe.Type {
 		case pipeline.Encode:
 			lastValue = pipelineSvc.encoderSvc.Run(encoderServices.SaeedE, pipe.Encoding)
-			fmt.Println("Encode", lastValue)
 
 			if nextPipe == nil {
 				return
