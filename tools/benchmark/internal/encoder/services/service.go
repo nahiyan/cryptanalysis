@@ -156,7 +156,9 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []s
 func (encoderSvc *EncoderService) Run(name encoder.Name, parameters pipeline.Encoding) []string {
 	switch name {
 	case SaeedE:
-		return encoderSvc.InvokeSaeedE(parameters)
+		encodings := encoderSvc.InvokeSaeedE(parameters)
+		fmt.Println("Encoder:", encodings)
+		return encodings
 	}
 
 	panic("Encoder not found: " + name)
