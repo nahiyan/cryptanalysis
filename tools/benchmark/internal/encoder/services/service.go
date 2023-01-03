@@ -113,7 +113,7 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []s
 
 		// Skip if encoding already exists
 		if encoderSvc.filesystemSvc.FileExists(encodingFilePath) {
-			fmt.Println("Encode: skipped", encodingFilePath)
+			fmt.Println("Encoder: skipped", encodingFilePath)
 			return
 		}
 
@@ -145,9 +145,9 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []s
 					dobbertinBits,
 					xorFlag,
 					dobbertinFlag))...)
-
-		fmt.Println(cmd.String())
 		encoderSvc.OutputToFile(cmd, encodingFilePath)
+
+		fmt.Println("Encoder:", encodingFilePath)
 	})
 
 	return encodings
