@@ -134,5 +134,5 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 func (pipelineSvc *PipelineService) Run(pipes []pipeline.Pipe) {
 	pipelineSvc.Validate(pipes)
 	pipelineSvc.TestRun(pipes)
-	// pipelineSvc.RealRun(pipes)
+	pipelineSvc.RealRun(pipes)
 }
