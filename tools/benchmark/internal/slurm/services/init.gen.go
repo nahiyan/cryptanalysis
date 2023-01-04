@@ -15,7 +15,6 @@ type SlurmService struct {
 	configSvc      *services2.ConfigService
 	randomSvc      *services3.RandomService
 	marshallingSvc *services4.MarshallingService
-	Properties
 }
 
 func NewSlurmService(injector *do.Injector) (*SlurmService, error) {
@@ -25,6 +24,5 @@ func NewSlurmService(injector *do.Injector) (*SlurmService, error) {
 	randomSvc := do.MustInvoke[*services3.RandomService](injector)
 	marshallingSvc := do.MustInvoke[*services4.MarshallingService](injector)
 	svc := &SlurmService{errorSvc: errorSvc, databaseSvc: databaseSvc, configSvc: configSvc, randomSvc: randomSvc, marshallingSvc: marshallingSvc}
-	svc.Init()
 	return svc, nil
 }
