@@ -4,7 +4,7 @@ import (
 	"benchmark/internal/consts"
 	errorModule "benchmark/internal/error"
 	"benchmark/internal/pipeline"
-	"benchmark/internal/slurm"
+	solveslurmtask "benchmark/internal/solve_slurm_task"
 	"benchmark/internal/solver"
 	"context"
 	"fmt"
@@ -15,11 +15,6 @@ import (
 
 	"github.com/alitto/pond"
 )
-
-type Properties struct {
-	Encodings  []string
-	Parameters pipeline.Solving
-}
 
 func (solverSvc *SolverService) GetCmdInfo(encoding string, solver solver.Solver) (string, []string) {
 	config := solverSvc.configSvc.Config
@@ -50,11 +45,11 @@ func (solverSvc *SolverService) GetCmdInfo(encoding string, solver solver.Solver
 	return binPath, args
 }
 
-func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver) (time.Duration, solver.Result) {
+func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, timeout int) (time.Duration, solver.Result) {
 	filesystemSvc := solverSvc.filesystemSvc
 	errorSvc := solverSvc.errorSvc
 	binPath, solverArgs := solverSvc.GetCmdInfo(encoding, solver_)
-	duration := time.Duration(solverSvc.Parameters.Timeout) * time.Second
+	duration := time.Duration(timeout) * time.Second
 
 	if !filesystemSvc.FileExists(binPath) {
 		log.Fatalf("%s doesn't exist. Did you forget to compile it?", binPath)
@@ -86,15 +81,15 @@ func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver) (
 	return runtime, result
 }
 
-func (solverSvc *SolverService) Loop(handler func(encoding string, solver solver.Solver)) {
-	for _, encoding := range solverSvc.Encodings {
-		for _, solver := range solverSvc.Parameters.Solvers {
+func (solverSvc *SolverService) Loop(encodings []string, parameters pipeline.Solving, handler func(encoding string, solver solver.Solver)) {
+	for _, encoding := range encodings {
+		for _, solver := range parameters.Solvers {
 			handler(encoding, solver)
 		}
 	}
 }
 
-func (solverSvc *SolverService) ShouldSkip(encoding string, solver_ solver.Solver) bool {
+func (solverSvc *SolverService) ShouldSkip(encoding string, solver_ solver.Solver, timeout int) bool {
 	solutionSvc := solverSvc.solutionSvc
 	errorSvc := solverSvc.errorSvc
 
@@ -114,32 +109,32 @@ func (solverSvc *SolverService) ShouldSkip(encoding string, solver_ solver.Solve
 	}
 
 	// Skip failed solutions: 10 seconds is the threshold
-	if err == nil && solution.Result == consts.Fail && (solverSvc.Parameters.Timeout-int(solution.Runtime.Seconds())) < 10 {
+	if err == nil && solution.Result == consts.Fail && (timeout-int(solution.Runtime.Seconds())) < 10 {
 		return true
 	}
 
 	return false
 }
 
-func (solverSvc *SolverService) RunSlurm() {
+func (solverSvc *SolverService) RunSlurm(encodings []string, parameters pipeline.Solving) {
 	slurmSvc := solverSvc.slurmSvc
 	errorSvc := solverSvc.errorSvc
 	config := solverSvc.configSvc.Config
 
-	err := slurmSvc.RemoveAll()
+	err := solverSvc.solveSlurmTaskSvc.RemoveAll()
 	errorSvc.Fatal(err, "Solver: failed to clear slurm tasks")
 
 	counter := 1
-	solverSvc.Loop(func(encoding string, solver_ solver.Solver) {
-		if solverSvc.ShouldSkip(encoding, solver_) {
+	solverSvc.Loop(encodings, parameters, func(encoding string, solver_ solver.Solver) {
+		if solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
 			fmt.Println("Solver: skipped", encoding, "with "+string(solver_))
 			return
 		}
 
-		err := solverSvc.slurmSvc.AddTask(counter, slurm.Task{
+		err := solverSvc.solveSlurmTaskSvc.AddTask(counter, solveslurmtask.Task{
 			Encoding: encoding,
 			Solver:   solver_,
-			Timeout:  time.Duration(solverSvc.Parameters.Timeout) * time.Second,
+			Timeout:  time.Duration(parameters.Timeout) * time.Second,
 		})
 		errorSvc.Fatal(err, "Solver: failed to add slurm task")
 
@@ -149,25 +144,26 @@ func (solverSvc *SolverService) RunSlurm() {
 	fmt.Println("Solver: added", counter-1, "slurm tasks")
 
 	numTasks := counter
-	timeout := solverSvc.Parameters.Timeout
+	timeout := parameters.Timeout
 	jobFilePath, err := slurmSvc.GenerateJob(
 		numTasks,
-		config.Slurm.MaxJobs,
 		1,
 		1,
 		300,
 		timeout,
-		fmt.Sprintf("%s slurm-task -j ${SLURM_ARRAY_TASK_ID} -t %d", config.Paths.Bin.Benchmark, timeout))
+		fmt.Sprintf(
+			"%s slurm-task -t solve -i ${SLURM_ARRAY_TASK_ID}",
+			config.Paths.Bin.Benchmark))
 	errorSvc.Fatal(err, "Solver: failed to create slurm job file")
 
 	fmt.Println(jobFilePath)
 }
 
-func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.Solver) {
+func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.Solver, timeout int) {
 	solutionSvc := solverSvc.solutionSvc
 
 	// Invoke
-	runtime, result := solverSvc.Invoke(encoding, solver_)
+	runtime, result := solverSvc.Invoke(encoding, solver_, timeout)
 
 	resultString := "Fail"
 	if result == consts.Sat {
@@ -186,33 +182,21 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 	})
 }
 
-func (solverSvc *SolverService) RunRegular() {
+func (solverSvc *SolverService) RunRegular(encodings []string, parameters pipeline.Solving) {
 	fmt.Println("Solver: started")
 
-	pool := pond.New(solverSvc.Parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
-	solverSvc.Loop(func(encoding string, solver_ solver.Solver) {
-		if solverSvc.ShouldSkip(encoding, solver_) {
+	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
+	solverSvc.Loop(encodings, parameters, func(encoding string, solver_ solver.Solver) {
+		if solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
 			fmt.Println("Solver: skipped", encoding, "with "+string(solver_))
 			return
 		}
 
 		pool.Submit(func() {
-			solverSvc.TrackedInvoke(encoding, solver_)
+			solverSvc.TrackedInvoke(encoding, solver_, parameters.Timeout)
 		})
 	})
 	pool.StopAndWait()
 
 	fmt.Println("Solver: stopped")
-}
-
-func (solverSvc *SolverService) Run(encodings []string, parameters pipeline.Solving) {
-	solverSvc.Encodings = encodings
-	solverSvc.Parameters = parameters
-
-	switch parameters.Platform {
-	case consts.General:
-		solverSvc.RunRegular()
-	case consts.Slurm:
-		solverSvc.RunSlurm()
-	}
 }
