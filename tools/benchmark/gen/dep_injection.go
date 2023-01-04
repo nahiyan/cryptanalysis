@@ -84,7 +84,7 @@ func GenerateProvider(provider Provider) {
 
 		structValues := []j.Code{}
 		for _, dep := range provider.Dependencies {
-			structValues = append(structValues, j.Id(dep+"Svc").Op(":").Id(dep+"Svc"))
+			structValues = append(structValues, j.Id(strcase.ToLowerCamel(dep+"Svc")).Op(":").Id(strcase.ToLowerCamel(dep+"Svc")))
 		}
 
 		statements = append(statements, j.
@@ -106,7 +106,7 @@ func GenerateProvider(provider Provider) {
 
 	f.Save(fmt.Sprintf(
 		"../internal/%s/services/init.gen.go",
-		strcase.ToKebab(provider.Name)))
+		strcase.ToSnake(provider.Name)))
 }
 
 func generateProviders(providers []Provider) {
@@ -134,7 +134,7 @@ func generateInjector(providers []Provider) {
 				methodSuffix = "Repository"
 			}
 
-			statements = append(statements, j.Qual("github.com/samber/do", "Provide").Call(j.Id("injector"), j.Qual(fmt.Sprintf("benchmark/internal/%s/"+package_, provider.Name), fmt.Sprintf("New%s%s", strcase.ToCamel(provider.Name), methodSuffix))))
+			statements = append(statements, j.Qual("github.com/samber/do", "Provide").Call(j.Id("injector"), j.Qual(fmt.Sprintf("benchmark/internal/%s/%s", provider.Name, package_), fmt.Sprintf("New%s%s", strcase.ToCamel(provider.Name), methodSuffix))))
 		}
 	}
 
@@ -174,9 +174,8 @@ func main() {
 			HasProperties: true,
 		},
 		{
-			Name:          "solver",
-			Dependencies:  []string{"config", "filesystem", "error", "solution", "slurm"},
-			HasProperties: true,
+			Name:         "solver",
+			Dependencies: []string{"config", "filesystem", "error", "solution", "slurm", "solve_slurm_task"},
 		},
 		{
 			Name:            "database",
@@ -192,11 +191,9 @@ func main() {
 			HasProperties:   true,
 		},
 		{
-			Name:            "slurm",
-			Dependencies:    []string{"error", "database", "config", "random", "marshalling"},
-			Type:            Service,
-			HasProperties:   true,
-			HasInitFunction: true,
+			Name:         "slurm",
+			Dependencies: []string{"error", "database", "config", "random", "marshalling"},
+			Type:         Service,
 		},
 		{
 			Name:         "random",
@@ -224,6 +221,20 @@ func main() {
 			Name:         "encoding",
 			Dependencies: []string{"error", "filesystem"},
 			Type:         Service,
+		},
+		{
+			Name:            "solve_slurm_task",
+			Dependencies:    []string{"error", "database", "marshalling"},
+			Type:            Service,
+			HasProperties:   true,
+			HasInitFunction: true,
+		},
+		{
+			Name:            "cube_slurm_task",
+			Dependencies:    []string{"error", "database", "marshalling"},
+			Type:            Service,
+			HasProperties:   true,
+			HasInitFunction: true,
 		},
 	}
 

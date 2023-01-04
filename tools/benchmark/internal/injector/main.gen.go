@@ -2,6 +2,7 @@ package injector
 
 import (
 	services "benchmark/internal/config/services"
+	services16 "benchmark/internal/cube_slurm_task/services"
 	services12 "benchmark/internal/cuber/services"
 	services13 "benchmark/internal/cubeset/services"
 	services7 "benchmark/internal/database/services"
@@ -15,6 +16,7 @@ import (
 	services5 "benchmark/internal/schema/services"
 	services9 "benchmark/internal/slurm/services"
 	services8 "benchmark/internal/solution/services"
+	services15 "benchmark/internal/solve_slurm_task/services"
 	services6 "benchmark/internal/solver/services"
 	do "github.com/samber/do"
 )
@@ -36,5 +38,7 @@ func New() *do.Injector {
 	do.Provide(injector, services12.NewCuberService)
 	do.Provide(injector, services13.NewCubesetService)
 	do.Provide(injector, services14.NewEncodingService)
+	do.Provide(injector, services15.NewSolveSlurmTaskService)
+	do.Provide(injector, services16.NewCubeSlurmTaskService)
 	return injector
 }
