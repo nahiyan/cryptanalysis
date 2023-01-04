@@ -179,7 +179,7 @@ void MD4::encode()
         for (int& i : q_indices) {
             if (i == p && bits != 32) {
                 // TODO: Offset the value of k
-                cnf.fixedValue(q[i] + (32 - bits), k);
+                cnf.fixedValue(q[i] + (32 - bits), k, bits);
             } else {
                 cnf.fixedValue(q[i], k);
             }
