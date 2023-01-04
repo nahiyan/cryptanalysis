@@ -3,13 +3,14 @@ package pipeline
 import "benchmark/internal/solver"
 
 const (
-	Encode = "encode"
-	Solve  = "solve"
-	Cube   = "cube"
+	Encode     = "encode"
+	Solve      = "solve"
+	SlurmSolve = "slurm_solve"
+	Cube       = "cube"
+	SlurmCube  = "slurm_cube"
 )
 
 type Type string
-type Platform string
 type Solver string
 type AdderType string
 
@@ -24,7 +25,6 @@ type Encoding struct {
 	OutputDir     string
 }
 type Solving struct {
-	Platform
 	Solvers []solver.Solver
 	Timeout int
 	Workers int
@@ -37,7 +37,6 @@ type Cubing struct {
 	Thresholds       []int
 	Workers          int
 	Timeout          int
-	Platform
 }
 
 type Pipe struct {

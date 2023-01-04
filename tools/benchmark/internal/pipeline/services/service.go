@@ -8,10 +8,13 @@ import (
 )
 
 const (
-	ListOfEncodings = "list[encoding]"
-	ListOfSolutions = "list[solution]"
-	ListOfCubesets  = "list[cubeset]"
-	None            = "none"
+	ListOfEncodings         = "list[encoding]"
+	ListOfSlurmJobEncodings = "list[slurm_job[encoding]]"
+	ListOfSolutions         = "list[solution]"
+	ListOfSlurmJobSolutions = "list[slurm_job[solution]]"
+	ListOfCubesets          = "list[cubeset]"
+	ListOfSlurmJobCubesets  = "list[slurm_job[cubeset]]"
+	None                    = "none"
 )
 
 type InputOutputType string
@@ -23,8 +26,12 @@ func getInputType(pipe *pipeline.Pipe) InputOutputType {
 		return None
 	case pipeline.Solve:
 		return ListOfEncodings
+	case pipeline.SlurmSolve:
+		return ListOfSlurmJobEncodings
 	case pipeline.Cube:
 		return ListOfEncodings
+	case pipeline.SlurmCube:
+		return ListOfSlurmJobEncodings
 	}
 
 	return None
@@ -36,8 +43,12 @@ func getOutputType(pipe *pipeline.Pipe) InputOutputType {
 		return ListOfEncodings
 	case pipeline.Solve:
 		return ListOfSolutions
+	case pipeline.SlurmSolve:
+		return ListOfSlurmJobSolutions
 	case pipeline.Cube:
 		return ListOfCubesets
+	case pipeline.SlurmCube:
+		return ListOfSlurmJobCubesets
 	}
 
 	return None
@@ -80,14 +91,12 @@ func (pipelineSvc *PipelineService) TestRun(pipes []pipeline.Pipe) {
 	}
 
 	solveParameters := pipeline.Solving{
-		Solvers:  []solver.Solver{consts.Kissat, consts.MapleSat},
-		Timeout:  5,
-		Platform: consts.Slurm,
-		Workers:  16,
+		Solvers: []solver.Solver{consts.Kissat, consts.MapleSat},
+		Timeout: 5,
+		Workers: 16,
 	}
 
 	cubeParameters := pipeline.Cubing{
-		Platform:   consts.General,
 		Timeout:    5,
 		Thresholds: []int{2170, 2160},
 	}
@@ -101,7 +110,11 @@ func (pipelineSvc *PipelineService) TestRun(pipes []pipeline.Pipe) {
 			newPipe.Encoding = encodeParameters
 		case pipeline.Solve:
 			newPipe.Solving = solveParameters
+		case pipeline.SlurmSolve:
+			newPipe.Solving = solveParameters
 		case pipeline.Cube:
+			newPipe.Cubing = cubeParameters
+		case pipeline.SlurmCube:
 			newPipe.Cubing = cubeParameters
 		}
 
@@ -123,10 +136,15 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 			}
 
 		case pipeline.Solve:
-			pipelineSvc.solverSvc.Run(lastValue.([]string), pipe.Solving)
+			pipelineSvc.solverSvc.RunRegular(lastValue.([]string), pipe.Solving)
+
+		case pipeline.SlurmSolve:
+			pipelineSvc.solverSvc.RunSlurm(lastValue.([]string), pipe.Solving)
 
 		case pipeline.Cube:
-			lastValue = pipelineSvc.cuberSvc.Run(lastValue.([]string), pipe.Cubing)
+			lastValue = pipelineSvc.cuberSvc.RunRegular(lastValue.([]string), pipe.Cubing)
+			// case pipeline.SlurmCube:
+			// 	lastValue = pipelineSvc.cuberSvc.Run(lastValue.([]string), pipe.Cubing)
 		}
 	})
 }
