@@ -1,7 +1,6 @@
 package services
 
 import (
-	"benchmark/internal/consts"
 	"benchmark/internal/cubeset"
 	"benchmark/internal/pipeline"
 	"context"
@@ -23,11 +22,11 @@ func (cuberSvc *CuberService) CubesFilePath(encoding string, threshold int) stri
 	return cubesFilePath
 }
 
-func (cuberSvc *CuberService) ShouldCube(encoding string, threshold int) bool {
+func (cuberSvc *CuberService) ShouldSkip(encoding string, threshold int) bool {
 	filesystemSvc := cuberSvc.filesystemSvc
 	cubesFilePath := cuberSvc.CubesFilePath(encoding, threshold)
 
-	return !filesystemSvc.FileExists(cubesFilePath)
+	return filesystemSvc.FileExists(cubesFilePath)
 }
 
 func (cuberSvc *CuberService) ReadMarchOutput(output string) (int, int, error) {
@@ -93,22 +92,23 @@ func (cuberSvc *CuberService) Invoke(encoding string, threshold int, timeout tim
 	return output, runtime, err
 }
 
-func (cuberSvc *CuberService) RunRegular(encodings []string, parameters pipeline.Cubing) []string {
-	cubesFilePaths := []string{}
-	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
-
-	fmt.Println("Cuber: started")
+func (cuberSvc *CuberService) Loop(encodings []string, parameters pipeline.Cubing, handler func(encoding string, threshold int, timeout int)) {
 	for _, encoding := range encodings {
 		thresholds := parameters.Thresholds
 		if len(thresholds) == 0 {
 			freeVariables, _, err := cuberSvc.encodingSvc.Process(encoding)
 			cuberSvc.errorSvc.Fatal(err, "Cuber: failed to process the encoding")
 
-			var stepSize float64 = 10
-			// starting threshold is the nearest multiple of step size less than the num. of free variables
-			threshold := math.Floor(float64(freeVariables)/stepSize) * stepSize
+			stepSize := 10
+			// Initial threshold is the nearest multiple of step size less than the num. of free variables
+			threshold := int(math.Floor(float64(freeVariables)/float64(stepSize)) * float64(stepSize))
 
 			for {
+				if cuberSvc.ShouldSkip(encoding, threshold) {
+					fmt.Println("Cuber: skipped", threshold, encoding)
+					continue
+				}
+
 				thresholds = append(thresholds, int(threshold))
 				threshold -= stepSize
 
@@ -119,35 +119,28 @@ func (cuberSvc *CuberService) RunRegular(encodings []string, parameters pipeline
 		}
 
 		for _, threshold := range thresholds {
-			cubesFilePaths = append(cubesFilePaths, cuberSvc.CubesFilePath(encoding, threshold))
-
-			if !cuberSvc.ShouldCube(encoding, threshold) {
-				fmt.Println("Cuber: skipped", threshold, encoding)
-				continue
-			}
-
-			pool.Submit(func(encoding string, threshold int) func() {
-				return func() {
-					err := cuberSvc.TrackedInvoke(encoding, threshold, time.Duration(parameters.Timeout)*time.Second)
-					cuberSvc.errorSvc.Fatal(err, "Cuber: failed to cube")
-				}
-			}(encoding, threshold))
+			handler(encoding, threshold, parameters.Timeout)
 		}
 	}
-	pool.StopAndWait()
-	fmt.Println("Cuber: stopped")
-
-	return cubesFilePaths
 }
 
-func (cuberSvc *CuberService) Run(encodings []string, parameters pipeline.Cubing) []string {
-	var cubesets []string
+func (cuberSvc *CuberService) RunRegular(encodings []string, parameters pipeline.Cubing) []string {
+	cubesFilePaths := []string{}
+	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
+	fmt.Println("Cuber: started")
 
-	switch parameters.Platform {
-	case consts.General:
-		cubesets = cuberSvc.RunRegular(encodings, parameters)
-		fmt.Println("Cuber", cubesets)
-	}
+	cuberSvc.Loop(encodings, parameters, func(encoding string, threshold, timeout int) {
+		cubesFilePaths = append(cubesFilePaths, cuberSvc.CubesFilePath(encoding, threshold))
 
-	return cubesets
+		pool.Submit(func(encoding string, threshold int) func() {
+			return func() {
+				err := cuberSvc.TrackedInvoke(encoding, threshold, time.Duration(parameters.Timeout)*time.Second)
+				cuberSvc.errorSvc.Fatal(err, "Cuber: failed to cube")
+			}
+		}(encoding, threshold))
+	})
+
+	pool.StopAndWait()
+	fmt.Println("Cuber: stopped")
+	return cubesFilePaths
 }
