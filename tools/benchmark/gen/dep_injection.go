@@ -166,7 +166,7 @@ func main() {
 		},
 		{
 			Name:         "pipeline",
-			Dependencies: []string{"encoder", "solver", "cuber"},
+			Dependencies: []string{"encoder", "solver", "cuber", "cube_selector"},
 		},
 		{
 			Name:          "schema",
@@ -207,7 +207,7 @@ func main() {
 		},
 		{
 			Name:         "cuber",
-			Dependencies: []string{"error", "database", "filesystem", "config", "cubeset", "encoding"},
+			Dependencies: []string{"error", "database", "filesystem", "config", "cubeset", "encoding", "cube_slurm_task", "slurm"},
 			Type:         Service,
 		},
 		{
@@ -235,6 +235,11 @@ func main() {
 			Type:            Service,
 			HasProperties:   true,
 			HasInitFunction: true,
+		},
+		{
+			Name:         "cube_selector",
+			Dependencies: []string{"error", "filesystem"},
+			Type:         Service,
 		},
 	}
 

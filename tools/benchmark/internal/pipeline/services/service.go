@@ -5,6 +5,7 @@ import (
 	encoderServices "benchmark/internal/encoder/services"
 	"benchmark/internal/pipeline"
 	"benchmark/internal/solver"
+	"log"
 )
 
 const (
@@ -32,6 +33,10 @@ func getInputType(pipe *pipeline.Pipe) InputOutputType {
 		return ListOfEncodings
 	case pipeline.SlurmCube:
 		return ListOfSlurmJobEncodings
+	case pipeline.CubeSelect:
+		return ListOfCubesets
+	case pipeline.SlurmCubeSelect:
+		return ListOfSlurmJobCubesets
 	}
 
 	return None
@@ -49,6 +54,10 @@ func getOutputType(pipe *pipeline.Pipe) InputOutputType {
 		return ListOfCubesets
 	case pipeline.SlurmCube:
 		return ListOfSlurmJobCubesets
+	case pipeline.CubeSelect:
+		return ListOfEncodings
+	case pipeline.SlurmCubeSelect:
+		return ListOfSlurmJobEncodings
 	}
 
 	return None
@@ -101,6 +110,12 @@ func (pipelineSvc *PipelineService) TestRun(pipes []pipeline.Pipe) {
 		Thresholds: []int{2170, 2160},
 	}
 
+	cubeSelectParameters := pipeline.CubeSelecting{
+		Type:     "random",
+		Quantity: 3,
+		Seed:     1,
+	}
+
 	newPipeline := make([]pipeline.Pipe, 0)
 	for _, pipe := range pipes {
 		newPipe := pipeline.Pipe{Type: pipe.Type}
@@ -116,6 +131,10 @@ func (pipelineSvc *PipelineService) TestRun(pipes []pipeline.Pipe) {
 			newPipe.Cubing = cubeParameters
 		case pipeline.SlurmCube:
 			newPipe.Cubing = cubeParameters
+		case pipeline.CubeSelect:
+			newPipe.CubeSelecting = cubeSelectParameters
+		case pipeline.SlurmCubeSelect:
+			newPipe.CubeSelecting = cubeSelectParameters
 		}
 
 		newPipeline = append(newPipeline, newPipe)
@@ -139,12 +158,19 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 			pipelineSvc.solverSvc.RunRegular(lastValue.([]string), pipe.Solving)
 
 		case pipeline.SlurmSolve:
-			pipelineSvc.solverSvc.RunSlurm(lastValue.([]string), pipe.Solving)
+			input, ok := lastValue.(pipeline.SlurmPipeOutput)
+			if !ok {
+				log.Fatal("Slurm-based solver expects a slurm-based input")
+			}
+
+			lastValue = pipelineSvc.solverSvc.RunSlurm(input, pipe.Solving)
 
 		case pipeline.Cube:
 			lastValue = pipelineSvc.cuberSvc.RunRegular(lastValue.([]string), pipe.Cubing)
-			// case pipeline.SlurmCube:
-			// 	lastValue = pipelineSvc.cuberSvc.Run(lastValue.([]string), pipe.Cubing)
+		case pipeline.SlurmCube:
+			lastValue = pipelineSvc.cuberSvc.RunSlurm(lastValue.(pipeline.SlurmPipeOutput), pipe.Cubing)
+			// case pipeline.CubeSelect:
+			// 	lastValue = pipelineSvc.cubeSelectorSvc.RunSlurm(lastValue.(pipeline.SlurmPipeOutput), pipe.Cubing)
 		}
 	})
 }

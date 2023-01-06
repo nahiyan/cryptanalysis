@@ -2,6 +2,7 @@ package injector
 
 import (
 	services "benchmark/internal/config/services"
+	services17 "benchmark/internal/cube_selector/services"
 	services16 "benchmark/internal/cube_slurm_task/services"
 	services12 "benchmark/internal/cuber/services"
 	services13 "benchmark/internal/cubeset/services"
@@ -40,5 +41,6 @@ func New() *do.Injector {
 	do.Provide(injector, services14.NewEncodingService)
 	do.Provide(injector, services15.NewSolveSlurmTaskService)
 	do.Provide(injector, services16.NewCubeSlurmTaskService)
+	do.Provide(injector, services17.NewCubeSelectorService)
 	return injector
 }

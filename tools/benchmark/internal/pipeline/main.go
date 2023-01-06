@@ -1,13 +1,18 @@
 package pipeline
 
-import "benchmark/internal/solver"
+import (
+	"benchmark/internal/slurm"
+	"benchmark/internal/solver"
+)
 
 const (
-	Encode     = "encode"
-	Solve      = "solve"
-	SlurmSolve = "slurm_solve"
-	Cube       = "cube"
-	SlurmCube  = "slurm_cube"
+	Encode          = "encode"
+	Solve           = "solve"
+	SlurmSolve      = "slurm_solve"
+	Cube            = "cube"
+	SlurmCube       = "slurm_cube"
+	CubeSelect      = "cube_select"
+	SlurmCubeSelect = "slurm_cube_select"
 )
 
 type Type string
@@ -39,6 +44,12 @@ type Cubing struct {
 	Timeout          int
 }
 
+type CubeSelecting struct {
+	Type     string
+	Quantity int
+	Seed     int
+}
+
 type Pipe struct {
 	Type Type
 
@@ -50,4 +61,16 @@ type Pipe struct {
 
 	// Type: cube
 	Cubing
+
+	// Type: cube_select
+	CubeSelecting
+}
+
+type Value interface {
+	string
+}
+
+type SlurmPipeOutput struct {
+	Jobs   []slurm.Job
+	Values interface{}
 }
