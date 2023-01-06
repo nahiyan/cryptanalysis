@@ -1,7 +1,11 @@
 package services
 
 import (
+	"benchmark/internal/slurm"
+	"fmt"
 	"os"
+	"os/exec"
+	"strconv"
 	"text/template"
 )
 
@@ -39,4 +43,33 @@ func (slurmSvc *SlurmService) GenerateJob(numTasks, nodes, cpuCores, memory, tim
 	}
 
 	return filePath, nil
+}
+
+func (slurmSvc *SlurmService) ScheduleJob(jobPath string, dependencies []slurm.Job) (int, error) {
+	args := []string{}
+
+	// Dependencies
+	if len(dependencies) > 0 {
+		args = append(args, "-d", "afterok:")
+	}
+	for _, dependency := range dependencies {
+		args = append(args, strconv.Itoa(dependency.Id))
+	}
+
+	// Job path
+	args = append(args, jobPath)
+
+	output_, err := exec.Command("sbatch", args...).Output()
+	if err != nil {
+		return 0, err
+	}
+	output := string(output_)
+
+	var jobId int
+	_, err = fmt.Sscanf(output, "Submitted batch job %d", &jobId)
+	if err != nil {
+		return 0, err
+	}
+
+	return jobId, nil
 }

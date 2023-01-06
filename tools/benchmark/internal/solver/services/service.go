@@ -4,6 +4,7 @@ import (
 	"benchmark/internal/consts"
 	errorModule "benchmark/internal/error"
 	"benchmark/internal/pipeline"
+	"benchmark/internal/slurm"
 	solveslurmtask "benchmark/internal/solve_slurm_task"
 	"benchmark/internal/solver"
 	"context"
@@ -116,10 +117,15 @@ func (solverSvc *SolverService) ShouldSkip(encoding string, solver_ solver.Solve
 	return false
 }
 
-func (solverSvc *SolverService) RunSlurm(encodings []string, parameters pipeline.Solving) {
+func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutput, parameters pipeline.Solving) pipeline.SlurmPipeOutput {
 	slurmSvc := solverSvc.slurmSvc
 	errorSvc := solverSvc.errorSvc
 	config := solverSvc.configSvc.Config
+	encodings, ok := previousPipeOutput.Values.([]string)
+	if !ok {
+		log.Fatal("Solver: invalid input")
+	}
+	dependencies := previousPipeOutput.Jobs
 
 	err := solverSvc.solveSlurmTaskSvc.RemoveAll()
 	errorSvc.Fatal(err, "Solver: failed to clear slurm tasks")
@@ -127,7 +133,7 @@ func (solverSvc *SolverService) RunSlurm(encodings []string, parameters pipeline
 	counter := 1
 	solverSvc.Loop(encodings, parameters, func(encoding string, solver_ solver.Solver) {
 		if solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
-			fmt.Println("Solver: skipped", encoding, "with "+string(solver_))
+			fmt.Println("Solver: skipped", encoding, "with", solver_)
 			return
 		}
 
@@ -156,7 +162,14 @@ func (solverSvc *SolverService) RunSlurm(encodings []string, parameters pipeline
 			config.Paths.Bin.Benchmark))
 	errorSvc.Fatal(err, "Solver: failed to create slurm job file")
 
-	fmt.Println(jobFilePath)
+	jobId, err := slurmSvc.ScheduleJob(jobFilePath, dependencies)
+	solverSvc.errorSvc.Fatal(err, "Solver: failed to schedule the job")
+	fmt.Println("Solver: scheduled job with ID", jobId)
+
+	return pipeline.SlurmPipeOutput{
+		Jobs:   []slurm.Job{{Id: jobId}},
+		Values: []string{},
+	}
 }
 
 func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.Solver, timeout int) {
