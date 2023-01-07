@@ -10,7 +10,21 @@ import (
 	"os"
 )
 
-func (filesystemSvc *FilesystemService) CountLines(r io.Reader) (int, error) {
+func (filesystemSvc *FilesystemService) CountLines(filePath string) (int, error) {
+	reader, err := os.OpenFile(filePath, os.O_RDONLY, 0644)
+	if err != nil {
+		return 0, err
+	}
+
+	lines, err := filesystemSvc.CountLinesFromReader(reader)
+	if err != nil {
+		return 0, err
+	}
+
+	return lines, nil
+}
+
+func (filesystemSvc *FilesystemService) CountLinesFromReader(r io.Reader) (int, error) {
 	buf := make([]byte, 32*1024)
 	count := 0
 	lineSep := []byte{'\n'}
