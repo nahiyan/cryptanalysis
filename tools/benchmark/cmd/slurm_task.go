@@ -61,7 +61,13 @@ func initSlurmTaskCmd() *cobra.Command {
 					return
 				}
 
-				cuberSvc.TrackedInvoke(task.Encoding, task.Threshold, task.Timeout, task.MaxCubes, task.MinRefutedLeaves, nil, nil)
+				cuberSvc.TrackedInvoke(cuberServices.InvokeParameters{
+					Encoding:         task.Encoding,
+					Threshold:        task.Threshold,
+					Timeout:          task.Timeout,
+					MaxCubes:         task.MaxCubes,
+					MinRefutedLeaves: task.MinRefutedLeaves,
+				}, cuberServices.InvokeControl{})
 			}
 		},
 	}
