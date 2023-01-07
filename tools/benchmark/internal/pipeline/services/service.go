@@ -169,14 +169,18 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 			lastValue = pipelineSvc.cuberSvc.RunRegular(lastValue.([]string), pipe.Cubing)
 		case pipeline.SlurmCube:
 			lastValue = pipelineSvc.cuberSvc.RunSlurm(lastValue.(pipeline.SlurmPipeOutput), pipe.Cubing)
-			// case pipeline.CubeSelect:
-			// 	lastValue = pipelineSvc.cubeSelectorSvc.RunSlurm(lastValue.(pipeline.SlurmPipeOutput), pipe.Cubing)
+		case pipeline.CubeSelect:
+			input, ok := lastValue.([]string)
+			if !ok {
+				log.Fatal("Cube selector expects a list of cubesets")
+			}
+			lastValue = pipelineSvc.cubeSelectorSvc.Run(input, pipe.CubeSelecting)
 		}
 	})
 }
 
 func (pipelineSvc *PipelineService) Run(pipes []pipeline.Pipe) {
 	pipelineSvc.Validate(pipes)
-	pipelineSvc.TestRun(pipes)
+	// pipelineSvc.TestRun(pipes)
 	pipelineSvc.RealRun(pipes)
 }
