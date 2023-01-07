@@ -46,7 +46,7 @@ func (solverSvc *SolverService) GetCmdInfo(encoding string, solver solver.Solver
 	return binPath, args
 }
 
-func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, timeout int) (time.Duration, solver.Result) {
+func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, timeout int) (time.Duration, solver.Result, int) {
 	filesystemSvc := solverSvc.filesystemSvc
 	errorSvc := solverSvc.errorSvc
 	binPath, solverArgs := solverSvc.GetCmdInfo(encoding, solver_)
@@ -63,23 +63,28 @@ func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, t
 	cmd := exec.CommandContext(ctx, binPath, solverArgs...)
 	startTime := time.Now()
 	err := cmd.Run()
-	var result solver.Result = consts.Fail
+	var (
+		result   solver.Result = consts.Fail
+		exitCode int
+	)
 	errorSvc.Handle(err, func(err error) {
 		exiterr, ok := err.(*exec.ExitError)
 		if !ok {
 			return
 		}
 
-		exitCode := exiterr.ExitCode()
+		exitCode = exiterr.ExitCode()
 		if exitCode == 10 {
 			result = consts.Sat
 		} else if exitCode == 20 {
 			result = consts.Unsat
+		} else {
+			fmt.Println(err)
 		}
 	})
 	runtime := time.Since(startTime)
 
-	return runtime, result
+	return runtime, result, exitCode
 }
 
 func (solverSvc *SolverService) Loop(encodings []string, parameters pipeline.Solving, handler func(encoding string, solver solver.Solver)) {
@@ -176,7 +181,7 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 	solutionSvc := solverSvc.solutionSvc
 
 	// Invoke
-	runtime, result := solverSvc.Invoke(encoding, solver_, timeout)
+	runtime, result, exitCode := solverSvc.Invoke(encoding, solver_, timeout)
 
 	resultString := "Fail"
 	if result == consts.Sat {
@@ -185,7 +190,7 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 		resultString = "UNSAT"
 	}
 
-	fmt.Println("Solver:", solver_, resultString, runtime, encoding)
+	fmt.Println("Solver:", solver_, resultString, exitCode, runtime, encoding)
 
 	// Store in the database
 	solutionSvc.Register(encoding, solver_, solver.Solution{
