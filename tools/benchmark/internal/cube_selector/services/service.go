@@ -2,7 +2,6 @@ package services
 
 import (
 	"benchmark/internal/pipeline"
-	"benchmark/utils"
 	"errors"
 	"fmt"
 	"math"
@@ -48,7 +47,7 @@ func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(subProblemFilePath,
 	defer cubesFile.Close()
 
 	// * 3. Get the cube
-	cube, _, err := utils.ReadLine(cubesFile, cubeIndex)
+	cube, _, err := cubeSelectorSvc.filesystemSvc.ReadLine(cubesFile, cubeIndex)
 	if err != nil {
 		return err
 	}
@@ -115,7 +114,7 @@ func (cubeSelectorSvc *CubeSelectorService) RunRandom(cubesets []string, paramet
 
 		for _, cubeIndex := range cubeIndices {
 			subProblemFilePath := path.Join("/tmp", fmt.Sprintf("%s.cube%d.cnf", cubeset, cubeIndex))
-			if utils.FileExists(subProblemFilePath) {
+			if cubeSelectorSvc.filesystemSvc.FileExists(subProblemFilePath) {
 				encodings = append(encodings, subProblemFilePath)
 				fmt.Println("Cube selector: skipped", cubeIndex, subProblemFilePath)
 				continue
