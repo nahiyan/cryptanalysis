@@ -1,6 +1,7 @@
 package services
 
 import (
+	"benchmark/internal/command"
 	cubeslurmtask "benchmark/internal/cube_slurm_task"
 	"benchmark/internal/cubeset"
 	"benchmark/internal/pipeline"
@@ -9,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"os"
 	"os/exec"
 	"path"
 	"strconv"
@@ -51,9 +53,14 @@ func (cuberSvc *CuberService) ReadMarchOutput(output string) (int, int, error) {
 	return 0, 0, nil
 }
 
-func (cuberSvc *CuberService) TrackedInvoke(encoding string, threshold int, timeout time.Duration) error {
+func (cuberSvc *CuberService) TrackedInvoke(encoding string, threshold int, timeout time.Duration, maxCubes, minRefutedLeaves int, shouldStop *bool, commandGrp *command.Group) error {
+	if shouldStop != nil && *shouldStop {
+		fmt.Println("Cuber: read stop signal", threshold, encoding)
+		return nil
+	}
+
 	cubesetSvc := cuberSvc.cubesetSvc
-	output, runtime, err := cuberSvc.Invoke(encoding, threshold, timeout)
+	output, runtime, err := cuberSvc.Invoke(encoding, threshold, timeout, commandGrp)
 	if err != nil {
 		return err
 	}
@@ -71,11 +78,28 @@ func (cuberSvc *CuberService) TrackedInvoke(encoding string, threshold int, time
 		RefutedLeaves: refutedLeaves,
 		Runtime:       runtime,
 	})
+	if err != nil {
+		return err
+	}
 
-	return err
+	maxCubesExceeded := maxCubes > 0 && cubes > maxCubes
+	minRefutedLeavesViolated := minRefutedLeaves > 0 && refutedLeaves < minRefutedLeaves
+	if maxCubesExceeded || minRefutedLeavesViolated {
+		if err := os.Remove(cubesFilePath); err != nil {
+			return err
+		}
+		fmt.Println("Cuber: removed", cubesFilePath)
+	}
+	if maxCubesExceeded && shouldStop != nil && !*shouldStop {
+		*shouldStop = true
+		cuberSvc.commandSvc.StopGroup(commandGrp)
+		fmt.Println("Cuber: Written stop signal", threshold, encoding)
+	}
+
+	return nil
 }
 
-func (cuberSvc *CuberService) Invoke(encoding string, threshold int, timeout time.Duration) (string, time.Duration, error) {
+func (cuberSvc *CuberService) Invoke(encoding string, threshold int, timeout time.Duration, commandGrp *command.Group) (string, time.Duration, error) {
 	config := cuberSvc.configSvc.Config
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -83,6 +107,7 @@ func (cuberSvc *CuberService) Invoke(encoding string, threshold int, timeout tim
 
 	cubesFilePath := cuberSvc.CubesFilePath(encoding, threshold)
 	cmd := exec.CommandContext(ctx, config.Paths.Bin.March, encoding, "-o", cubesFilePath, "-n", strconv.Itoa(threshold))
+	cuberSvc.commandSvc.AddToGroup(commandGrp, cmd)
 
 	startTime := time.Now()
 	output_, err := cmd.Output()
@@ -107,21 +132,21 @@ func (cuberSvc *CuberService) Loop(encodings []string, parameters pipeline.Cubin
 			threshold := int(math.Floor(float64(freeVariables)/float64(stepSize)) * float64(stepSize))
 
 			for {
-				if cuberSvc.ShouldSkip(encoding, threshold) {
-					fmt.Println("Cuber: skipped", threshold, encoding)
-					continue
-				}
-
 				thresholds = append(thresholds, int(threshold))
 				threshold -= stepSize
 
-				if threshold < 0 {
+				if threshold <= 0 {
 					break
 				}
 			}
 		}
 
 		for _, threshold := range thresholds {
+			if cuberSvc.ShouldSkip(encoding, threshold) {
+				fmt.Println("Cuber: skipped", threshold, encoding)
+				continue
+			}
+
 			handler(encoding, threshold, parameters.Timeout)
 		}
 	}
@@ -130,6 +155,8 @@ func (cuberSvc *CuberService) Loop(encodings []string, parameters pipeline.Cubin
 func (cuberSvc *CuberService) RunRegular(encodings []string, parameters pipeline.Cubing) []string {
 	cubesFilePaths := []string{}
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
+	shouldStop := false
+	commandGrp := cuberSvc.commandSvc.CreateGroup()
 	fmt.Println("Cuber: started")
 
 	cuberSvc.Loop(encodings, parameters, func(encoding string, threshold, timeout int) {
@@ -137,8 +164,14 @@ func (cuberSvc *CuberService) RunRegular(encodings []string, parameters pipeline
 
 		pool.Submit(func(encoding string, threshold int) func() {
 			return func() {
-				err := cuberSvc.TrackedInvoke(encoding, threshold, time.Duration(parameters.Timeout)*time.Second)
-				cuberSvc.errorSvc.Fatal(err, "Cuber: failed to cube")
+				err := cuberSvc.TrackedInvoke(encoding, threshold, time.Duration(parameters.Timeout)*time.Second, parameters.MaxCubes, parameters.MinRefutedLeaves, &shouldStop, commandGrp)
+				cuberSvc.errorSvc.Handle(err, func(err error) {
+					if shouldStop {
+						return
+					}
+
+					log.Fatal("Cuber: failed to cube", threshold, encoding)
+				})
 			}
 		}(encoding, threshold))
 	})
@@ -163,11 +196,6 @@ func (cuberSvc *CuberService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutp
 
 	counter := 1
 	cuberSvc.Loop(encodings, parameters, func(encoding string, threshold int, timeout int) {
-		if cuberSvc.ShouldSkip(encoding, threshold) {
-			fmt.Println("Cuber: skipped", encoding, "with threshold of", threshold)
-			return
-		}
-
 		err := cuberSvc.cubeSlurmTaskSvc.AddTask(counter, cubeslurmtask.Task{
 			Encoding:  encoding,
 			Threshold: threshold,
