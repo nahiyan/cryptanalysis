@@ -207,7 +207,7 @@ func main() {
 		},
 		{
 			Name:         "cuber",
-			Dependencies: []string{"error", "database", "filesystem", "config", "cubeset", "encoding", "cube_slurm_task", "slurm"},
+			Dependencies: []string{"error", "database", "filesystem", "config", "cubeset", "encoding", "cube_slurm_task", "slurm", "command"},
 			Type:         Service,
 		},
 		{
@@ -239,6 +239,11 @@ func main() {
 		{
 			Name:         "cube_selector",
 			Dependencies: []string{"error", "filesystem"},
+			Type:         Service,
+		},
+		{
+			Name:         "command",
+			Dependencies: []string{},
 			Type:         Service,
 		},
 	}
