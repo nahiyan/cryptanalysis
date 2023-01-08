@@ -246,6 +246,11 @@ func main() {
 			Dependencies: []string{},
 			Type:         Service,
 		},
+		{
+			Name:         "log",
+			Dependencies: []string{"error", "solution", "cubeset"},
+			Type:         Service,
+		},
 	}
 
 	generateInjector(providers)
