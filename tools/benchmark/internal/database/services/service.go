@@ -97,3 +97,16 @@ func (databaseSvc *DatabaseService) Get(bucket string, key []byte) ([]byte, erro
 
 	return value, err
 }
+
+func (databaseSvc *DatabaseService) All(bucket string, handler func(key, value []byte)) error {
+	err := databaseSvc.db.View(func(tx *bolt.Tx) error {
+		// Assume bucket exists and has keys
+		bucket := tx.Bucket([]byte(bucket))
+		err := bucket.ForEach(func(key, value []byte) error {
+			handler(key, value)
+			return nil
+		})
+		return err
+	})
+	return err
+}

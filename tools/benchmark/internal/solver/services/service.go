@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"path"
 	"strings"
 	"time"
 
@@ -193,10 +194,13 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 	fmt.Println("Solver:", solver_, resultString, exitCode, runtime, encoding)
 
 	// Store in the database
+	instanceName := strings.TrimSuffix(path.Base(encoding), ".cnf")
 	solutionSvc.Register(encoding, solver_, solver.Solution{
-		Runtime: runtime,
-		Result:  result,
-		Solver:  solver_,
+		Runtime:      runtime,
+		Result:       result,
+		Solver:       solver_,
+		ExitCode:     exitCode,
+		InstanceName: instanceName,
 	})
 }
 

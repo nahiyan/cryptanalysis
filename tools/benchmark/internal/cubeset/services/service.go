@@ -1,6 +1,8 @@
 package services
 
-import "benchmark/internal/cubeset"
+import (
+	"benchmark/internal/cubeset"
+)
 
 type Properties struct {
 	Bucket string
@@ -23,4 +25,18 @@ func (cubesetSvc *CubesetService) Register(cubesetFilePath string, cubeSet cubes
 
 	err = cubesetSvc.databaseSvc.Set(cubesetSvc.Bucket, []byte(checksum), data)
 	return err
+}
+
+func (cubesetSvc *CubesetService) All() ([]cubeset.CubeSet, error) {
+	cubesets := []cubeset.CubeSet{}
+	cubesetSvc.databaseSvc.All(cubesetSvc.Bucket, func(key, value []byte) {
+		var cubeset cubeset.CubeSet
+		if err := cubesetSvc.marshallingSvc.BinDecode(value, &cubeset); err != nil {
+			return
+		}
+
+		cubesets = append(cubesets, cubeset)
+	})
+
+	return cubesets, nil
 }

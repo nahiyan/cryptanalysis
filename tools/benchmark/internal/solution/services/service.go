@@ -58,3 +58,17 @@ func (solutionSvc *SolutionService) Register(encoding string, solver_ solver.Sol
 
 	return nil
 }
+
+func (solutionSvc *SolutionService) All() ([]solver.Solution, error) {
+	solutions := []solver.Solution{}
+	solutionSvc.databaseSvc.All(solutionSvc.Bucket, func(key, value []byte) {
+		var solution solver.Solution
+		if err := solutionSvc.marshallingSvc.BinDecode(value, &solution); err != nil {
+			return
+		}
+
+		solutions = append(solutions, solution)
+	})
+
+	return solutions, nil
+}

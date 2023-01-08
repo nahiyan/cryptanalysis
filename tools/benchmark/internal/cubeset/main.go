@@ -6,4 +6,6 @@ type CubeSet struct {
 	Cubes         int
 	RefutedLeaves int
 	Runtime       time.Duration
+	Threshold     int
+	InstanceName  string
 }

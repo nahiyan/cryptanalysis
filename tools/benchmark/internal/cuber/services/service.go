@@ -87,8 +87,11 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 
 	fmt.Println("Cuber:", parameters.Threshold, cubes, "cubes", refutedLeaves, "refuted leaves", runtime, parameters.Encoding)
 
+	instanceName := strings.TrimSuffix(parameters.Encoding, ".cnf")
 	cubesFilePath := cuberSvc.CubesFilePath(parameters.Encoding, parameters.Threshold)
 	err = cubesetSvc.Register(cubesFilePath, cubeset.CubeSet{
+		Threshold:     parameters.Threshold,
+		InstanceName:  instanceName,
 		Cubes:         cubes,
 		RefutedLeaves: refutedLeaves,
 		Runtime:       runtime,

@@ -9,7 +9,9 @@ type Platform int
 type Result int
 
 type Solution struct {
-	Runtime time.Duration
-	Result  Result
-	Solver  Solver
+	Runtime      time.Duration
+	Result       Result
+	Solver       Solver
+	ExitCode     int
+	InstanceName string
 }
