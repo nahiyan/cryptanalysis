@@ -137,7 +137,7 @@ func (cubeSelectorSvc *CubeSelectorService) Run(cubesets []string, parameters pi
 	switch parameters.Type {
 	case Random:
 		encodings := cubeSelectorSvc.RunRandom(cubesets, parameters)
-		fmt.Println(encodings)
+		fmt.Println("Cube selector: selected", len(encodings), "cubes")
 		return encodings
 	}
 
