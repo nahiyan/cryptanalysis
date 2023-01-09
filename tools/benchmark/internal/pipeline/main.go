@@ -13,6 +13,7 @@ const (
 	SlurmCube       = "slurm_cube"
 	CubeSelect      = "cube_select"
 	SlurmCubeSelect = "slurm_cube_select"
+	Simplify        = "simplify"
 )
 
 type Type string
@@ -50,6 +51,12 @@ type CubeSelecting struct {
 	Seed     int
 }
 
+type Simplifying struct {
+	Name      string
+	Conflicts int
+	Timeout   int
+}
+
 type Pipe struct {
 	Type Type
 
@@ -64,6 +71,9 @@ type Pipe struct {
 
 	// Type: cube_select
 	CubeSelecting
+
+	// Type: simplifying
+	Simplifying
 }
 
 type Value interface {

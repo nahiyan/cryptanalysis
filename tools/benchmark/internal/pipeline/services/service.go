@@ -37,6 +37,8 @@ func getInputType(pipe *pipeline.Pipe) InputOutputType {
 		return ListOfCubesets
 	case pipeline.SlurmCubeSelect:
 		return ListOfSlurmJobCubesets
+	case pipeline.Simplify:
+		return ListOfEncodings
 	}
 
 	return None
@@ -58,6 +60,8 @@ func getOutputType(pipe *pipeline.Pipe) InputOutputType {
 		return ListOfEncodings
 	case pipeline.SlurmCubeSelect:
 		return ListOfSlurmJobEncodings
+	case pipeline.Simplify:
+		return ListOfEncodings
 	}
 
 	return None
@@ -175,6 +179,12 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 				log.Fatal("Cube selector expects a list of cubesets")
 			}
 			lastValue = pipelineSvc.cubeSelectorSvc.Run(input, pipe.CubeSelecting)
+		case pipeline.Simplify:
+			input, ok := lastValue.([]string)
+			if !ok {
+				log.Fatal("Simplifier expects a list of encodings")
+			}
+			lastValue = pipelineSvc.simplifierSvc.Run(input, pipe.Simplifying)
 		}
 	})
 }
