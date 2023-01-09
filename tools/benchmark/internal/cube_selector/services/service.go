@@ -86,7 +86,7 @@ func (cubeSelectorSvc *CubeSelectorService) GetInfo(cubeset string) (string, err
 	segments := strings.Split(cubesetFileName, ".")
 	errInvalidFileNameFormat := errors.New("invalid cubeset filename format")
 
-	if len(segments) != 4 {
+	if len(segments) != 4 && len(segments) != 6 {
 		return "", errInvalidFileNameFormat
 	}
 
