@@ -166,7 +166,7 @@ func main() {
 		},
 		{
 			Name:         "pipeline",
-			Dependencies: []string{"encoder", "solver", "cuber", "cube_selector"},
+			Dependencies: []string{"encoder", "solver", "cuber", "cube_selector", "simplifier"},
 		},
 		{
 			Name:          "schema",
@@ -249,6 +249,11 @@ func main() {
 		{
 			Name:         "log",
 			Dependencies: []string{"error", "solution", "cubeset"},
+			Type:         Service,
+		},
+		{
+			Name:         "simplifier",
+			Dependencies: []string{"error", "config", "filesystem"},
 			Type:         Service,
 		},
 	}
