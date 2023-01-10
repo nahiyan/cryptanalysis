@@ -91,6 +91,7 @@ func (simplifierSvc *SimplifierService) TrackedInvoke(encoding, outputFilePath s
 		Eliminaton:    eliminations,
 		Conflicts:     conflicts,
 		Clauses:       clauses,
+		InstanceName:  encoding,
 	})
 	if err != nil {
 		return err

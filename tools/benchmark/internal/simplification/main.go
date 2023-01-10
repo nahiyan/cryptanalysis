@@ -9,4 +9,5 @@ type Simplification struct {
 	Eliminaton    int
 	Conflicts     int
 	Clauses       int
+	InstanceName  string
 }

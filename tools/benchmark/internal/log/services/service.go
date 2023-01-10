@@ -79,7 +79,36 @@ func (logSvc *LogService) WriteSolverLog(basePath string) {
 	})
 }
 
+func (logSvc *LogService) WriteSimplificationLog(basePath string) {
+	filePath := basePath + ".simplifications.csv"
+	logSvc.WriteLog(filePath, func(writer *csv.Writer) {
+		simplifications, err := logSvc.simplificationSvc.All()
+		logSvc.errorSvc.Fatal(err, "Logger: failed to retrieve simplifications")
+		sort.Slice(simplifications, func(i, j int) bool {
+			if simplifications[i].InstanceName != simplifications[j].InstanceName {
+				return simplifications[i].InstanceName > simplifications[j].InstanceName
+			}
+
+			return simplifications[i].FreeVariables < simplifications[j].FreeVariables
+		})
+
+		writer.Write([]string{"Conflicts", "Free Variables", "Elimination", "Simplifier", "Clauses", "Process Time", "Instance Name"})
+		for _, simplification := range simplifications {
+			conflicts := fmt.Sprintf("%d", simplification.Conflicts)
+			freeVariables := fmt.Sprintf("%d", simplification.FreeVariables)
+			elimination := fmt.Sprintf("%d", simplification.Eliminaton)
+			simplifier := simplification.Simplifier
+			clauses := fmt.Sprintf("%d", simplification.Clauses)
+			processTime := fmt.Sprintf("%.3f", simplification.ProcessTime.Seconds())
+			instanceName := simplification.InstanceName
+
+			writer.Write([]string{conflicts, freeVariables, elimination, clauses, processTime, simplifier, instanceName})
+		}
+	})
+}
+
 func (logSvc *LogService) Run(basePath string) {
 	logSvc.WriteCuberLog(basePath)
 	logSvc.WriteSolverLog(basePath)
+	logSvc.WriteSimplificationLog(basePath)
 }
