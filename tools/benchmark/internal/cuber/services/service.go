@@ -32,7 +32,7 @@ type InvokeParameters struct {
 type InvokeControl struct {
 	CommandGroup *command.Group
 	CubesetPaths *[]string
-	ShouldStop   *bool
+	ShouldStop   map[string]bool
 }
 
 func (cuberSvc *CuberService) CubesFilePath(encoding string, threshold int) string {
@@ -69,7 +69,7 @@ func (cuberSvc *CuberService) ReadMarchOutput(output string) (int, int, error) {
 }
 
 func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control InvokeControl) error {
-	if control.ShouldStop != nil && *control.ShouldStop {
+	if shouldStop_, exists := control.ShouldStop[parameters.Encoding]; exists && shouldStop_ {
 		fmt.Println("Cuber: read stop signal", parameters.Threshold, parameters.Encoding)
 		return nil
 	}
@@ -103,8 +103,8 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 	maxCubesExceeded := parameters.MaxCubes > 0 && cubes > parameters.MaxCubes
 	minRefutedLeavesViolated := parameters.MinRefutedLeaves > 0 && refutedLeaves < parameters.MinRefutedLeaves
 
-	if maxCubesExceeded && control.ShouldStop != nil && !*control.ShouldStop {
-		*control.ShouldStop = true
+	if maxCubesExceeded {
+		control.ShouldStop[parameters.Encoding] = true
 		cuberSvc.commandSvc.StopGroup(control.CommandGroup)
 		fmt.Println("Cuber: Written stop signal", parameters.Threshold, parameters.Encoding)
 	}
@@ -173,8 +173,8 @@ func (cuberSvc *CuberService) Loop(encodings []string, parameters pipeline.Cubin
 func (cuberSvc *CuberService) RunRegular(encodings []string, parameters pipeline.Cubing) []string {
 	cubesFilePaths := []string{}
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
-	shouldStop := false
-	commandGrp := cuberSvc.commandSvc.CreateGroup()
+	shouldStop := map[string]bool{}
+	commandGrps := map[string]*command.Group{}
 	fmt.Println("Cuber: started")
 
 	cuberSvc.Loop(encodings, parameters, func(encoding string, threshold, timeout int) {
@@ -182,6 +182,10 @@ func (cuberSvc *CuberService) RunRegular(encodings []string, parameters pipeline
 			fmt.Println("Cuber: skipped", threshold, encoding)
 			cubesFilePaths = append(cubesFilePaths, cuberSvc.CubesFilePath(encoding, threshold))
 			return
+		}
+
+		if _, exists := commandGrps[encoding]; !exists {
+			commandGrps[encoding] = cuberSvc.commandSvc.CreateGroup()
 		}
 
 		pool.Submit(func(encoding string, threshold int) func() {
@@ -193,18 +197,17 @@ func (cuberSvc *CuberService) RunRegular(encodings []string, parameters pipeline
 					MaxCubes:         parameters.MaxCubes,
 					MinRefutedLeaves: parameters.MinRefutedLeaves,
 				}, InvokeControl{
-					CommandGroup: commandGrp,
+					CommandGroup: commandGrps[encoding],
 					CubesetPaths: &cubesFilePaths,
-					ShouldStop:   &shouldStop,
+					ShouldStop:   shouldStop,
 				})
 
 				if err != nil {
-					if err == cuber.ErrCubesetViolatedConstraints || shouldStop {
+					if err == cuber.ErrCubesetViolatedConstraints || shouldStop[encoding] {
 						return
 					}
-
-					log.Fatal("Cuber: failed to cube", threshold, encoding)
 				}
+				cuberSvc.errorSvc.Fatal(err, "Cuber: failed to cube "+strconv.Itoa(threshold)+" "+encoding)
 			}
 		}(encoding, threshold))
 	})
