@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 )
 
@@ -26,6 +27,13 @@ func (logSvc *LogService) WriteCuberLog(basePath string) {
 	logSvc.WriteLog(filePath, func(writer *csv.Writer) {
 		cubesets, err := logSvc.cubesetSvc.All()
 		logSvc.errorSvc.Fatal(err, "Logger: failed to retrieve cubesets")
+		sort.Slice(cubesets, func(i, j int) bool {
+			if cubesets[i].InstanceName != cubesets[j].InstanceName {
+				return cubesets[i].InstanceName > cubesets[j].InstanceName
+			}
+
+			return cubesets[i].Threshold < cubesets[j].Threshold
+		})
 
 		writer.Write([]string{"Threshold", "Cubes", "Refuted Leaves", "Runtime", "Encoding"})
 		for _, cubeset := range cubesets {
@@ -44,6 +52,13 @@ func (logSvc *LogService) WriteSolverLog(basePath string) {
 	logSvc.WriteLog(filePath, func(writer *csv.Writer) {
 		solutions, err := logSvc.solutionSvc.All()
 		logSvc.errorSvc.Fatal(err, "Logger: failed to retrieve solutions")
+		sort.Slice(solutions, func(i, j int) bool {
+			if solutions[i].InstanceName != solutions[j].InstanceName {
+				return solutions[i].InstanceName > solutions[j].InstanceName
+			}
+
+			return int(solutions[i].Result) < int(solutions[j].Result)
+		})
 
 		writer.Write([]string{"Result", "Exit Code", "Runtime", "Solver", "Encoding"})
 		for _, solution := range solutions {
