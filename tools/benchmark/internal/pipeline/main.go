@@ -53,8 +53,9 @@ type CubeSelecting struct {
 
 type Simplifying struct {
 	Name      string
-	Conflicts int
+	Conflicts []int
 	Timeout   int
+	Workers   int
 }
 
 type Pipe struct {
