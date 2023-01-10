@@ -206,8 +206,8 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 
 func (solverSvc *SolverService) RunRegular(encodings []string, parameters pipeline.Solving) {
 	fmt.Println("Solver: started")
-
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
+
 	solverSvc.Loop(encodings, parameters, func(encoding string, solver_ solver.Solver) {
 		if solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
 			fmt.Println("Solver: skipped", encoding, "with "+string(solver_))
@@ -218,7 +218,7 @@ func (solverSvc *SolverService) RunRegular(encodings []string, parameters pipeli
 			solverSvc.TrackedInvoke(encoding, solver_, parameters.Timeout)
 		})
 	})
-	pool.StopAndWait()
 
+	pool.StopAndWait()
 	fmt.Println("Solver: stopped")
 }
