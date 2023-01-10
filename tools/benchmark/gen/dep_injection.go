@@ -253,8 +253,15 @@ func main() {
 		},
 		{
 			Name:         "simplifier",
-			Dependencies: []string{"error", "config", "filesystem"},
+			Dependencies: []string{"error", "config", "filesystem", "simplification"},
 			Type:         Service,
+		},
+		{
+			Name:            "simplification",
+			Dependencies:    []string{"error", "config", "filesystem", "database", "marshalling"},
+			Type:            Service,
+			HasInitFunction: true,
+			HasProperties:   true,
 		},
 	}
 
