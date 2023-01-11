@@ -9,7 +9,9 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
+	"github.com/alitto/pond"
 	"github.com/samber/lo"
 )
 
@@ -87,30 +89,28 @@ func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(subProblemFilePath,
 }
 
 func (cubeSelectorSvc *CubeSelectorService) GetInfo(cubeset string) (string, error) {
-	cubesetFileName := path.Base(cubeset)
-	segments := strings.Split(cubesetFileName, ".")
-	errInvalidFileNameFormat := errors.New("invalid cubeset filename format")
-
-	if len(segments) != 4 && len(segments) != 6 {
-		return "", errInvalidFileNameFormat
+	index := strings.LastIndex(cubeset, ".cnf")
+	if index == -1 {
+		return "", errors.New("invalid cubeset filename")
 	}
-
-	if segments[1] != "cnf" {
-		return "", errInvalidFileNameFormat
-	}
-
-	basePath := path.Dir(cubeset)
-	encoding := path.Join(basePath, segments[0]+"."+segments[1])
+	encoding := cubeset[:index+4]
 	return encoding, nil
 }
 
 func (cubeSelectorSvc *CubeSelectorService) RunRandom(cubesets []string, parameters pipeline.CubeSelecting) []string {
 	fmt.Println("Cube selector: started")
 	encodings := []string{}
+	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
+
+	// temporary directory
+	if _, err := os.Stat("./tmp"); err != nil && err == os.ErrNotExist {
+		err := os.Mkdir("tmp", os.ModePerm)
+		cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to create the ./tmp dir")
+	}
 
 	for _, cubeset := range cubesets {
 		encoding, err := cubeSelectorSvc.GetInfo(cubeset)
-		cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to get threshold "+cubeset)
+		cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to get cubeset details "+cubeset)
 
 		cubesCount, err := cubeSelectorSvc.filesystemSvc.CountLines(cubeset)
 		cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to count lines "+cubeset)
@@ -118,21 +118,26 @@ func (cubeSelectorSvc *CubeSelectorService) RunRandom(cubesets []string, paramet
 		cubeIndices := cubeSelectorSvc.RandomCubes(cubesCount, parameters.Quantity, int64(parameters.Seed))
 
 		for _, cubeIndex := range cubeIndices {
-			subProblemFilePath := path.Join("/tmp", fmt.Sprintf("%s.cube%d.cnf", cubeset, cubeIndex))
+			subProblemFilePath := path.Join("./tmp", fmt.Sprintf("%s.cube%d.cnf", cubeset, cubeIndex))
 			if cubeSelectorSvc.filesystemSvc.FileExists(subProblemFilePath) {
 				encodings = append(encodings, subProblemFilePath)
 				fmt.Println("Cube selector: skipped", cubeIndex, subProblemFilePath)
 				continue
 			}
 
-			err := cubeSelectorSvc.EncodingFromCube(subProblemFilePath, encoding, cubeset, cubeIndex)
-			cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to generate the encoding from a cube")
+			pool.Submit(func(subProblemFilePath, cubeset, encoding string, cubeIndex int) func() {
+				return func() {
+					err := cubeSelectorSvc.EncodingFromCube(subProblemFilePath, encoding, cubeset, cubeIndex)
+					cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to generate the encoding from a cube")
 
-			fmt.Println("Cube selector:", cubeIndex, subProblemFilePath)
+					fmt.Println("Cube selector:", cubeIndex, subProblemFilePath)
+				}
+			}(subProblemFilePath, cubeset, encoding, cubeIndex))
 			encodings = append(encodings, subProblemFilePath)
 		}
 	}
 
+	pool.StopAndWait()
 	fmt.Println("Cube selector: stopped")
 	return encodings
 }
