@@ -31,14 +31,15 @@ func (databaseSvc *DatabaseService) CreateBuckets() error {
 
 func (databaseSvc *DatabaseService) Init() {
 	errorSvc := databaseSvc.errorSvc
+
+	// Open the database
 	db, err := bolt.Open("database.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
 	errorSvc.Fatal(err, "Database: failed to open")
 	databaseSvc.db = db
 
-	{
-		err := databaseSvc.CreateBuckets()
-		errorSvc.Fatal(err, "Database: failed to create buckets")
-	}
+	// Buckets
+	err = databaseSvc.CreateBuckets()
+	errorSvc.Fatal(err, "Database: failed to create buckets")
 }
 
 func (databaseSvc *DatabaseService) Set(bucket string, key []byte, value []byte) error {
