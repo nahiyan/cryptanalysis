@@ -103,7 +103,7 @@ func (cubeSelectorSvc *CubeSelectorService) RunRandom(cubesets []string, paramet
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 
 	// temporary directory
-	if _, err := os.Stat("./tmp"); err != nil && err == os.ErrNotExist {
+	if !cubeSelectorSvc.filesystemSvc.FileExists("tmp") {
 		err := os.Mkdir("tmp", os.ModePerm)
 		cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to create the ./tmp dir")
 	}
