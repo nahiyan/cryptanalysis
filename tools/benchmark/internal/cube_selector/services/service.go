@@ -23,6 +23,11 @@ func (cubeSelectorSvc *CubeSelectorService) RandomCubes(cubesCount, selectionSiz
 		return index + 1
 	})
 
+	// Return all the cubes if the selecton size is 0
+	if selectionSize == 0 {
+		return cubes
+	}
+
 	randomCubeSelectionCount := int(math.Min(float64(cubesCount), float64(selectionSize)))
 
 	return cubes[:randomCubeSelectionCount]
@@ -133,7 +138,6 @@ func (cubeSelectorSvc *CubeSelectorService) RunRandom(cubesets []string, paramet
 }
 
 func (cubeSelectorSvc *CubeSelectorService) Run(cubesets []string, parameters pipeline.CubeSelecting) []string {
-
 	switch parameters.Type {
 	case Random:
 		encodings := cubeSelectorSvc.RunRandom(cubesets, parameters)
