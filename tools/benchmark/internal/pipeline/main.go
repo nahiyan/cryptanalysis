@@ -49,6 +49,7 @@ type CubeSelecting struct {
 	Type     string
 	Quantity int
 	Seed     int
+	Workers  int
 }
 
 type Simplifying struct {
