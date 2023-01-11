@@ -29,13 +29,46 @@ func (databaseSvc *DatabaseService) CreateBuckets() error {
 	return err
 }
 
+func (databaseSvc *DatabaseService) Open() error {
+	db, err := bolt.Open("database.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
+	if err != nil {
+		return err
+	}
+	databaseSvc.db = db
+
+	return nil
+}
+
+func (databaseSvc *DatabaseService) Close() error {
+	if err := databaseSvc.db.Close(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (databaseSvc *DatabaseService) Use(handler func(db *bolt.DB) error) error {
+	if err := databaseSvc.Open(); err != nil {
+		return err
+	}
+
+	if err := handler(databaseSvc.db); err != nil {
+		return err
+	}
+
+	if err := databaseSvc.Close(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (databaseSvc *DatabaseService) Init() {
 	errorSvc := databaseSvc.errorSvc
 
 	// Open the database
-	db, err := bolt.Open("database.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
+	err := databaseSvc.Open()
 	errorSvc.Fatal(err, "Database: failed to open")
-	databaseSvc.db = db
 
 	// Buckets
 	err = databaseSvc.CreateBuckets()
