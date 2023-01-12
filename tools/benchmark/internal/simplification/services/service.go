@@ -1,6 +1,8 @@
 package services
 
-import "benchmark/internal/simplification"
+import (
+	"benchmark/internal/simplification"
+)
 
 type Properties struct {
 	Bucket string
@@ -19,7 +21,7 @@ func (simplificationSvc *SimplificationService) Register(encoding string, simpli
 		return err
 	}
 
-	value, err := simplificationSvc.marshallingSvc.BinEncode(encoding)
+	value, err := simplificationSvc.marshallingSvc.BinEncode(simplification)
 	if err != nil {
 		return err
 	}
