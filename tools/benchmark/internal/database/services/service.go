@@ -75,40 +75,6 @@ func (databaseSvc *DatabaseService) Init() {
 	errorSvc.Fatal(err, "Database: failed to create buckets")
 }
 
-func (databaseSvc *DatabaseService) Set(bucket string, key []byte, value []byte) error {
-	err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(bucket))
-
-		// Set key to auto-incrementing ID if empty
-		if key == nil {
-			id, err := b.NextSequence()
-			if err != nil {
-				return err
-			}
-
-			key = []byte(strconv.Itoa(int(id)))
-		}
-
-		err := b.Put([]byte(key), []byte(value))
-		return err
-	})
-
-	return err
-}
-
-func (databaseSvc *DatabaseService) RemoveAll(bucket string) error {
-	err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
-		if err := tx.DeleteBucket([]byte(bucket)); err != nil {
-			return err
-		}
-
-		_, err := tx.CreateBucket([]byte(bucket))
-		return err
-	})
-
-	return err
-}
-
 func (databaseSvc *DatabaseService) Get(bucket string, key []byte) ([]byte, error) {
 	var value []byte
 	err := databaseSvc.db.View(func(tx *bolt.Tx) error {
@@ -132,6 +98,27 @@ func (databaseSvc *DatabaseService) Get(bucket string, key []byte) ([]byte, erro
 	return value, err
 }
 
+func (databaseSvc *DatabaseService) Set(bucket string, key []byte, value []byte) error {
+	err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bucket))
+
+		// Set key to auto-incrementing ID if empty
+		if key == nil {
+			id, err := b.NextSequence()
+			if err != nil {
+				return err
+			}
+
+			key = []byte(strconv.Itoa(int(id)))
+		}
+
+		err := b.Put([]byte(key), []byte(value))
+		return err
+	})
+
+	return err
+}
+
 func (databaseSvc *DatabaseService) All(bucket string, handler func(key, value []byte)) error {
 	err := databaseSvc.db.View(func(tx *bolt.Tx) error {
 		// Assume bucket exists and has keys
@@ -142,5 +129,19 @@ func (databaseSvc *DatabaseService) All(bucket string, handler func(key, value [
 		})
 		return err
 	})
+
+	return err
+}
+
+func (databaseSvc *DatabaseService) RemoveAll(bucket string) error {
+	err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
+		if err := tx.DeleteBucket([]byte(bucket)); err != nil {
+			return err
+		}
+
+		_, err := tx.CreateBucket([]byte(bucket))
+		return err
+	})
+
 	return err
 }

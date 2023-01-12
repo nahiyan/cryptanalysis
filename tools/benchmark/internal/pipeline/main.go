@@ -48,8 +48,8 @@ type Cubing struct {
 type CubeSelecting struct {
 	Type     string
 	Quantity int
-	Seed     int
-	Workers  int
+	Seed     int64
+	Offset   int
 }
 
 type Simplifying struct {
@@ -85,4 +85,8 @@ type Value interface {
 type SlurmPipeOutput struct {
 	Jobs   []slurm.Job
 	Values interface{}
+}
+
+type PromiseString interface {
+	Get() string
 }

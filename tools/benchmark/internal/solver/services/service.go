@@ -88,8 +88,9 @@ func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, t
 	return runtime, result, exitCode
 }
 
-func (solverSvc *SolverService) Loop(encodings []string, parameters pipeline.Solving, handler func(encoding string, solver solver.Solver)) {
-	for _, encoding := range encodings {
+func (solverSvc *SolverService) Loop(encodingPromises []pipeline.PromiseString, parameters pipeline.Solving, handler func(encoding string, solver solver.Solver)) {
+	for _, promise := range encodingPromises {
+		encoding := promise.Get()
 		for _, solver := range parameters.Solvers {
 			handler(encoding, solver)
 		}
@@ -127,7 +128,7 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 	slurmSvc := solverSvc.slurmSvc
 	errorSvc := solverSvc.errorSvc
 	config := solverSvc.configSvc.Config
-	encodings, ok := previousPipeOutput.Values.([]string)
+	encodingPromises, ok := previousPipeOutput.Values.([]pipeline.PromiseString)
 	if !ok {
 		log.Fatal("Solver: invalid input")
 	}
@@ -137,7 +138,7 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 	errorSvc.Fatal(err, "Solver: failed to clear slurm tasks")
 
 	counter := 1
-	solverSvc.Loop(encodings, parameters, func(encoding string, solver_ solver.Solver) {
+	solverSvc.Loop(encodingPromises, parameters, func(encoding string, solver_ solver.Solver) {
 		if solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
 			fmt.Println("Solver: skipped", encoding, "with", solver_)
 			return
@@ -204,11 +205,11 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 	})
 }
 
-func (solverSvc *SolverService) RunRegular(encodings []string, parameters pipeline.Solving) {
+func (solverSvc *SolverService) RunRegular(encodingPromises []pipeline.PromiseString, parameters pipeline.Solving) {
 	fmt.Println("Solver: started")
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 
-	solverSvc.Loop(encodings, parameters, func(encoding string, solver_ solver.Solver) {
+	solverSvc.Loop(encodingPromises, parameters, func(encoding string, solver_ solver.Solver) {
 		if solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
 			fmt.Println("Solver: skipped", encoding, "with "+string(solver_))
 			return

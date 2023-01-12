@@ -159,7 +159,7 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 			}
 
 		case pipeline.Solve:
-			pipelineSvc.solverSvc.RunRegular(lastValue.([]string), pipe.Solving)
+			pipelineSvc.solverSvc.RunRegular(lastValue.([]pipeline.PromiseString), pipe.Solving)
 
 		case pipeline.SlurmSolve:
 			input, ok := lastValue.(pipeline.SlurmPipeOutput)

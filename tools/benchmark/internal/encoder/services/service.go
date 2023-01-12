@@ -23,6 +23,14 @@ const (
 	Espresso     = "espresso"
 )
 
+type EncodingPromise struct {
+	Encoding string
+}
+
+func (encodingPromise EncodingPromise) Get() string {
+	return encodingPromise.Encoding
+}
+
 func (encoderSvc *EncoderService) GetInstanceName(steps int, adderType pipeline.AdderType, xor int, hash string, dobbertin, dobbertinBits int, cubeIndex *int) string {
 	return fmt.Sprintf("%smd4_%d_%s_xor%d_%s_dobbertin%d_b%d", func(cubeIndex *int) string {
 		if cubeIndex != nil {
