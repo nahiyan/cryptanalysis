@@ -30,7 +30,7 @@ func (databaseSvc *DatabaseService) CreateBuckets() error {
 }
 
 func (databaseSvc *DatabaseService) Open() error {
-	db, err := bolt.Open("database.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
+	db, err := bolt.Open("database.db", 0600, &bolt.Options{Timeout: 3 * time.Second})
 	if err != nil {
 		return err
 	}
@@ -51,12 +51,9 @@ func (databaseSvc *DatabaseService) Use(handler func(db *bolt.DB) error) error {
 	if err := databaseSvc.Open(); err != nil {
 		return err
 	}
+	defer databaseSvc.Close()
 
 	if err := handler(databaseSvc.db); err != nil {
-		return err
-	}
-
-	if err := databaseSvc.Close(); err != nil {
 		return err
 	}
 
@@ -73,46 +70,57 @@ func (databaseSvc *DatabaseService) Init() {
 	// Buckets
 	err = databaseSvc.CreateBuckets()
 	errorSvc.Fatal(err, "Database: failed to create buckets")
+
+	err = databaseSvc.Close()
+	errorSvc.Fatal(err, "Database: failed to close")
 }
 
 func (databaseSvc *DatabaseService) Get(bucket string, key []byte) ([]byte, error) {
 	var value []byte
-	err := databaseSvc.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(bucket))
+	err := databaseSvc.Use(func(db *bolt.DB) error {
+		err := databaseSvc.db.View(func(tx *bolt.Tx) error {
+			b := tx.Bucket([]byte(bucket))
 
-		value_ := b.Get([]byte(key))
+			value_ := b.Get([]byte(key))
 
-		// Treat empty value as non-existent
-		if len(value_) == 0 {
-			value = []byte{}
-			return errorModule.ErrKeyNotFound
-		}
+			// Treat empty value as non-existent
+			if len(value_) == 0 {
+				value = []byte{}
+				return errorModule.ErrKeyNotFound
+			}
 
-		// Copy the byte slice since BoltDB is a zero-copy database and the memory allocation may get reclaimed
-		value = make([]byte, len(value_))
-		copy(value, value_)
+			// Copy the byte slice since BoltDB is a zero-copy database and the memory allocation may get reclaimed
+			value = make([]byte, len(value_))
+			copy(value, value_)
 
-		return nil
+			return nil
+		})
+
+		return err
 	})
 
 	return value, err
 }
 
 func (databaseSvc *DatabaseService) Set(bucket string, key []byte, value []byte) error {
-	err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(bucket))
+	err := databaseSvc.Use(func(db *bolt.DB) error {
+		err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
+			b := tx.Bucket([]byte(bucket))
 
-		// Set key to auto-incrementing ID if empty
-		if key == nil {
-			id, err := b.NextSequence()
-			if err != nil {
-				return err
+			// Set key to auto-incrementing ID if empty
+			if key == nil {
+				id, err := b.NextSequence()
+				if err != nil {
+					return err
+				}
+
+				key = []byte(strconv.Itoa(int(id)))
 			}
 
-			key = []byte(strconv.Itoa(int(id)))
-		}
+			err := b.Put([]byte(key), []byte(value))
+			return err
+		})
 
-		err := b.Put([]byte(key), []byte(value))
 		return err
 	})
 
@@ -120,13 +128,17 @@ func (databaseSvc *DatabaseService) Set(bucket string, key []byte, value []byte)
 }
 
 func (databaseSvc *DatabaseService) All(bucket string, handler func(key, value []byte)) error {
-	err := databaseSvc.db.View(func(tx *bolt.Tx) error {
-		// Assume bucket exists and has keys
-		bucket := tx.Bucket([]byte(bucket))
-		err := bucket.ForEach(func(key, value []byte) error {
-			handler(key, value)
-			return nil
+	err := databaseSvc.Use(func(db *bolt.DB) error {
+		err := databaseSvc.db.View(func(tx *bolt.Tx) error {
+			// Assume bucket exists and has keys
+			bucket := tx.Bucket([]byte(bucket))
+			err := bucket.ForEach(func(key, value []byte) error {
+				handler(key, value)
+				return nil
+			})
+			return err
 		})
+
 		return err
 	})
 
@@ -134,12 +146,16 @@ func (databaseSvc *DatabaseService) All(bucket string, handler func(key, value [
 }
 
 func (databaseSvc *DatabaseService) RemoveAll(bucket string) error {
-	err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
-		if err := tx.DeleteBucket([]byte(bucket)); err != nil {
-			return err
-		}
+	err := databaseSvc.Use(func(db *bolt.DB) error {
+		err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
+			if err := tx.DeleteBucket([]byte(bucket)); err != nil {
+				return err
+			}
 
-		_, err := tx.CreateBucket([]byte(bucket))
+			_, err := tx.CreateBucket([]byte(bucket))
+			return err
+		})
+
 		return err
 	})
 
