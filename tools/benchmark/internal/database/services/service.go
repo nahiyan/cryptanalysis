@@ -30,7 +30,7 @@ func (databaseSvc *DatabaseService) CreateBuckets() error {
 }
 
 func (databaseSvc *DatabaseService) Open() error {
-	db, err := bolt.Open("database.db", 0600, &bolt.Options{Timeout: 3 * time.Second})
+	db, err := bolt.Open("database.db", 0600, &bolt.Options{Timeout: 20 * time.Second})
 	if err != nil {
 		return err
 	}
