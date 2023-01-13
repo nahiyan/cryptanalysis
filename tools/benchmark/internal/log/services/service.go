@@ -2,11 +2,17 @@ package services
 
 import (
 	"benchmark/internal/consts"
+	"benchmark/internal/cubeset"
+	"benchmark/internal/solver"
 	"encoding/csv"
 	"fmt"
 	"os"
 	"sort"
 	"strconv"
+	"strings"
+	"time"
+
+	"github.com/samber/lo"
 )
 
 func (logSvc *LogService) WriteLog(filePath string, handler func(writer *csv.Writer)) {
@@ -57,7 +63,7 @@ func (logSvc *LogService) WriteSolverLog(basePath string) {
 				return solutions[i].InstanceName > solutions[j].InstanceName
 			}
 
-			return int(solutions[i].Result) < int(solutions[j].Result)
+			return solutions[i].ExitCode < solutions[j].ExitCode
 		})
 
 		writer.Write([]string{"Result", "Exit Code", "Runtime", "Solver", "Encoding"})
@@ -107,8 +113,108 @@ func (logSvc *LogService) WriteSimplificationLog(basePath string) {
 	})
 }
 
+func (logSvc *LogService) WriteSummaryLog(basePath string) {
+	filePath := basePath + ".summary.md"
+	summary := ""
+	solutions, err := logSvc.solutionSvc.All()
+	logSvc.errorSvc.Fatal(err, "Logger: failed to fetch solutions")
+	cubesets, err := logSvc.cubesetSvc.All()
+	logSvc.errorSvc.Fatal(err, "Logger: failed to fetch cubesets")
+
+	summary += "# Solutions\n\n"
+	groupedSolutions := lo.GroupBy(solutions, func(s solver.Solution) string {
+		instanceName := s.InstanceName
+		lastCnfIndex := strings.LastIndex(instanceName, ".cnf")
+		lastCubesIndex := strings.LastIndex(instanceName, ".cubes")
+
+		if lastCubesIndex != -1 {
+			return instanceName[:lastCubesIndex]
+		}
+
+		return instanceName[:lastCnfIndex]
+	})
+
+	encodings := lo.Keys(groupedSolutions)
+	sort.Strings(encodings)
+	for _, encoding := range encodings {
+		sat := 0
+		unsat := 0
+		others := 0
+		totalTime := time.Duration(0)
+		quantity := 0
+
+		solutions := groupedSolutions[encoding]
+		for _, solution := range solutions {
+			switch solution.ExitCode {
+			case 10:
+				sat += 1
+			case 20:
+				unsat += 1
+			default:
+				others += 1
+			}
+
+			if solution.ExitCode == 20 || solution.ExitCode == 10 {
+				totalTime += solution.Runtime
+				quantity += 1
+			}
+		}
+
+		summary += fmt.Sprintf("## %s\n%d SAT, %d UNSAT, %d Others\n", encoding, sat, unsat, others)
+		if quantity > 1 {
+			cubesCount := 0
+			for _, cubeset := range cubesets {
+				if fmt.Sprintf("%s.cnf.n%d", cubeset.InstanceName, cubeset.Threshold) == encoding {
+					cubesCount = cubeset.Cubes
+				}
+			}
+			estimate := time.Duration(totalTime.Seconds()/float64(quantity)*float64(cubesCount)) * time.Second
+			summary += fmt.Sprintf("Estimate: %s\n", estimate)
+		}
+	}
+
+	summary += "\n# Cubesets\n\n"
+	groupedCubesets := lo.GroupBy(cubesets, func(cubeset cubeset.CubeSet) string {
+		instanceName := cubeset.InstanceName
+		lastCnfIndex := strings.LastIndex(instanceName, ".cnf")
+		lastCubesIndex := strings.LastIndex(instanceName, ".cubes")
+
+		if lastCubesIndex != -1 {
+			return instanceName[:lastCubesIndex]
+		}
+
+		return instanceName[:lastCnfIndex]
+	})
+
+	encodings = lo.Keys(groupedCubesets)
+	sort.Strings(encodings)
+	for _, encoding := range encodings {
+		cubesets := groupedCubesets[encoding]
+		summary += "## " + encoding + "\n"
+
+		sort.Slice(cubesets, func(i, j int) bool {
+			return cubesets[i].Threshold < cubesets[j].Threshold
+		})
+
+		for i, cubeset := range cubesets {
+			threshold := cubeset.Threshold
+			cubes := cubeset.Cubes
+			refutedLeaves := cubeset.RefutedLeaves
+			processTime := cubeset.Runtime
+
+			summary += fmt.Sprintf("%d. n%d: %d cubes, %d refuted leaves, %s process time\n", i+1, threshold, cubes, refutedLeaves, processTime.String())
+		}
+		summary += "\n"
+	}
+
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	logSvc.errorSvc.Fatal(err, "Logger: failed to write summary")
+	file.WriteString(summary)
+}
+
 func (logSvc *LogService) Run(basePath string) {
 	logSvc.WriteCuberLog(basePath)
 	logSvc.WriteSolverLog(basePath)
 	logSvc.WriteSimplificationLog(basePath)
+	logSvc.WriteSummaryLog(basePath)
 }
