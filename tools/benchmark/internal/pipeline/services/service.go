@@ -170,7 +170,12 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 			lastValue = pipelineSvc.solverSvc.RunSlurm(input, pipe.Solving)
 
 		case pipeline.Cube:
-			lastValue = pipelineSvc.cuberSvc.RunRegular(lastValue.([]string), pipe.Cubing)
+			input, ok := lastValue.([]pipeline.PromiseString)
+			if !ok {
+				log.Fatal("Cuber expects a list of encoding promises")
+			}
+
+			lastValue = pipelineSvc.cuberSvc.RunRegular(input, pipe.Cubing)
 		case pipeline.SlurmCube:
 			lastValue = pipelineSvc.cuberSvc.RunSlurm(lastValue.(pipeline.SlurmPipeOutput), pipe.Cubing)
 		case pipeline.CubeSelect:
@@ -180,9 +185,9 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 			}
 			lastValue = pipelineSvc.cubeSelectorSvc.Run(input, pipe.CubeSelecting)
 		case pipeline.Simplify:
-			input, ok := lastValue.([]string)
+			input, ok := lastValue.([]pipeline.PromiseString)
 			if !ok {
-				log.Fatal("Simplifier expects a list of encodings")
+				log.Fatal("Simplifier expects a list of encodings promises")
 			}
 			lastValue = pipelineSvc.simplifierSvc.Run(input, pipe.Simplifying)
 		}

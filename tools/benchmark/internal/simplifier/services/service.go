@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/alitto/pond"
+	"github.com/samber/lo"
 )
 
 type CadicalOutput struct {
@@ -18,6 +19,14 @@ type CadicalOutput struct {
 	Clauses       int
 	Eliminations  int
 	ProcessTime   time.Duration
+}
+
+type Promise struct {
+	Encoding string
+}
+
+func (promise Promise) Get() string {
+	return promise.Encoding
 }
 
 func (simplifierSvc *SimplifierService) ReadCadicalOutput(output string) CadicalOutput {
@@ -100,12 +109,14 @@ func (simplifierSvc *SimplifierService) TrackedInvoke(encoding, outputFilePath s
 	return nil
 }
 
-func (simplifierSvc *SimplifierService) RunCadical(encodings []string, parameters pipeline.Simplifying) []string {
+func (simplifierSvc *SimplifierService) RunCadical(encodingPromises []pipeline.PromiseString, parameters pipeline.Simplifying) []pipeline.PromiseString {
 	fmt.Println("Simplifier: started")
 	simplifiedEncodings := []string{}
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 
-	for _, encoding := range encodings {
+	for _, encodingPromise := range encodingPromises {
+		encoding := encodingPromise.Get()
+
 		for _, conflicts := range parameters.Conflicts {
 			outputFilePath := fmt.Sprintf("%s.cadical_c%d.cnf", encoding, conflicts)
 
@@ -128,14 +139,21 @@ func (simplifierSvc *SimplifierService) RunCadical(encodings []string, parameter
 
 	pool.StopAndWait()
 	fmt.Println("Simplifier: stopped")
-	return simplifiedEncodings
+
+	simplifiedEncodingPromises := lo.Map(simplifiedEncodings, func(simplifiedEncoding string, _ int) pipeline.PromiseString {
+		return Promise{
+			Encoding: simplifiedEncoding,
+		}
+	})
+
+	return simplifiedEncodingPromises
 }
 
-func (simplifierSvc *SimplifierService) Run(encodings []string, parameters pipeline.Simplifying) []string {
+func (simplifierSvc *SimplifierService) Run(encodingPromises []pipeline.PromiseString, parameters pipeline.Simplifying) []pipeline.PromiseString {
 	switch parameters.Name {
 	case simplifier.Cadical:
-		return simplifierSvc.RunCadical(encodings, parameters)
+		return simplifierSvc.RunCadical(encodingPromises, parameters)
 	}
 
-	return []string{}
+	return []pipeline.PromiseString{}
 }

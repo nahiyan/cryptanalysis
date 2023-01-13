@@ -143,8 +143,9 @@ func (cuberSvc *CuberService) Invoke(parameters InvokeParameters, control Invoke
 	return output, runtime, err
 }
 
-func (cuberSvc *CuberService) Loop(encodings []string, parameters pipeline.Cubing, handler func(encoding string, threshold int, timeout int)) {
-	for _, encoding := range encodings {
+func (cuberSvc *CuberService) Loop(encodingPromises []pipeline.PromiseString, parameters pipeline.Cubing, handler func(encoding string, threshold int, timeout int)) {
+	for _, promise := range encodingPromises {
+		encoding := promise.Get()
 		thresholds := parameters.Thresholds
 		if len(thresholds) == 0 {
 			encodingInfo, err := cuberSvc.encodingSvc.GetInfo(encoding)
@@ -171,14 +172,14 @@ func (cuberSvc *CuberService) Loop(encodings []string, parameters pipeline.Cubin
 	}
 }
 
-func (cuberSvc *CuberService) RunRegular(encodings []string, parameters pipeline.Cubing) []string {
+func (cuberSvc *CuberService) RunRegular(encodingPromises []pipeline.PromiseString, parameters pipeline.Cubing) []string {
 	cubesFilePaths := []string{}
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 	shouldStop := map[string]bool{}
 	commandGrps := map[string]*command.Group{}
 	fmt.Println("Cuber: started")
 
-	cuberSvc.Loop(encodings, parameters, func(encoding string, threshold, timeout int) {
+	cuberSvc.Loop(encodingPromises, parameters, func(encoding string, threshold, timeout int) {
 		if cuberSvc.ShouldSkip(encoding, threshold) {
 			fmt.Println("Cuber: skipped", threshold, encoding)
 			cubesFilePaths = append(cubesFilePaths, cuberSvc.CubesFilePath(encoding, threshold))
@@ -222,7 +223,7 @@ func (cuberSvc *CuberService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutp
 	errorSvc := cuberSvc.errorSvc
 	slurmSvc := cuberSvc.slurmSvc
 	config := cuberSvc.configSvc.Config
-	encodings, ok := previousPipeOutput.Values.([]string)
+	encodingPromises, ok := previousPipeOutput.Values.([]pipeline.PromiseString)
 	if !ok {
 		log.Fatal("Cuber: invalid input")
 	}
@@ -232,7 +233,7 @@ func (cuberSvc *CuberService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutp
 	errorSvc.Fatal(err, "Cuber: failed to clear slurm tasks")
 
 	counter := 1
-	cuberSvc.Loop(encodings, parameters, func(encoding string, threshold int, timeout int) {
+	cuberSvc.Loop(encodingPromises, parameters, func(encoding string, threshold int, timeout int) {
 		if cuberSvc.ShouldSkip(encoding, threshold) {
 			fmt.Println("Cuber: skipped", threshold, encoding)
 			return
