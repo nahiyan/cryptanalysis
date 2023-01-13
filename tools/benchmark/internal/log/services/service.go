@@ -176,14 +176,7 @@ func (logSvc *LogService) WriteSummaryLog(basePath string) {
 	summary += "\n# Cubesets\n\n"
 	groupedCubesets := lo.GroupBy(cubesets, func(cubeset cubeset.CubeSet) string {
 		instanceName := cubeset.InstanceName
-		lastCnfIndex := strings.LastIndex(instanceName, ".cnf")
-		lastCubesIndex := strings.LastIndex(instanceName, ".cubes")
-
-		if lastCubesIndex != -1 {
-			return instanceName[:lastCubesIndex]
-		}
-
-		return instanceName[:lastCnfIndex]
+		return instanceName
 	})
 
 	encodings = lo.Keys(groupedCubesets)
