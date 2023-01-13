@@ -14,4 +14,5 @@ type Solution struct {
 	Solver       Solver
 	ExitCode     int
 	InstanceName string
+	Verified     bool
 }

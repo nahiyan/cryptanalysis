@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+
+	"github.com/samber/lo"
 )
 
 // Paths
@@ -101,7 +103,7 @@ func (encoderSvc *EncoderService) ResolveSaeedEAdderType(adderType pipeline.Adde
 	}
 }
 
-func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []string {
+func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []pipeline.PromiseString {
 	config := &encoderSvc.configSvc.Config
 	filesystemSvc := encoderSvc.filesystemSvc
 
@@ -158,15 +160,18 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []s
 		fmt.Println("Encoder:", encodingFilePath)
 	})
 
-	return encodings
+	encodingPromises := lo.Map(encodings, func(encoding string, _ int) pipeline.PromiseString {
+		return EncodingPromise{Encoding: encoding}
+	})
+	return encodingPromises
 }
 
-func (encoderSvc *EncoderService) Run(name encoder.Name, parameters pipeline.Encoding) []string {
+func (encoderSvc *EncoderService) Run(name encoder.Name, parameters pipeline.Encoding) []pipeline.PromiseString {
 	switch name {
 	case SaeedE:
-		encodings := encoderSvc.InvokeSaeedE(parameters)
-		fmt.Println("Encoder:", encodings)
-		return encodings
+		promises := encoderSvc.InvokeSaeedE(parameters)
+		fmt.Println("Encoder:", promises)
+		return promises
 	}
 
 	panic("Encoder not found: " + name)
