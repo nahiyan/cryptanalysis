@@ -2,6 +2,11 @@ package services
 
 import (
 	"benchmark/internal/solver"
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
 )
 
 // TODO: Should use a repository for DB operations
@@ -71,4 +76,57 @@ func (solutionSvc *SolutionService) All() ([]solver.Solution, error) {
 	})
 
 	return solutions, nil
+}
+
+func (solutionSvc *SolutionService) Normalize(encodingPath string) error {
+	instanceFile, err := os.Open(encodingPath)
+	if err != nil {
+		return err
+	}
+
+	literals := []int{}
+	scanner := bufio.NewScanner(instanceFile)
+	header := ""
+	for scanner.Scan() {
+		line := scanner.Text()
+		line = strings.TrimPrefix(line, "v ")
+
+		if strings.HasPrefix(line, "p cnf") {
+			header = line
+		}
+
+		if strings.HasPrefix(line, "c ") {
+			continue
+		}
+
+		segments := strings.Fields(line)
+		for _, segment := range segments {
+			literal, err := strconv.Atoi(segment)
+			if err != nil {
+				return err
+			}
+
+			if literal == 0 {
+				continue
+			}
+
+			literals = append(literals, literal)
+		}
+	}
+	instanceFile.Close()
+
+	outputPath, err := os.OpenFile(encodingPath, os.O_TRUNC|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	line := ""
+	for _, literal := range literals {
+		line = fmt.Sprintf("%d ", literal)
+	}
+	_, err = outputPath.WriteString(header + "\n" + line + " 0\n")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
