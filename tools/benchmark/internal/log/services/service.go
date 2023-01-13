@@ -142,6 +142,13 @@ func (logSvc *LogService) WriteSummaryLog(basePath string) {
 		others := 0
 		totalTime := time.Duration(0)
 		quantity := 0
+		cubesCount := 0
+
+		for _, cubeset := range cubesets {
+			if fmt.Sprintf("%s.cnf.n%d", cubeset.InstanceName, cubeset.Threshold) == encoding {
+				cubesCount = cubeset.Cubes
+			}
+		}
 
 		solutions := groupedSolutions[encoding]
 		for _, solution := range solutions {
@@ -160,14 +167,9 @@ func (logSvc *LogService) WriteSummaryLog(basePath string) {
 			}
 		}
 
-		summary += fmt.Sprintf("## %s\n%d SAT, %d UNSAT, %d Others\n", encoding, sat, unsat, others)
+		percentageComplete := float64(quantity) / float64(cubesCount) * 100
+		summary += fmt.Sprintf("## %s\n%d SAT, %d UNSAT, %d Others, %.2f%% complete\n", encoding, sat, unsat, others, percentageComplete)
 		if quantity > 1 {
-			cubesCount := 0
-			for _, cubeset := range cubesets {
-				if fmt.Sprintf("%s.cnf.n%d", cubeset.InstanceName, cubeset.Threshold) == encoding {
-					cubesCount = cubeset.Cubes
-				}
-			}
 			estimate := time.Duration(totalTime.Seconds()/float64(quantity)*float64(cubesCount)) * time.Second
 			summary += fmt.Sprintf("Estimate: %s\n", estimate)
 		}
