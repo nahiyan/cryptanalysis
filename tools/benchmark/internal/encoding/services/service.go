@@ -1,6 +1,7 @@
 package services
 
 import (
+	"benchmark/internal/encoding"
 	"bufio"
 	"math"
 	"os"
@@ -10,13 +11,12 @@ import (
 	"github.com/samber/lo"
 )
 
-func (encodingSvc *EncodingService) Process(encoding string) (int, int, error) {
-	clauses := 0
-	freeVariables := 0
+func (encodingSvc *EncodingService) GetInfo(encodingPath string) (encoding.EncodingInfo, error) {
+	info := encoding.EncodingInfo{}
 
-	instanceFile, err := os.Open(encoding)
+	instanceFile, err := os.Open(encodingPath)
 	if err != nil {
-		return 0, 0, err
+		return info, err
 	}
 	defer instanceFile.Close()
 
@@ -65,16 +65,16 @@ func (encodingSvc *EncodingService) Process(encoding string) (int, int, error) {
 			// New variable
 			if !lo.Contains(variables, variable) {
 				variables = append(variables, uint(variable))
-				freeVariables += 1
+				info.FreeVariables += 1
 			}
 		}
 
-		clauses += 1
+		info.Clauses += 1
 	}
 
 	if err := scanner.Err(); err != nil {
-		return 0, 0, err
+		return info, err
 	}
 
-	return freeVariables, clauses, nil
+	return info, nil
 }

@@ -147,7 +147,8 @@ func (cuberSvc *CuberService) Loop(encodings []string, parameters pipeline.Cubin
 	for _, encoding := range encodings {
 		thresholds := parameters.Thresholds
 		if len(thresholds) == 0 {
-			freeVariables, _, err := cuberSvc.encodingSvc.Process(encoding)
+			encodingInfo, err := cuberSvc.encodingSvc.GetInfo(encoding)
+			freeVariables := encodingInfo.FreeVariables
 			cuberSvc.errorSvc.Fatal(err, "Cuber: failed to process the encoding")
 
 			stepSize := 10
