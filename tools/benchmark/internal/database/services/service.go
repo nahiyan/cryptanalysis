@@ -3,7 +3,6 @@ package services
 import (
 	errorModule "benchmark/internal/error"
 	"strconv"
-	"time"
 
 	"github.com/boltdb/bolt"
 )
@@ -29,8 +28,8 @@ func (databaseSvc *DatabaseService) CreateBuckets() error {
 	return err
 }
 
-func (databaseSvc *DatabaseService) Open() error {
-	db, err := bolt.Open("database.db", 0600, &bolt.Options{Timeout: 20 * time.Second})
+func (databaseSvc *DatabaseService) Open(readOnly bool) error {
+	db, err := bolt.Open("database.db", 0600, &bolt.Options{Timeout: 0, ReadOnly: readOnly})
 	if err != nil {
 		return err
 	}
@@ -47,8 +46,8 @@ func (databaseSvc *DatabaseService) Close() error {
 	return nil
 }
 
-func (databaseSvc *DatabaseService) Use(handler func(db *bolt.DB) error) error {
-	if err := databaseSvc.Open(); err != nil {
+func (databaseSvc *DatabaseService) Use(isReadOnly bool, handler func(db *bolt.DB) error) error {
+	if err := databaseSvc.Open(isReadOnly); err != nil {
 		return err
 	}
 	defer databaseSvc.Close()
@@ -60,11 +59,19 @@ func (databaseSvc *DatabaseService) Use(handler func(db *bolt.DB) error) error {
 	return nil
 }
 
+func (databaseSvc *DatabaseService) UseReadOnly(handler func(db *bolt.DB) error) error {
+	return databaseSvc.Use(true, handler)
+}
+
+func (databaseSvc *DatabaseService) UseReadWrite(handler func(db *bolt.DB) error) error {
+	return databaseSvc.Use(false, handler)
+}
+
 func (databaseSvc *DatabaseService) Init() {
 	errorSvc := databaseSvc.errorSvc
 
 	// Open the database
-	err := databaseSvc.Open()
+	err := databaseSvc.Open(false)
 	errorSvc.Fatal(err, "Database: failed to open")
 
 	// Buckets
@@ -77,7 +84,7 @@ func (databaseSvc *DatabaseService) Init() {
 
 func (databaseSvc *DatabaseService) Get(bucket string, key []byte) ([]byte, error) {
 	var value []byte
-	err := databaseSvc.Use(func(db *bolt.DB) error {
+	err := databaseSvc.UseReadOnly(func(db *bolt.DB) error {
 		err := databaseSvc.db.View(func(tx *bolt.Tx) error {
 			b := tx.Bucket([]byte(bucket))
 
@@ -103,7 +110,7 @@ func (databaseSvc *DatabaseService) Get(bucket string, key []byte) ([]byte, erro
 }
 
 func (databaseSvc *DatabaseService) Set(bucket string, key []byte, value []byte) error {
-	err := databaseSvc.Use(func(db *bolt.DB) error {
+	err := databaseSvc.UseReadWrite(func(db *bolt.DB) error {
 		err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
 			b := tx.Bucket([]byte(bucket))
 
@@ -128,7 +135,7 @@ func (databaseSvc *DatabaseService) Set(bucket string, key []byte, value []byte)
 }
 
 func (databaseSvc *DatabaseService) All(bucket string, handler func(key, value []byte)) error {
-	err := databaseSvc.Use(func(db *bolt.DB) error {
+	err := databaseSvc.UseReadOnly(func(db *bolt.DB) error {
 		err := databaseSvc.db.View(func(tx *bolt.Tx) error {
 			// Assume bucket exists and has keys
 			bucket := tx.Bucket([]byte(bucket))
@@ -146,7 +153,7 @@ func (databaseSvc *DatabaseService) All(bucket string, handler func(key, value [
 }
 
 func (databaseSvc *DatabaseService) RemoveAll(bucket string) error {
-	err := databaseSvc.Use(func(db *bolt.DB) error {
+	err := databaseSvc.UseReadWrite(func(db *bolt.DB) error {
 		err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
 			if err := tx.DeleteBucket([]byte(bucket)); err != nil {
 				return err
