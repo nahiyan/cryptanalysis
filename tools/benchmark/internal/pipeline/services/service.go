@@ -39,6 +39,8 @@ func getInputType(pipe *pipeline.Pipe) InputOutputType {
 		return ListOfSlurmJobCubesets
 	case pipeline.Simplify:
 		return ListOfEncodings
+	case pipeline.EncodingSlurmify:
+		return ListOfEncodings
 	}
 
 	return None
@@ -62,6 +64,8 @@ func getOutputType(pipe *pipeline.Pipe) InputOutputType {
 		return ListOfSlurmJobEncodings
 	case pipeline.Simplify:
 		return ListOfEncodings
+	case pipeline.EncodingSlurmify:
+		return ListOfSlurmJobEncodings
 	}
 
 	return None
@@ -77,7 +81,7 @@ func (pipelineSvc *PipelineService) Validate(pipes []pipeline.Pipe) {
 		outputType := getOutputType(pipe)
 		nextPipelineInputType := getInputType(nextPipe)
 		if nextPipelineInputType != outputType {
-			panic("Incompatible pipeline: " + outputType + " can't fit into the expected input type " + nextPipelineInputType)
+			log.Fatal("Incompatible pipeline: " + outputType + " can't fit into the expected input type " + nextPipelineInputType)
 		}
 	})
 }
@@ -158,6 +162,31 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 				return
 			}
 
+		case pipeline.Simplify:
+			input, ok := lastValue.([]pipeline.PromiseString)
+			if !ok {
+				log.Fatal("Simplifier expects a list of encodings promises")
+			}
+			lastValue = pipelineSvc.simplifierSvc.Run(input, pipe.Simplifying)
+
+		case pipeline.Cube:
+			input, ok := lastValue.([]pipeline.PromiseString)
+			if !ok {
+				log.Fatal("Cuber expects a list of encoding promises")
+			}
+
+			lastValue = pipelineSvc.cuberSvc.RunRegular(input, pipe.Cubing)
+
+		case pipeline.SlurmCube:
+			lastValue = pipelineSvc.cuberSvc.RunSlurm(lastValue.(pipeline.SlurmPipeOutput), pipe.Cubing)
+
+		case pipeline.CubeSelect:
+			input, ok := lastValue.([]string)
+			if !ok {
+				log.Fatal("Cube selector expects a list of cubesets")
+			}
+			lastValue = pipelineSvc.cubeSelectorSvc.Run(input, pipe.CubeSelecting)
+
 		case pipeline.Solve:
 			pipelineSvc.solverSvc.RunRegular(lastValue.([]pipeline.PromiseString), pipe.Solving)
 
@@ -169,27 +198,14 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 
 			lastValue = pipelineSvc.solverSvc.RunSlurm(input, pipe.Solving)
 
-		case pipeline.Cube:
+		case pipeline.EncodingSlurmify:
 			input, ok := lastValue.([]pipeline.PromiseString)
 			if !ok {
-				log.Fatal("Cuber expects a list of encoding promises")
+				log.Fatal("Encoding slurmifier takes a list of encoding promises")
 			}
 
-			lastValue = pipelineSvc.cuberSvc.RunRegular(input, pipe.Cubing)
-		case pipeline.SlurmCube:
-			lastValue = pipelineSvc.cuberSvc.RunSlurm(lastValue.(pipeline.SlurmPipeOutput), pipe.Cubing)
-		case pipeline.CubeSelect:
-			input, ok := lastValue.([]string)
-			if !ok {
-				log.Fatal("Cube selector expects a list of cubesets")
-			}
-			lastValue = pipelineSvc.cubeSelectorSvc.Run(input, pipe.CubeSelecting)
-		case pipeline.Simplify:
-			input, ok := lastValue.([]pipeline.PromiseString)
-			if !ok {
-				log.Fatal("Simplifier expects a list of encodings promises")
-			}
-			lastValue = pipelineSvc.simplifierSvc.Run(input, pipe.Simplifying)
+			lastValue = pipelineSvc.slurmSvc.SlurmifyFromEncoding(input)
+			// fmt.Println(lastValue)
 		}
 	})
 }

@@ -6,14 +6,15 @@ import (
 )
 
 const (
-	Encode          = "encode"
-	Solve           = "solve"
-	SlurmSolve      = "slurm_solve"
-	Cube            = "cube"
-	SlurmCube       = "slurm_cube"
-	CubeSelect      = "cube_select"
-	SlurmCubeSelect = "slurm_cube_select"
-	Simplify        = "simplify"
+	Encode           = "encode"
+	Simplify         = "simplify"
+	Cube             = "cube"
+	SlurmCube        = "slurm_cube"
+	CubeSelect       = "cube_select"
+	SlurmCubeSelect  = "slurm_cube_select"
+	Solve            = "solve"
+	SlurmSolve       = "slurm_solve"
+	EncodingSlurmify = "encoding_slurmify"
 )
 
 type Type string

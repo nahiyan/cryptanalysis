@@ -1,6 +1,7 @@
 package services
 
 import (
+	"benchmark/internal/pipeline"
 	"benchmark/internal/slurm"
 	"fmt"
 	"os"
@@ -73,4 +74,11 @@ func (slurmSvc *SlurmService) ScheduleJob(jobPath string, dependencies []slurm.J
 	fmt.Println("Submitted job", jobId)
 
 	return jobId, nil
+}
+
+func (slurmSvc *SlurmService) SlurmifyFromEncoding(encodingPromises []pipeline.PromiseString) pipeline.SlurmPipeOutput {
+	output := pipeline.SlurmPipeOutput{}
+	output.Values = encodingPromises
+
+	return output
 }
