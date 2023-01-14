@@ -171,15 +171,21 @@ func (logSvc *LogService) WriteSummaryLog(basePath string) {
 			}
 		}
 
+		summary += fmt.Sprintf("## %s\n\n%d SAT, %d UNSAT, %d Others", encoding, sat, unsat, others)
 		percentageComplete := float64(quantity) / float64(cubesCount) * 100
-		summary += fmt.Sprintf("## %s\n%d SAT, %d UNSAT, %d Others, %.2f%% complete\n", encoding, sat, unsat, others, percentageComplete)
+		if len(strings.Split(encoding, ".")) == 5 {
+			summary += fmt.Sprintf(", %.2f%% complete", percentageComplete)
+		}
+		summary += "\n"
+
 		if quantity > 1 {
 			estimate := time.Duration(totalTime.Seconds()/float64(quantity)*float64(cubesCount)) * time.Second
 			summary += fmt.Sprintf("Estimate: %s\n", estimate)
 		}
+		summary += "\n"
 	}
 
-	summary += "\n# Cubesets\n\n"
+	summary += "# Cubesets\n"
 	groupedCubesets := lo.GroupBy(cubesets, func(cubeset cubeset.CubeSet) string {
 		instanceName := cubeset.InstanceName
 		return instanceName
@@ -189,7 +195,7 @@ func (logSvc *LogService) WriteSummaryLog(basePath string) {
 	sort.Strings(encodings)
 	for _, encoding := range encodings {
 		cubesets := groupedCubesets[encoding]
-		summary += "## " + encoding + "\n"
+		summary += "\n## " + encoding + "\n\n"
 
 		sort.Slice(cubesets, func(i, j int) bool {
 			return cubesets[i].Threshold < cubesets[j].Threshold
@@ -203,7 +209,6 @@ func (logSvc *LogService) WriteSummaryLog(basePath string) {
 
 			summary += fmt.Sprintf("%d. n%d: %d cubes, %d refuted leaves, %s process time\n", i+1, threshold, cubes, refutedLeaves, processTime.String())
 		}
-		summary += "\n"
 	}
 
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
