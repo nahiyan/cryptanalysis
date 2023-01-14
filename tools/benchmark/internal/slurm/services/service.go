@@ -70,6 +70,7 @@ func (slurmSvc *SlurmService) ScheduleJob(jobPath string, dependencies []slurm.J
 	if err != nil {
 		return 0, err
 	}
+	fmt.Println("Submitted job", jobId)
 
 	return jobId, nil
 }
