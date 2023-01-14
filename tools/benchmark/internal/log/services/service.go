@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/samber/lo"
 )
 
@@ -171,16 +172,24 @@ func (logSvc *LogService) WriteSummaryLog(basePath string) {
 			}
 		}
 
-		summary += fmt.Sprintf("## %s\n\n%d SAT, %d UNSAT, %d Others", encoding, sat, unsat, others)
+		sat_ := humanize.Comma(int64(sat))
+		unsat_ := humanize.Comma(int64(unsat))
+		others_ := humanize.Comma(int64(others))
+
+		summary += fmt.Sprintf("## %s\n\n%s SAT, %s UNSAT, %s Others", encoding, sat_, unsat_, others_)
 		percentageComplete := float64(quantity) / float64(cubesCount) * 100
-		if len(strings.Split(encoding, ".")) == 5 {
-			summary += fmt.Sprintf(", %.2f%% complete", percentageComplete)
+		{
+			split := strings.Split(encoding, ".")
+			len := len(split)
+			if strings.HasPrefix(split[len-1], "n") {
+				summary += fmt.Sprintf(", %.2f%% complete", percentageComplete)
+			}
 		}
 		summary += "\n"
 
 		if quantity > 1 {
 			estimate := time.Duration(totalTime.Seconds()/float64(quantity)*float64(cubesCount)) * time.Second
-			summary += fmt.Sprintf("Estimate: %s\n", estimate)
+			summary += fmt.Sprintf("Estimate: %s\n", estimate.Round(time.Millisecond))
 		}
 		summary += "\n"
 	}
@@ -207,7 +216,10 @@ func (logSvc *LogService) WriteSummaryLog(basePath string) {
 			refutedLeaves := cubeset.RefutedLeaves
 			processTime := cubeset.Runtime
 
-			summary += fmt.Sprintf("%d. n%d: %d cubes, %d refuted leaves, %s process time\n", i+1, threshold, cubes, refutedLeaves, processTime.String())
+			cubes_ := humanize.Comma(int64(cubes))
+			refutedLeaves_ := humanize.Comma(int64(refutedLeaves))
+
+			summary += fmt.Sprintf("%d. n%d: %s cubes, %s refuted leaves, %s process time\n", i+1, threshold, cubes_, refutedLeaves_, processTime.Round(time.Millisecond))
 		}
 	}
 
