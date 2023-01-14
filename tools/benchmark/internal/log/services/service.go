@@ -131,7 +131,11 @@ func (logSvc *LogService) WriteSummaryLog(basePath string) {
 			return instanceName[:lastCubesIndex]
 		}
 
-		return instanceName[:lastCnfIndex]
+		if lastCnfIndex != -1 {
+			return instanceName[:lastCnfIndex]
+		}
+
+		return instanceName
 	})
 
 	encodings := lo.Keys(groupedSolutions)
