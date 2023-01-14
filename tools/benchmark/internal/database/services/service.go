@@ -12,7 +12,7 @@ type Properties struct {
 }
 
 func (databaseSvc *DatabaseService) CreateBuckets() error {
-	buckets := []string{"solutions", "tasks", "cubesets", "simplifications"}
+	buckets := []string{"solutions", "tasks", "cubesets", "simplifications", "solve_slurm_tasks"}
 
 	err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
 		for _, bucket := range buckets {
