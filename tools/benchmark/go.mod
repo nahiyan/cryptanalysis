@@ -14,9 +14,8 @@ require github.com/iancoleman/strcase v0.2.0
 require (
 	github.com/boltdb/bolt v1.3.1
 	github.com/dave/jennifer v1.6.0
+	github.com/dustin/go-humanize v1.0.0
 )
-
-require github.com/dustin/go-humanize v1.0.0 // indirect
 
 require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
