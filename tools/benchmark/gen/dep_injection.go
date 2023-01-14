@@ -166,7 +166,7 @@ func main() {
 		},
 		{
 			Name:         "pipeline",
-			Dependencies: []string{"encoder", "solver", "cuber", "cube_selector", "simplifier"},
+			Dependencies: []string{"encoder", "solver", "cuber", "cube_selector", "simplifier", "slurm"},
 		},
 		{
 			Name:          "schema",
