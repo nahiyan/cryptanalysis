@@ -251,7 +251,7 @@ func (cuberSvc *CuberService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutp
 
 	fmt.Println("Cuber: added", counter-1, "slurm tasks")
 
-	numTasks := counter
+	numTasks := counter - 1
 	timeout := parameters.Timeout
 	jobFilePath, err := slurmSvc.GenerateJob(
 		numTasks,
