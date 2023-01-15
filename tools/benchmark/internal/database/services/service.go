@@ -134,6 +134,28 @@ func (databaseSvc *DatabaseService) Set(bucket string, key []byte, value []byte)
 	return err
 }
 
+func (databaseSvc *DatabaseService) BatchSet(bucket string, keys [][]byte, values [][]byte) error {
+	err := databaseSvc.UseReadWrite(func(db *bolt.DB) error {
+		err := databaseSvc.db.Batch(func(tx *bolt.Tx) error {
+			b := tx.Bucket([]byte(bucket))
+
+			for i, key := range keys {
+				value := values[i]
+				err := b.Put([]byte(key), []byte(value))
+				if err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+
+		return err
+	})
+
+	return err
+}
+
 func (databaseSvc *DatabaseService) All(bucket string, handler func(key, value []byte)) error {
 	err := databaseSvc.UseReadOnly(func(db *bolt.DB) error {
 		err := databaseSvc.db.View(func(tx *bolt.Tx) error {
