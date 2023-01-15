@@ -138,21 +138,27 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 	errorSvc.Fatal(err, "Solver: failed to clear slurm tasks")
 
 	counter := 1
+	task_ids := []int{}
+	tasks := []solveslurmtask.Task{}
 	solverSvc.Loop(encodingPromises, parameters, func(encoding string, solver_ solver.Solver) {
 		if solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
 			fmt.Println("Solver: skipped", encoding, "with", solver_)
 			return
 		}
 
-		err := solverSvc.solveSlurmTaskSvc.AddTask(counter, solveslurmtask.Task{
+		task_ids = append(task_ids, counter)
+		task := solveslurmtask.Task{
 			Encoding: encoding,
 			Solver:   solver_,
 			Timeout:  time.Duration(parameters.Timeout) * time.Second,
-		})
-		errorSvc.Fatal(err, "Solver: failed to add slurm task")
+		}
+		tasks = append(tasks, task)
 
 		counter++
 	})
+
+	err = solverSvc.solveSlurmTaskSvc.AddTasks(task_ids, tasks)
+	errorSvc.Fatal(err, "Solver: failed to add slurm task")
 
 	fmt.Println("Solver: added", counter-1, "slurm tasks")
 
