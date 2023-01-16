@@ -4,6 +4,7 @@ import (
 	services2 "benchmark/internal/cube_slurm_task/services"
 	cuberServices "benchmark/internal/cuber/services"
 	errorModule "benchmark/internal/error"
+	services3 "benchmark/internal/error/services"
 	"benchmark/internal/injector"
 	services1 "benchmark/internal/solve_slurm_task/services"
 	"benchmark/internal/solver"
@@ -34,8 +35,9 @@ func initSlurmTaskCmd() *cobra.Command {
 			case Solve:
 				solveSlurmTaskSvc := do.MustInvoke[*services1.SolveSlurmTaskService](injector)
 				solverSvc := do.MustInvoke[*solverServices.SolverService](injector)
+				errorSvc := do.MustInvoke[*services3.ErrorService](injector)
 
-				task, err := solveSlurmTaskSvc.GetTask(id)
+				task, err := solveSlurmTaskSvc.Get(id)
 				if err != nil && err == errorModule.ErrKeyNotFound {
 					log.Fatal("Task ID not found")
 				}
@@ -47,6 +49,9 @@ func initSlurmTaskCmd() *cobra.Command {
 				}
 
 				solverSvc.TrackedInvoke(task.Encoding, solver.Solver(task.Solver), timeout)
+				err = solveSlurmTaskSvc.Remove(id)
+				errorSvc.Fatal(err, "Slurm task: failed to remove after completion")
+
 			case Cube:
 				cubeSlurmTaskSvc := do.MustInvoke[*services2.CubeSlurmTaskService](injector)
 				cuberSvc := do.MustInvoke[*cuberServices.CuberService](injector)
