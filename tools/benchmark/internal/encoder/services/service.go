@@ -33,6 +33,10 @@ func (encodingPromise EncodingPromise) Get() string {
 	return encodingPromise.Encoding
 }
 
+func (encodingPromise EncodingPromise) GetPath() string {
+	return encodingPromise.Encoding
+}
+
 func (encoderSvc *EncoderService) GetInstanceName(steps int, adderType pipeline.AdderType, xor int, hash string, dobbertin, dobbertinBits int, cubeIndex *int) string {
 	return fmt.Sprintf("%smd4_%d_%s_xor%d_%s_dobbertin%d_b%d", func(cubeIndex *int) string {
 		if cubeIndex != nil {
@@ -103,7 +107,7 @@ func (encoderSvc *EncoderService) ResolveSaeedEAdderType(adderType pipeline.Adde
 	}
 }
 
-func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []pipeline.PromiseString {
+func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []pipeline.EncodingPromise {
 	config := &encoderSvc.configSvc.Config
 	filesystemSvc := encoderSvc.filesystemSvc
 
@@ -160,13 +164,13 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []p
 		fmt.Println("Encoder:", encodingFilePath)
 	})
 
-	encodingPromises := lo.Map(encodings, func(encoding string, _ int) pipeline.PromiseString {
+	encodingPromises := lo.Map(encodings, func(encoding string, _ int) pipeline.EncodingPromise {
 		return EncodingPromise{Encoding: encoding}
 	})
 	return encodingPromises
 }
 
-func (encoderSvc *EncoderService) Run(name encoder.Name, parameters pipeline.Encoding) []pipeline.PromiseString {
+func (encoderSvc *EncoderService) Run(name encoder.Name, parameters pipeline.Encoding) []pipeline.EncodingPromise {
 	switch name {
 	case SaeedE:
 		promises := encoderSvc.InvokeSaeedE(parameters)

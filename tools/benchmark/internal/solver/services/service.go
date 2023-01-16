@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"os/exec"
 	"path"
 	"strings"
@@ -88,11 +89,10 @@ func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, t
 	return runtime, result, exitCode
 }
 
-func (solverSvc *SolverService) Loop(encodingPromises []pipeline.PromiseString, parameters pipeline.Solving, handler func(encoding string, solver solver.Solver)) {
+func (solverSvc *SolverService) Loop(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Solving, handler func(encodingPromise pipeline.EncodingPromise, solver solver.Solver)) {
 	for _, promise := range encodingPromises {
-		encoding := promise.Get()
 		for _, solver := range parameters.Solvers {
-			handler(encoding, solver)
+			handler(promise, solver)
 		}
 	}
 }
@@ -128,25 +128,21 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 	slurmSvc := solverSvc.slurmSvc
 	errorSvc := solverSvc.errorSvc
 	config := solverSvc.configSvc.Config
-	encodingPromises, ok := previousPipeOutput.Values.([]pipeline.PromiseString)
+	encodingPromises, ok := previousPipeOutput.Values.([]pipeline.EncodingPromise)
 	if !ok {
 		log.Fatal("Solver: invalid input")
 	}
 	dependencies := previousPipeOutput.Jobs
 
-	err := solverSvc.solveSlurmTaskSvc.RemoveAll()
-	errorSvc.Fatal(err, "Solver: failed to clear slurm tasks")
+	// err := solverSvc.solveSlurmTaskSvc.RemoveAll()
+	// errorSvc.Fatal(err, "Solver: failed to clear slurm tasks")
 
 	counter := 1
-	task_ids := []int{}
+	taskIds := []int{}
 	tasks := []solveslurmtask.Task{}
-	solverSvc.Loop(encodingPromises, parameters, func(encoding string, solver_ solver.Solver) {
-		if solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
-			fmt.Println("Solver: skipped", encoding, "with", solver_)
-			return
-		}
-
-		task_ids = append(task_ids, counter)
+	solverSvc.Loop(encodingPromises, parameters, func(encodingPromise pipeline.EncodingPromise, solver_ solver.Solver) {
+		encoding := encodingPromise.GetPath()
+		taskIds = append(taskIds, counter)
 		task := solveslurmtask.Task{
 			Encoding: encoding,
 			Solver:   solver_,
@@ -157,12 +153,13 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 		counter++
 	})
 
-	err = solverSvc.solveSlurmTaskSvc.AddTasks(task_ids, tasks)
+	err := solverSvc.solveSlurmTaskSvc.AddMultiple(taskIds, tasks)
 	errorSvc.Fatal(err, "Solver: failed to add slurm task")
 
 	fmt.Println("Solver: added", counter-1, "slurm tasks")
 
-	numTasks := counter
+	slurmMaxJobs := config.Slurm.MaxJobs
+	numTasks := int(math.Min(float64(counter), float64(slurmMaxJobs)))
 	timeout := parameters.Timeout
 	jobFilePath, err := slurmSvc.GenerateJob(
 		numTasks,
@@ -211,11 +208,12 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 	})
 }
 
-func (solverSvc *SolverService) RunRegular(encodingPromises []pipeline.PromiseString, parameters pipeline.Solving) {
+func (solverSvc *SolverService) RunRegular(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Solving) {
 	fmt.Println("Solver: started")
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 
-	solverSvc.Loop(encodingPromises, parameters, func(encoding string, solver_ solver.Solver) {
+	solverSvc.Loop(encodingPromises, parameters, func(encodingPromise pipeline.EncodingPromise, solver_ solver.Solver) {
+		encoding := encodingPromise.Get()
 		if solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
 			fmt.Println("Solver: skipped", encoding, "with "+string(solver_))
 			return

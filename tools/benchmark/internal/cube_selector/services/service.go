@@ -25,6 +25,10 @@ type EncodingPromise struct {
 	CubeSelectorSvc  *CubeSelectorService
 }
 
+func (encodingPromise EncodingPromise) GetPath() string {
+	return encodingPromise.SubProblemPath
+}
+
 func (encodingPromise EncodingPromise) Get() string {
 	cubeSelectorSvc := encodingPromise.CubeSelectorSvc
 	subProblemFilePath := encodingPromise.SubProblemPath
@@ -123,8 +127,8 @@ func (cubeSelectorSvc *CubeSelectorService) GetInfo(cubeset string) (string, err
 	return encoding, nil
 }
 
-func (cubeSelectorSvc *CubeSelectorService) RunRandom(cubesets []string, parameters pipeline.CubeSelecting) []pipeline.PromiseString {
-	encodings := []pipeline.PromiseString{}
+func (cubeSelectorSvc *CubeSelectorService) RunRandom(cubesets []string, parameters pipeline.CubeSelecting) []pipeline.EncodingPromise {
+	encodings := []pipeline.EncodingPromise{}
 
 	// temporary directory for holding the cubes
 	if !cubeSelectorSvc.filesystemSvc.FileExists("tmp") {
@@ -159,12 +163,12 @@ func (cubeSelectorSvc *CubeSelectorService) RunRandom(cubesets []string, paramet
 	return encodings
 }
 
-func (cubeSelectorSvc *CubeSelectorService) Run(cubesets []string, parameters pipeline.CubeSelecting) []pipeline.PromiseString {
+func (cubeSelectorSvc *CubeSelectorService) Run(cubesets []string, parameters pipeline.CubeSelecting) []pipeline.EncodingPromise {
 	switch parameters.Type {
 	case Random:
 		encodings := cubeSelectorSvc.RunRandom(cubesets, parameters)
 		return encodings
 	}
 
-	return []pipeline.PromiseString{}
+	return []pipeline.EncodingPromise{}
 }

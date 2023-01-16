@@ -76,7 +76,7 @@ func (slurmSvc *SlurmService) ScheduleJob(jobPath string, dependencies []slurm.J
 	return jobId, nil
 }
 
-func (slurmSvc *SlurmService) SlurmifyFromEncoding(encodingPromises []pipeline.PromiseString) pipeline.SlurmPipeOutput {
+func (slurmSvc *SlurmService) SlurmifyFromEncoding(encodingPromises []pipeline.EncodingPromise) pipeline.SlurmPipeOutput {
 	output := pipeline.SlurmPipeOutput{}
 	output.Values = encodingPromises
 

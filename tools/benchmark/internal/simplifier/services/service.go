@@ -21,11 +21,15 @@ type CadicalOutput struct {
 	ProcessTime   time.Duration
 }
 
-type Promise struct {
+type EncodingPromise struct {
 	Encoding string
 }
 
-func (promise Promise) Get() string {
+func (promise EncodingPromise) GetPath() string {
+	return promise.Encoding
+}
+
+func (promise EncodingPromise) Get() string {
 	return promise.Encoding
 }
 
@@ -109,7 +113,7 @@ func (simplifierSvc *SimplifierService) TrackedInvoke(encoding, outputFilePath s
 	return nil
 }
 
-func (simplifierSvc *SimplifierService) RunCadical(encodingPromises []pipeline.PromiseString, parameters pipeline.Simplifying) []pipeline.PromiseString {
+func (simplifierSvc *SimplifierService) RunCadical(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Simplifying) []pipeline.EncodingPromise {
 	fmt.Println("Simplifier: started")
 	simplifiedEncodings := []string{}
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
@@ -140,20 +144,18 @@ func (simplifierSvc *SimplifierService) RunCadical(encodingPromises []pipeline.P
 	pool.StopAndWait()
 	fmt.Println("Simplifier: stopped")
 
-	simplifiedEncodingPromises := lo.Map(simplifiedEncodings, func(simplifiedEncoding string, _ int) pipeline.PromiseString {
-		return Promise{
-			Encoding: simplifiedEncoding,
-		}
+	simplifiedEncodingPromises := lo.Map(simplifiedEncodings, func(simplifiedEncoding string, _ int) pipeline.EncodingPromise {
+		return EncodingPromise{Encoding: simplifiedEncoding}
 	})
 
 	return simplifiedEncodingPromises
 }
 
-func (simplifierSvc *SimplifierService) Run(encodingPromises []pipeline.PromiseString, parameters pipeline.Simplifying) []pipeline.PromiseString {
+func (simplifierSvc *SimplifierService) Run(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Simplifying) []pipeline.EncodingPromise {
 	switch parameters.Name {
 	case simplifier.Cadical:
 		return simplifierSvc.RunCadical(encodingPromises, parameters)
 	}
 
-	return []pipeline.PromiseString{}
+	return []pipeline.EncodingPromise{}
 }

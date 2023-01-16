@@ -143,7 +143,7 @@ func (cuberSvc *CuberService) Invoke(parameters InvokeParameters, control Invoke
 	return output, runtime, err
 }
 
-func (cuberSvc *CuberService) Loop(encodingPromises []pipeline.PromiseString, parameters pipeline.Cubing, handler func(encoding string, threshold int, timeout int)) {
+func (cuberSvc *CuberService) Loop(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Cubing, handler func(encoding string, threshold int, timeout int)) {
 	for _, promise := range encodingPromises {
 		encoding := promise.Get()
 		thresholds := parameters.Thresholds
@@ -172,7 +172,7 @@ func (cuberSvc *CuberService) Loop(encodingPromises []pipeline.PromiseString, pa
 	}
 }
 
-func (cuberSvc *CuberService) RunRegular(encodingPromises []pipeline.PromiseString, parameters pipeline.Cubing) []string {
+func (cuberSvc *CuberService) RunRegular(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Cubing) []string {
 	cubesFilePaths := []string{}
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 	shouldStop := map[string]bool{}
@@ -223,7 +223,7 @@ func (cuberSvc *CuberService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutp
 	errorSvc := cuberSvc.errorSvc
 	slurmSvc := cuberSvc.slurmSvc
 	config := cuberSvc.configSvc.Config
-	encodingPromises, ok := previousPipeOutput.Values.([]pipeline.PromiseString)
+	encodingPromises, ok := previousPipeOutput.Values.([]pipeline.EncodingPromise)
 	if !ok {
 		log.Fatal("Cuber: invalid input")
 	}
