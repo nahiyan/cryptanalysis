@@ -190,3 +190,17 @@ func (databaseSvc *DatabaseService) RemoveAll(bucket string) error {
 
 	return err
 }
+
+func (databaseSvc *DatabaseService) Remove(bucket string, key []byte) error {
+	err := databaseSvc.UseReadWrite(func(db *bolt.DB) error {
+		err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
+			bucket := tx.Bucket([]byte(bucket))
+			err := bucket.Delete(key)
+			return err
+		})
+
+		return err
+	})
+
+	return err
+}
