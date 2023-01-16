@@ -21,7 +21,7 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) RemoveAll() error {
 	return err
 }
 
-func (solveSlurmTaskSvc *SolveSlurmTaskService) AddTask(id int, task solveslurmtask.Task) error {
+func (solveSlurmTaskSvc *SolveSlurmTaskService) Add(id int, task solveslurmtask.Task) error {
 	data, err := solveSlurmTaskSvc.marshallingSvc.BinEncode(task)
 	if err != nil {
 		return err
@@ -32,7 +32,7 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) AddTask(id int, task solveslurmt
 	return err
 }
 
-func (solveSlurmTaskSvc *SolveSlurmTaskService) AddTasks(ids []int, tasks []solveslurmtask.Task) error {
+func (solveSlurmTaskSvc *SolveSlurmTaskService) AddMultiple(ids []int, tasks []solveslurmtask.Task) error {
 	keys := lo.Map(ids, func(id, _ int) []byte {
 		id_ := strconv.Itoa(id)
 		return []byte(id_)
@@ -55,7 +55,7 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) AddTasks(ids []int, tasks []solv
 	return nil
 }
 
-func (solveSlurmTaskSvc *SolveSlurmTaskService) GetTask(id int) (solveslurmtask.Task, error) {
+func (solveSlurmTaskSvc *SolveSlurmTaskService) Get(id int) (solveslurmtask.Task, error) {
 	task := solveslurmtask.Task{}
 	data, err := solveSlurmTaskSvc.databaseSvc.Get(solveSlurmTaskSvc.Bucket, []byte(strconv.Itoa(id)))
 	if err != nil {
@@ -64,4 +64,10 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) GetTask(id int) (solveslurmtask.
 
 	err = solveSlurmTaskSvc.marshallingSvc.BinDecode(data, &task)
 	return task, err
+}
+
+func (solveSlurmTaskSvc *SolveSlurmTaskService) Remove(id int) error {
+	id_ := strconv.Itoa(id)
+	err := solveSlurmTaskSvc.databaseSvc.Remove(solveSlurmTaskSvc.Bucket, []byte(id_))
+	return err
 }
