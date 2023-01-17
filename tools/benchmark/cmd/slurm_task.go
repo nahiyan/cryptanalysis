@@ -38,8 +38,11 @@ func initSlurmTaskCmd() *cobra.Command {
 						errorSvc.Fatal(err, "Slurm task: failed to book")
 					}
 					if task == nil {
+						fmt.Println("Slurm task: none to be booked")
 						break
 					}
+
+					fmt.Println("Slurm task: booked task", taskId)
 
 					timeout := int(task.Timeout.Seconds())
 					if solverSvc.ShouldSkip(task.Encoding, task.Solver, timeout) {
