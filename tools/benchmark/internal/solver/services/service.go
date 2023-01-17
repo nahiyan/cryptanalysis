@@ -154,7 +154,7 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 	fmt.Println("Solver: added", len(tasks), "slurm tasks")
 
 	slurmMaxJobs := config.Slurm.MaxJobs
-	numTasks := int(math.Min(float64(len(tasks)), float64(slurmMaxJobs)))
+	numTasks := int(math.Min(float64(parameters.Workers), float64(slurmMaxJobs)))
 	timeout := parameters.Timeout
 	jobFilePath, err := slurmSvc.GenerateJob(
 		numTasks,
