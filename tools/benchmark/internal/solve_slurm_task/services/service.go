@@ -45,7 +45,6 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) Add(task solveslurmtask.Task) er
 func (solveSlurmTaskSvc *SolveSlurmTaskService) AddMultiple(tasks []solveslurmtask.Task) error {
 	keys := lo.Map(tasks, func(task solveslurmtask.Task, _ int) []byte {
 		id := GenerateId(task)
-		// fmt.Println(id)
 		return []byte(id)
 	})
 
