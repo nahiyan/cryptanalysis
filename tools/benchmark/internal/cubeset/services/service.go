@@ -2,6 +2,8 @@ package services
 
 import (
 	"benchmark/internal/cubeset"
+	"fmt"
+	"time"
 )
 
 type Properties struct {
@@ -23,7 +25,9 @@ func (cubesetSvc *CubesetService) Register(cubesetFilePath string, cubeSet cubes
 		return err
 	}
 
+	startTime := time.Now()
 	err = cubesetSvc.databaseSvc.Set(cubesetSvc.Bucket, []byte(checksum), data)
+	fmt.Println("Stored", cubesetFilePath, checksum, time.Since(startTime))
 	return err
 }
 
