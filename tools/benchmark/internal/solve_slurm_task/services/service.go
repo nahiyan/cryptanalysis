@@ -23,7 +23,7 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) RemoveAll() error {
 	return err
 }
 
-func GenerateId(task solveslurmtask.Task) string {
+func (solveSlurmTaskSvc *SolveSlurmTaskService) GenerateId(task solveslurmtask.Task) string {
 	combination := task.Encoding + string(task.Solver) + task.Timeout.Round(time.Second).String()
 
 	checksum := sha1.Sum([]byte(combination))
@@ -36,7 +36,7 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) Add(task solveslurmtask.Task) er
 		return err
 	}
 
-	id := GenerateId(task)
+	id := solveSlurmTaskSvc.GenerateId(task)
 	err = solveSlurmTaskSvc.databaseSvc.Set(solveSlurmTaskSvc.Bucket, []byte(id), data)
 
 	return err
@@ -44,7 +44,7 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) Add(task solveslurmtask.Task) er
 
 func (solveSlurmTaskSvc *SolveSlurmTaskService) AddMultiple(tasks []solveslurmtask.Task) error {
 	keys := lo.Map(tasks, func(task solveslurmtask.Task, _ int) []byte {
-		id := GenerateId(task)
+		id := solveSlurmTaskSvc.GenerateId(task)
 		return []byte(id)
 	})
 
@@ -83,7 +83,7 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) Book() (*solveslurmtask.Task, st
 	)
 
 	err := solveSlurmTaskSvc.databaseSvc.FindAndReplace(solveSlurmTaskSvc.Bucket, func(key, value []byte) []byte {
-		var task_ solveslurmtask.Task
+		task_ := solveslurmtask.Task{}
 		err := solveSlurmTaskSvc.marshallingSvc.BinDecode(value, &task_)
 		if err != nil {
 			return nil

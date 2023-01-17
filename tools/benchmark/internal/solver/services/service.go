@@ -137,7 +137,6 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 	tasks := []solveslurmtask.Task{}
 	solverSvc.Loop(encodingPromises, parameters, func(encodingPromise pipeline.EncodingPromise, solver_ solver.Solver) {
 		// Note: We aren't checking if this task is already solved, since we'd have to retrieve the promised encoding, triggering the generation of cube encodings that are expensive on the FS to produce
-
 		encoding := encodingPromise.GetPath()
 		timeout := time.Duration(parameters.Timeout) * time.Second
 
@@ -146,6 +145,13 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 			Solver:   solver_,
 			Timeout:  timeout,
 		}
+
+		// Prevent overwriting of any existing task
+		taskId := solverSvc.solveSlurmTaskSvc.GenerateId(task)
+		if _, err := solverSvc.solveSlurmTaskSvc.Get(taskId); err == nil || (err != nil && err != errorModule.ErrKeyNotFound) {
+			return
+		}
+
 		tasks = append(tasks, task)
 	})
 
@@ -163,7 +169,7 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 		300,
 		timeout,
 		fmt.Sprintf(
-			"%s slurm-task -t solve -i ${SLURM_ARRAY_TASK_ID}",
+			"%s slurm-task -t solve",
 			config.Paths.Bin.Benchmark))
 	errorSvc.Fatal(err, "Solver: failed to create slurm job file")
 
