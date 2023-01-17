@@ -3,7 +3,6 @@ package services
 import (
 	"benchmark/internal/config"
 	"log"
-	"path/filepath"
 
 	"github.com/spf13/viper"
 )
@@ -18,27 +17,23 @@ func (configSvc *ConfigService) Init() {
 
 func (configSvc *ConfigService) Process() {
 	configFilePath := "./config.toml"
-	benchmarkBinAbsPath, err := filepath.Abs("./benchmark")
-	if err != nil {
-		benchmarkBinAbsPath = "./benchmark"
-	}
 
 	// Binaries
-	viper.SetDefault("Paths.Bin.CryptoMiniSat", "../../../sat-solvers/cryptominisat")
-	viper.SetDefault("Paths.Bin.Kissat", "../../../sat-solvers/kissat")
-	viper.SetDefault("Paths.Bin.Cadical", "../../../sat-solvers/cadical")
-	viper.SetDefault("Paths.Bin.Glucose", "../../../sat-solvers/glucose")
-	viper.SetDefault("Paths.Bin.MapleSat", "../../../sat-solvers/maplesat")
-	viper.SetDefault("Paths.Bin.XnfSat", "../../../sat-solvers/xnfsat")
-	viper.SetDefault("Paths.Bin.March", "../../../sat-solvers/march_cu")
+	viper.SetDefault("Paths.Bin.CryptoMiniSat", "cryptominisat")
+	viper.SetDefault("Paths.Bin.Kissat", "kissat")
+	viper.SetDefault("Paths.Bin.Cadical", "cadical")
+	viper.SetDefault("Paths.Bin.Glucose", "glucose")
+	viper.SetDefault("Paths.Bin.MapleSat", "maplesat")
+	viper.SetDefault("Paths.Bin.XnfSat", "xnfsat")
+	viper.SetDefault("Paths.Bin.March", "march_cu")
 	viper.SetDefault("Paths.Bin.Satelite", "satelite")
-	viper.SetDefault("Paths.Bin.SolutionAnalyzer", "../solution_analyzer/target/release/solution_analyzer")
-	viper.SetDefault("Paths.Bin.SaeedE", "../../encoders/saeed/crypto/main")
-	viper.SetDefault("Paths.Bin.Verifier", "../../encoders/saeed/crypto/verify-md4")
-	viper.SetDefault("Paths.Bin.Benchmark", benchmarkBinAbsPath)
+	viper.SetDefault("Paths.Bin.SolutionAnalyzer", "solution_analyzer")
+	viper.SetDefault("Paths.Bin.SaeedE", "saeed_e")
+	viper.SetDefault("Paths.Bin.Verifier", "saeede_verify")
+	viper.SetDefault("Paths.Bin.Benchmark", "benchmark")
 
 	// Database
-	viper.SetDefault("Paths.Database", "./database")
+	viper.SetDefault("Paths.Database", "database.db")
 
 	// Slurm
 	viper.SetDefault("Slurm.MaxJobs", 1000)
