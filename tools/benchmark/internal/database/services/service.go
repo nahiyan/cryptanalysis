@@ -191,6 +191,30 @@ func (databaseSvc *DatabaseService) RemoveAll(bucket string) error {
 	return err
 }
 
+func (databaseSvc *DatabaseService) FindAndReplace(bucket string, handler func(key, value []byte) []byte) error {
+	err := databaseSvc.UseReadWrite(func(db *bolt.DB) error {
+		err := db.Update(func(tx *bolt.Tx) error {
+			bucket := tx.Bucket([]byte(bucket))
+
+			cursor := bucket.Cursor()
+			for key, value := cursor.First(); key != nil; key, value = cursor.Next() {
+				replacement := handler(key, value)
+				if replacement == nil {
+					continue
+				}
+
+				if err := bucket.Put(key, replacement); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		})
+		return err
+	})
+	return err
+}
+
 func (databaseSvc *DatabaseService) Remove(bucket string, key []byte) error {
 	err := databaseSvc.UseReadWrite(func(db *bolt.DB) error {
 		err := databaseSvc.db.Update(func(tx *bolt.Tx) error {
