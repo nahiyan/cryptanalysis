@@ -134,32 +134,27 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 	}
 	dependencies := previousPipeOutput.Jobs
 
-	// err := solverSvc.solveSlurmTaskSvc.RemoveAll()
-	// errorSvc.Fatal(err, "Solver: failed to clear slurm tasks")
-
-	counter := 1
-	taskIds := []int{}
 	tasks := []solveslurmtask.Task{}
 	solverSvc.Loop(encodingPromises, parameters, func(encodingPromise pipeline.EncodingPromise, solver_ solver.Solver) {
+		// Note: We aren't checking if this task is already solved, since we'd have to retrieve the promised encoding, triggering the generation of cube encodings that are expensive on the FS to produce
+
 		encoding := encodingPromise.GetPath()
-		taskIds = append(taskIds, counter)
+		timeout := time.Duration(parameters.Timeout) * time.Second
+
 		task := solveslurmtask.Task{
 			Encoding: encoding,
 			Solver:   solver_,
-			Timeout:  time.Duration(parameters.Timeout) * time.Second,
+			Timeout:  timeout,
 		}
 		tasks = append(tasks, task)
-
-		counter++
 	})
 
-	err := solverSvc.solveSlurmTaskSvc.AddMultiple(taskIds, tasks)
+	err := solverSvc.solveSlurmTaskSvc.AddMultiple(tasks)
 	errorSvc.Fatal(err, "Solver: failed to add slurm task")
-
-	fmt.Println("Solver: added", counter-1, "slurm tasks")
+	fmt.Println("Solver: added", len(tasks), "slurm tasks")
 
 	slurmMaxJobs := config.Slurm.MaxJobs
-	numTasks := int(math.Min(float64(counter), float64(slurmMaxJobs)))
+	numTasks := int(math.Min(float64(len(tasks)), float64(slurmMaxJobs)))
 	timeout := parameters.Timeout
 	jobFilePath, err := slurmSvc.GenerateJob(
 		numTasks,
