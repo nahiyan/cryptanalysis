@@ -29,7 +29,8 @@ func (databaseSvc *DatabaseService) CreateBuckets() error {
 }
 
 func (databaseSvc *DatabaseService) Open(readOnly bool) error {
-	db, err := bolt.Open("database.db", 0600, &bolt.Options{Timeout: 0, ReadOnly: readOnly})
+	databasePath := databaseSvc.configSvc.Config.Paths.Database
+	db, err := bolt.Open(databasePath, 0600, &bolt.Options{Timeout: 0, ReadOnly: readOnly})
 	if err != nil {
 		return err
 	}
