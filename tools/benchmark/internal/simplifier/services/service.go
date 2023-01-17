@@ -223,12 +223,12 @@ func (simplifierSvc *SimplifierService) RunSatelite(encodingPromises []pipeline.
 
 		outputFilePath := fmt.Sprintf("%s.satelite.cnf", encoding)
 
-		// if simplifierSvc.filesystemSvc.FileExists(outputFilePath) {
-		// 	fmt.Println("Simplifier: skipped", encoding)
-		// 	simplifiedEncodings = append(simplifiedEncodings, outputFilePath)
+		if simplifierSvc.filesystemSvc.FileExists(outputFilePath) {
+			fmt.Println("Simplifier: skipped", encoding)
+			simplifiedEncodings = append(simplifiedEncodings, outputFilePath)
 
-		// 	continue
-		// }
+			continue
+		}
 
 		pool.Submit(func(encoding, outputFilePath string, parameters pipeline.Simplifying) func() {
 			return func() {
