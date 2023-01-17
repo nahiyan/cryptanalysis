@@ -21,6 +21,14 @@ type CadicalOutput struct {
 	ProcessTime   time.Duration
 }
 
+type SateliteOutput struct {
+	FreeVariables int
+	Clauses       int
+	ProcessTime   time.Duration
+}
+
+type Simplifier string
+
 type EncodingPromise struct {
 	Encoding string
 }
@@ -57,7 +65,7 @@ func (simplifierSvc *SimplifierService) ReadCadicalOutput(output string) Cadical
 	if index := strings.Index(summary, "c total process time since initialization:"); index != -1 {
 		seconds := 0.0
 		fmt.Sscanf(summary[index:], "c total process time since initialization: %f", &seconds)
-		processTime = time.Duration(seconds) * time.Second
+		processTime = time.Duration(seconds*1000) * time.Millisecond
 	}
 
 	clauses := 0
@@ -74,7 +82,28 @@ func (simplifierSvc *SimplifierService) ReadCadicalOutput(output string) Cadical
 	}
 }
 
-func (simplifierSvc *SimplifierService) TrackedInvoke(encoding, outputFilePath string, conflicts int, parameters pipeline.Simplifying) error {
+func (simplifierSvc *SimplifierService) ReadSateliteOutput(output string) SateliteOutput {
+	result := SateliteOutput{}
+
+	cpuTimeIndex := strings.Index(output, "CPU time:")
+	if cpuTimeIndex != -1 {
+		processTime := 0.0
+		x := ""
+		fmt.Sscanf(output[cpuTimeIndex:], "CPU time%s%f s", &x, &processTime)
+		processTime *= 1000
+		result.ProcessTime = time.Duration(processTime) * time.Millisecond
+	}
+
+	resultIndex := strings.Index(output, "Result")
+	if resultIndex != -1 {
+		x := ""
+		fmt.Sscanf(output[resultIndex:], "Result%s#vars: %d #clauses: %d", &x, &result.FreeVariables, &result.Clauses)
+	}
+
+	return result
+}
+
+func (simplifierSvc *SimplifierService) TrackedCadicalInvoke(encoding, outputFilePath string, conflicts int, parameters pipeline.Simplifying) error {
 	config := simplifierSvc.configSvc.Config
 	args := []string{encoding, "-o", outputFilePath, "-e", outputFilePath + ".rs.txt"}
 	args = append(args, "-c", fmt.Sprintf("%d", conflicts))
@@ -99,7 +128,7 @@ func (simplifierSvc *SimplifierService) TrackedInvoke(encoding, outputFilePath s
 
 	err = simplifierSvc.simplificationSvc.Register(outputFilePath, simplification.Simplification{
 		FreeVariables: freeVariables,
-		Simplifier:    "cadical",
+		Simplifier:    simplifier.Cadical,
 		ProcessTime:   processTime,
 		Eliminaton:    eliminations,
 		Conflicts:     conflicts,
@@ -113,8 +142,41 @@ func (simplifierSvc *SimplifierService) TrackedInvoke(encoding, outputFilePath s
 	return nil
 }
 
+func (simplifierSvc *SimplifierService) TrackedSateliteInvoke(encoding, outputFilePath string, parameters pipeline.Simplifying) error {
+	config := simplifierSvc.configSvc.Config
+	args := []string{encoding, outputFilePath, outputFilePath + ".var_map.txt", "+pre"}
+
+	cmd := exec.Command(config.Paths.Bin.Satelite, args...)
+	output_, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+
+	output := simplifierSvc.ReadSateliteOutput(string(output_))
+
+	freeVariables := output.FreeVariables
+	processTime := output.ProcessTime
+	clauses := output.Clauses
+	time := fmt.Sprintf("%.3f", processTime.Seconds())
+
+	fmt.Println("Simplifier:", freeVariables, "remaining", clauses, "clauses", time, encoding)
+
+	err = simplifierSvc.simplificationSvc.Register(outputFilePath, simplification.Simplification{
+		FreeVariables: freeVariables,
+		Simplifier:    simplifier.Satelite,
+		ProcessTime:   processTime,
+		Clauses:       clauses,
+		InstanceName:  encoding,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (simplifierSvc *SimplifierService) RunCadical(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Simplifying) []pipeline.EncodingPromise {
-	fmt.Println("Simplifier: started")
+	fmt.Println("Simplifier: started with CaDiCaL")
 	simplifiedEncodings := []string{}
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 
@@ -133,7 +195,7 @@ func (simplifierSvc *SimplifierService) RunCadical(encodingPromises []pipeline.E
 
 			pool.Submit(func(encoding, outputFilePath string, conflicts int, parameters pipeline.Simplifying) func() {
 				return func() {
-					err := simplifierSvc.TrackedInvoke(encoding, outputFilePath, conflicts, parameters)
+					err := simplifierSvc.TrackedCadicalInvoke(encoding, outputFilePath, conflicts, parameters)
 					simplifierSvc.errorSvc.Fatal(err, "Simplifier: failed to simplify "+encoding)
 				}
 			}(encoding, outputFilePath, conflicts, parameters))
@@ -142,7 +204,43 @@ func (simplifierSvc *SimplifierService) RunCadical(encodingPromises []pipeline.E
 	}
 
 	pool.StopAndWait()
-	fmt.Println("Simplifier: stopped")
+	fmt.Println("Simplifier: stopped with CaDiCaL")
+
+	simplifiedEncodingPromises := lo.Map(simplifiedEncodings, func(simplifiedEncoding string, _ int) pipeline.EncodingPromise {
+		return EncodingPromise{Encoding: simplifiedEncoding}
+	})
+
+	return simplifiedEncodingPromises
+}
+
+func (simplifierSvc *SimplifierService) RunSatelite(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Simplifying) []pipeline.EncodingPromise {
+	fmt.Println("Simplifier: started with SatELite")
+	simplifiedEncodings := []string{}
+	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
+
+	for _, encodingPromise := range encodingPromises {
+		encoding := encodingPromise.Get()
+
+		outputFilePath := fmt.Sprintf("%s.satelite.cnf", encoding)
+
+		// if simplifierSvc.filesystemSvc.FileExists(outputFilePath) {
+		// 	fmt.Println("Simplifier: skipped", encoding)
+		// 	simplifiedEncodings = append(simplifiedEncodings, outputFilePath)
+
+		// 	continue
+		// }
+
+		pool.Submit(func(encoding, outputFilePath string, parameters pipeline.Simplifying) func() {
+			return func() {
+				err := simplifierSvc.TrackedSateliteInvoke(encoding, outputFilePath, parameters)
+				simplifierSvc.errorSvc.Fatal(err, "Simplifier: failed to simplify "+encoding)
+			}
+		}(encoding, outputFilePath, parameters))
+		simplifiedEncodings = append(simplifiedEncodings, outputFilePath)
+	}
+
+	pool.StopAndWait()
+	fmt.Println("Simplifier: stopped with SatELite")
 
 	simplifiedEncodingPromises := lo.Map(simplifiedEncodings, func(simplifiedEncoding string, _ int) pipeline.EncodingPromise {
 		return EncodingPromise{Encoding: simplifiedEncoding}
@@ -155,6 +253,8 @@ func (simplifierSvc *SimplifierService) Run(encodingPromises []pipeline.Encoding
 	switch parameters.Name {
 	case simplifier.Cadical:
 		return simplifierSvc.RunCadical(encodingPromises, parameters)
+	case simplifier.Satelite:
+		return simplifierSvc.RunSatelite(encodingPromises, parameters)
 	}
 
 	return []pipeline.EncodingPromise{}

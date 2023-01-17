@@ -10,6 +10,7 @@ type Config struct {
 			MapleSat         string
 			XnfSat           string
 			March            string
+			Satelite         string
 			Verifier         string
 			SolutionAnalyzer string
 			SaeedE           string
