@@ -206,6 +206,8 @@ func (databaseSvc *DatabaseService) FindAndReplace(bucket string, handler func(k
 				if err := bucket.Put(key, replacement); err != nil {
 					return err
 				}
+
+				break
 			}
 
 			return nil

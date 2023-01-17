@@ -47,7 +47,7 @@ func initSlurmTaskCmd() *cobra.Command {
 					timeout := int(task.Timeout.Seconds())
 					if solverSvc.ShouldSkip(task.Encoding, task.Solver, timeout) {
 						fmt.Println("Slurk task: skipped", task.Solver, task.Encoding)
-						return
+						continue
 					}
 
 					solverSvc.TrackedInvoke(task.Encoding, solver.Solver(task.Solver), timeout)
