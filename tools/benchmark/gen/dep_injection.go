@@ -175,7 +175,7 @@ func main() {
 		},
 		{
 			Name:         "solver",
-			Dependencies: []string{"config", "filesystem", "error", "solution", "slurm", "solve_slurm_task"},
+			Dependencies: []string{"config", "filesystem", "error", "solution", "slurm", "solve_slurm_task", "cube_selector"},
 		},
 		{
 			Name:            "database",
@@ -253,7 +253,7 @@ func main() {
 		},
 		{
 			Name:         "simplifier",
-			Dependencies: []string{"error", "config", "filesystem", "simplification"},
+			Dependencies: []string{"error", "config", "filesystem", "simplification", "cube_selector"},
 			Type:         Service,
 		},
 		{

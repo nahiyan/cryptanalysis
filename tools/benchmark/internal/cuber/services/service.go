@@ -145,7 +145,7 @@ func (cuberSvc *CuberService) Invoke(parameters InvokeParameters, control Invoke
 
 func (cuberSvc *CuberService) Loop(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Cubing, handler func(encoding string, threshold int, timeout int)) {
 	for _, promise := range encodingPromises {
-		encoding := promise.Get()
+		encoding := promise.Get(map[string]interface{}{})
 		thresholds := parameters.Thresholds
 		if len(thresholds) == 0 {
 			encodingInfo, err := cuberSvc.encodingSvc.GetInfo(encoding)

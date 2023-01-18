@@ -37,7 +37,7 @@ func (promise EncodingPromise) GetPath() string {
 	return promise.Encoding
 }
 
-func (promise EncodingPromise) Get() string {
+func (promise EncodingPromise) Get(dependencies map[string]interface{}) string {
 	return promise.Encoding
 }
 
@@ -179,9 +179,13 @@ func (simplifierSvc *SimplifierService) RunCadical(encodingPromises []pipeline.E
 	fmt.Println("Simplifier: started with CaDiCaL")
 	simplifiedEncodings := []string{}
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
+	dependencies := map[string]interface{}{
+		"CubeSelectorService": simplifierSvc.cubeSelectorSvc,
+	}
 
 	for _, encodingPromise := range encodingPromises {
-		encoding := encodingPromise.Get()
+
+		encoding := encodingPromise.Get(dependencies)
 
 		for _, conflicts := range parameters.Conflicts {
 			outputFilePath := fmt.Sprintf("%s.cadical_c%d.cnf", encoding, conflicts)
@@ -219,7 +223,7 @@ func (simplifierSvc *SimplifierService) RunSatelite(encodingPromises []pipeline.
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 
 	for _, encodingPromise := range encodingPromises {
-		encoding := encodingPromise.Get()
+		encoding := encodingPromise.Get(map[string]interface{}{})
 
 		outputFilePath := fmt.Sprintf("%s.satelite.cnf", encoding)
 

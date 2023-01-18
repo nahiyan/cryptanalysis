@@ -1,8 +1,11 @@
 package services
 
 import (
+	cubeselector "benchmark/internal/cube_selector/services"
+	encoder "benchmark/internal/encoder/services"
 	solveslurmtask "benchmark/internal/solve_slurm_task"
 	"crypto/sha1"
+	"encoding/gob"
 	"fmt"
 	"log"
 	"time"
@@ -16,6 +19,8 @@ type Properties struct {
 
 func (solveSlurmTaskSvc *SolveSlurmTaskService) Init() {
 	solveSlurmTaskSvc.Bucket = "solve_slurm_tasks"
+	gob.Register(cubeselector.EncodingPromise{})
+	gob.Register(encoder.EncoderService{})
 }
 
 func (solveSlurmTaskSvc *SolveSlurmTaskService) RemoveAll() error {
@@ -24,7 +29,7 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) RemoveAll() error {
 }
 
 func (solveSlurmTaskSvc *SolveSlurmTaskService) GenerateId(task solveslurmtask.Task) string {
-	combination := task.Encoding + string(task.Solver) + task.Timeout.Round(time.Second).String()
+	combination := task.EncodingPromise.GetPath() + string(task.Solver) + task.Timeout.Round(time.Second).String()
 
 	checksum := sha1.Sum([]byte(combination))
 	return fmt.Sprintf("%x", checksum)

@@ -137,13 +137,12 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 	tasks := []solveslurmtask.Task{}
 	solverSvc.Loop(encodingPromises, parameters, func(encodingPromise pipeline.EncodingPromise, solver_ solver.Solver) {
 		// Note: We aren't checking if this task is already solved, since we'd have to retrieve the promised encoding, triggering the generation of cube encodings that are expensive on the FS to produce
-		encoding := encodingPromise.GetPath()
 		timeout := time.Duration(parameters.Timeout) * time.Second
 
 		task := solveslurmtask.Task{
-			Encoding: encoding,
-			Solver:   solver_,
-			Timeout:  timeout,
+			EncodingPromise: encodingPromise,
+			Solver:          solver_,
+			Timeout:         timeout,
 		}
 
 		// Prevent overwriting of any existing task
@@ -212,9 +211,12 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 func (solverSvc *SolverService) RunRegular(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Solving) {
 	fmt.Println("Solver: started")
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
+	dependencies := map[string]interface{}{
+		"CubeSelectorService": solverSvc.cubeSelectorSvc,
+	}
 
 	solverSvc.Loop(encodingPromises, parameters, func(encodingPromise pipeline.EncodingPromise, solver_ solver.Solver) {
-		encoding := encodingPromise.Get()
+		encoding := encodingPromise.Get(dependencies)
 		if solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
 			fmt.Println("Solver: skipped", encoding, "with "+string(solver_))
 			return

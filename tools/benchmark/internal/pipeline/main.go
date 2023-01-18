@@ -89,6 +89,6 @@ type SlurmPipeOutput struct {
 }
 
 type EncodingPromise interface {
-	Get() string
+	Get(dependencies map[string]interface{}) string
 	GetPath() string
 }

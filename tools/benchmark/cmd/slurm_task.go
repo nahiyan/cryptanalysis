@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	services2 "benchmark/internal/cube_selector/services"
 	services3 "benchmark/internal/error/services"
 	"benchmark/internal/injector"
 	services1 "benchmark/internal/solve_slurm_task/services"
@@ -30,6 +31,7 @@ func initSlurmTaskCmd() *cobra.Command {
 			case Solve:
 				solveSlurmTaskSvc := do.MustInvoke[*services1.SolveSlurmTaskService](injector)
 				solverSvc := do.MustInvoke[*solverServices.SolverService](injector)
+				cubeSelectorSvc := do.MustInvoke[*services2.CubeSelectorService](injector)
 				errorSvc := do.MustInvoke[*services3.ErrorService](injector)
 
 				for {
@@ -41,16 +43,19 @@ func initSlurmTaskCmd() *cobra.Command {
 						fmt.Println("Slurm task: none to be booked")
 						break
 					}
-
 					fmt.Println("Slurm task: booked task", taskId)
 
+					dependencies := map[string]interface{}{
+						"CubeSelectorService": cubeSelectorSvc,
+					}
+					encoding := task.EncodingPromise.Get(dependencies)
 					timeout := int(task.Timeout.Seconds())
-					if solverSvc.ShouldSkip(task.Encoding, task.Solver, timeout) {
-						fmt.Println("Slurk task: skipped", task.Solver, task.Encoding)
+					if solverSvc.ShouldSkip(encoding, task.Solver, timeout) {
+						fmt.Println("Slurk task: skipped", task.Solver, encoding)
 						continue
 					}
 
-					solverSvc.TrackedInvoke(task.Encoding, solver.Solver(task.Solver), timeout)
+					solverSvc.TrackedInvoke(encoding, solver.Solver(task.Solver), timeout)
 					err = solveSlurmTaskSvc.Remove(taskId)
 					errorSvc.Fatal(err, "Slurm task: failed to remove "+taskId+" after completion")
 				}

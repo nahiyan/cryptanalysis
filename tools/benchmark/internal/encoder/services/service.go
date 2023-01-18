@@ -29,7 +29,7 @@ type EncodingPromise struct {
 	Encoding string
 }
 
-func (encodingPromise EncodingPromise) Get() string {
+func (encodingPromise EncodingPromise) Get(dependencies map[string]interface{}) string {
 	return encodingPromise.Encoding
 }
 

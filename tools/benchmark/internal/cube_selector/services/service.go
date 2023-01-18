@@ -4,6 +4,7 @@ import (
 	"benchmark/internal/pipeline"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"os"
@@ -22,30 +23,31 @@ type EncodingPromise struct {
 	CubeIndex        int
 	CubesetPath      string
 	SubProblemPath   string
-	CubeSelectorSvc  *CubeSelectorService
 }
 
 func (encodingPromise EncodingPromise) GetPath() string {
 	return encodingPromise.SubProblemPath
 }
 
-func (encodingPromise EncodingPromise) Get() string {
-	cubeSelectorSvc := encodingPromise.CubeSelectorSvc
-	subProblemFilePath := encodingPromise.SubProblemPath
+func (encodingPromise EncodingPromise) Get(dependencies map[string]interface{}) string {
+	targetPath := encodingPromise.SubProblemPath
 	encoding := encodingPromise.BaseEncodingPath
 	cubeset := encodingPromise.CubesetPath
 	cubeIndex := encodingPromise.CubeIndex
-
-	if cubeSelectorSvc.filesystemSvc.FileExists(subProblemFilePath) {
-		fmt.Println("Cube selector: skipped", cubeIndex, subProblemFilePath)
-		return subProblemFilePath
+	svc, ok := dependencies["CubeSelectorService"].(*CubeSelectorService)
+	if !ok {
+		log.Fatal("Encoding promise: failed to get cube selector service")
 	}
 
-	err := cubeSelectorSvc.EncodingFromCube(subProblemFilePath, encoding, cubeset, cubeIndex)
-	cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to generate the encoding from a cube")
+	if svc.filesystemSvc.FileExists(targetPath) {
+		fmt.Println("Cube selector: skipped", cubeIndex, targetPath)
+		return targetPath
+	}
 
-	// fmt.Println("Cube selector:", cubeIndex, subProblemFilePath)
-	return subProblemFilePath
+	err := svc.EncodingFromCube(targetPath, encoding, cubeset, cubeIndex)
+	svc.errorSvc.Fatal(err, "Cube selector: failed to generate the encoding from a cube")
+
+	return targetPath
 }
 
 func (cubeSelectorSvc *CubeSelectorService) RandomCubes(cubesCount, selectionSize, offset int, seed int64) []int {
@@ -153,7 +155,6 @@ func (cubeSelectorSvc *CubeSelectorService) RunRandom(cubesets []string, paramet
 				CubeIndex:        cubeIndex,
 				CubesetPath:      cubeset,
 				SubProblemPath:   subProblemFilePath,
-				CubeSelectorSvc:  cubeSelectorSvc,
 			}
 			encodings = append(encodings, encodingPromise)
 		}
