@@ -10,8 +10,10 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/samber/lo"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -30,17 +32,20 @@ func (encodingPromise EncodingPromise) GetPath() string {
 }
 
 func (encodingPromise EncodingPromise) Get(dependencies map[string]interface{}) string {
-	targetPath := encodingPromise.SubProblemPath
-	encoding := encodingPromise.BaseEncodingPath
-	cubeset := encodingPromise.CubesetPath
-	cubeIndex := encodingPromise.CubeIndex
+	startTime := time.Now()
 	svc, ok := dependencies["CubeSelectorService"].(*CubeSelectorService)
 	if !ok {
 		log.Fatal("Encoding promise: failed to get cube selector service")
 	}
+	defer svc.filesystemSvc.LogInfo("Cube selector: took", time.Since(startTime).String())
+
+	targetPath := encodingPromise.SubProblemPath
+	encoding := encodingPromise.BaseEncodingPath
+	cubeset := encodingPromise.CubesetPath
+	cubeIndex := encodingPromise.CubeIndex
 
 	if svc.filesystemSvc.FileExists(targetPath) {
-		fmt.Println("Cube selector: skipped", cubeIndex, targetPath)
+		logrus.Println("Cube selector: skipped", cubeIndex, targetPath)
 		return targetPath
 	}
 
@@ -160,7 +165,7 @@ func (cubeSelectorSvc *CubeSelectorService) RunRandom(cubesets []string, paramet
 		}
 	}
 
-	fmt.Println("Cube selector: randomly selected", len(encodings), "cubes")
+	logrus.Println("Cube selector: randomly selected", len(encodings), "cubes")
 	return encodings
 }
 

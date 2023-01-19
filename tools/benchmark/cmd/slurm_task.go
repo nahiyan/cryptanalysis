@@ -7,9 +7,9 @@ import (
 	services1 "benchmark/internal/solve_slurm_task/services"
 	"benchmark/internal/solver"
 	solverServices "benchmark/internal/solver/services"
-	"fmt"
 
 	"github.com/samber/do"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -40,10 +40,10 @@ func initSlurmTaskCmd() *cobra.Command {
 						errorSvc.Fatal(err, "Slurm task: failed to book")
 					}
 					if task == nil {
-						fmt.Println("Slurm task: none to be booked")
+						logrus.Println("Slurm task: none to be booked")
 						break
 					}
-					fmt.Println("Slurm task: booked task", taskId)
+					logrus.Println("Slurm task: booked task", taskId)
 
 					dependencies := map[string]interface{}{
 						"CubeSelectorService": cubeSelectorSvc,
@@ -51,7 +51,7 @@ func initSlurmTaskCmd() *cobra.Command {
 					encoding := task.EncodingPromise.Get(dependencies)
 					timeout := int(task.Timeout.Seconds())
 					if solverSvc.ShouldSkip(encoding, task.Solver, timeout) {
-						fmt.Println("Slurk task: skipped", task.Solver, encoding)
+						logrus.Println("Slurk task: skipped", task.Solver, encoding)
 						continue
 					}
 

@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // TODO: Should use a repository for DB operations
@@ -43,6 +44,9 @@ func (solutionSvc *SolutionService) Find(encoding string, solver_ solver.Solver)
 }
 
 func (solutionSvc *SolutionService) Register(encoding string, solver_ solver.Solver, solution solver.Solution) error {
+	startTime := time.Now()
+	defer solutionSvc.filesystemSvc.LogInfo("Solution: register took", time.Since(startTime).String())
+
 	databaseSvc := solutionSvc.databaseSvc
 	filesystemSvc := solutionSvc.filesystemSvc
 

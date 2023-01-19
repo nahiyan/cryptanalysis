@@ -12,6 +12,7 @@ import (
 
 	"github.com/alitto/pond"
 	"github.com/samber/lo"
+	"github.com/sirupsen/logrus"
 )
 
 type CadicalOutput struct {
@@ -124,7 +125,7 @@ func (simplifierSvc *SimplifierService) TrackedCadicalInvoke(encoding, outputFil
 	clauses := cadicalOutput.Clauses
 	time := fmt.Sprintf("%.3f", processTime.Seconds())
 
-	fmt.Println("Simplifier:", conflicts, "conflicts", eliminations, "eliminated", freeVariables, "remaining", clauses, "clauses", time, encoding)
+	logrus.Println("Simplifier:", conflicts, "conflicts", eliminations, "eliminated", freeVariables, "remaining", clauses, "clauses", time, encoding)
 
 	err = simplifierSvc.simplificationSvc.Register(outputFilePath, simplification.Simplification{
 		FreeVariables: freeVariables,
@@ -159,7 +160,7 @@ func (simplifierSvc *SimplifierService) TrackedSateliteInvoke(encoding, outputFi
 	clauses := output.Clauses
 	time := fmt.Sprintf("%.3f", processTime.Seconds())
 
-	fmt.Println("Simplifier:", freeVariables, "remaining", clauses, "clauses", time, encoding)
+	logrus.Println("Simplifier:", freeVariables, "remaining", clauses, "clauses", time, encoding)
 
 	err = simplifierSvc.simplificationSvc.Register(outputFilePath, simplification.Simplification{
 		FreeVariables: freeVariables,
@@ -176,7 +177,7 @@ func (simplifierSvc *SimplifierService) TrackedSateliteInvoke(encoding, outputFi
 }
 
 func (simplifierSvc *SimplifierService) RunCadical(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Simplifying) []pipeline.EncodingPromise {
-	fmt.Println("Simplifier: started with CaDiCaL")
+	logrus.Println("Simplifier: started with CaDiCaL")
 	simplifiedEncodings := []string{}
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 	dependencies := map[string]interface{}{
@@ -191,7 +192,7 @@ func (simplifierSvc *SimplifierService) RunCadical(encodingPromises []pipeline.E
 			outputFilePath := fmt.Sprintf("%s.cadical_c%d.cnf", encoding, conflicts)
 
 			if simplifierSvc.filesystemSvc.FileExists(outputFilePath) {
-				fmt.Println("Simplifier: skipped", encoding)
+				logrus.Println("Simplifier: skipped", encoding)
 				simplifiedEncodings = append(simplifiedEncodings, outputFilePath)
 
 				continue
@@ -208,7 +209,7 @@ func (simplifierSvc *SimplifierService) RunCadical(encodingPromises []pipeline.E
 	}
 
 	pool.StopAndWait()
-	fmt.Println("Simplifier: stopped with CaDiCaL")
+	logrus.Println("Simplifier: stopped with CaDiCaL")
 
 	simplifiedEncodingPromises := lo.Map(simplifiedEncodings, func(simplifiedEncoding string, _ int) pipeline.EncodingPromise {
 		return EncodingPromise{Encoding: simplifiedEncoding}
@@ -218,7 +219,7 @@ func (simplifierSvc *SimplifierService) RunCadical(encodingPromises []pipeline.E
 }
 
 func (simplifierSvc *SimplifierService) RunSatelite(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Simplifying) []pipeline.EncodingPromise {
-	fmt.Println("Simplifier: started with SatELite")
+	logrus.Println("Simplifier: started with SatELite")
 	simplifiedEncodings := []string{}
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 
@@ -228,7 +229,7 @@ func (simplifierSvc *SimplifierService) RunSatelite(encodingPromises []pipeline.
 		outputFilePath := fmt.Sprintf("%s.satelite.cnf", encoding)
 
 		if simplifierSvc.filesystemSvc.FileExists(outputFilePath) {
-			fmt.Println("Simplifier: skipped", encoding)
+			logrus.Println("Simplifier: skipped", encoding)
 			simplifiedEncodings = append(simplifiedEncodings, outputFilePath)
 
 			continue
@@ -244,7 +245,7 @@ func (simplifierSvc *SimplifierService) RunSatelite(encodingPromises []pipeline.
 	}
 
 	pool.StopAndWait()
-	fmt.Println("Simplifier: stopped with SatELite")
+	logrus.Println("Simplifier: stopped with SatELite")
 
 	simplifiedEncodingPromises := lo.Map(simplifiedEncodings, func(simplifiedEncoding string, _ int) pipeline.EncodingPromise {
 		return EncodingPromise{Encoding: simplifiedEncoding}

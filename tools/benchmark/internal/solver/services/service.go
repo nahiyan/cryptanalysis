@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/alitto/pond"
+	"github.com/sirupsen/logrus"
 )
 
 func (solverSvc *SolverService) GetCmdInfo(encoding string, solver solver.Solver) (string, []string) {
@@ -81,7 +82,7 @@ func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, t
 		} else if exitCode == 20 {
 			result = consts.Unsat
 		} else {
-			fmt.Println(err)
+			logrus.Error(err)
 		}
 	})
 	runtime := time.Since(startTime)
@@ -156,7 +157,7 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 
 	err := solverSvc.solveSlurmTaskSvc.AddMultiple(tasks)
 	errorSvc.Fatal(err, "Solver: failed to add slurm task")
-	fmt.Println("Solver: added", len(tasks), "slurm tasks")
+	logrus.Println("Solver: added", len(tasks), "slurm tasks")
 
 	slurmMaxJobs := config.Slurm.MaxJobs
 	numTasks := int(math.Min(float64(parameters.Workers), float64(slurmMaxJobs)))
@@ -174,7 +175,7 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 
 	jobId, err := slurmSvc.ScheduleJob(jobFilePath, dependencies)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to schedule the job")
-	fmt.Println("Solver: scheduled job with ID", jobId)
+	logrus.Println("Solver: scheduled job with ID", jobId)
 
 	return pipeline.SlurmPipeOutput{
 		Jobs:   []slurm.Job{{Id: jobId}},
@@ -210,7 +211,7 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 }
 
 func (solverSvc *SolverService) RunRegular(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Solving) {
-	fmt.Println("Solver: started")
+	logrus.Println("Solver: started")
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 	dependencies := map[string]interface{}{
 		"CubeSelectorService": solverSvc.cubeSelectorSvc,
@@ -219,7 +220,7 @@ func (solverSvc *SolverService) RunRegular(encodingPromises []pipeline.EncodingP
 	solverSvc.Loop(encodingPromises, parameters, func(encodingPromise pipeline.EncodingPromise, solver_ solver.Solver) {
 		encoding := encodingPromise.Get(dependencies)
 		if solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
-			fmt.Println("Solver: skipped", encoding, "with "+string(solver_))
+			logrus.Println("Solver: skipped", encoding, "with "+string(solver_))
 			return
 		}
 
@@ -229,5 +230,5 @@ func (solverSvc *SolverService) RunRegular(encodingPromises []pipeline.EncodingP
 	})
 
 	pool.StopAndWait()
-	fmt.Println("Solver: stopped")
+	logrus.Println("Solver: stopped")
 }

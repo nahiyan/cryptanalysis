@@ -2,7 +2,6 @@ package services
 
 import (
 	"benchmark/internal/cubeset"
-	"fmt"
 	"time"
 )
 
@@ -26,8 +25,9 @@ func (cubesetSvc *CubesetService) Register(cubesetFilePath string, cubeSet cubes
 	}
 
 	startTime := time.Now()
+	defer cubesetSvc.filesystemSvc.LogInfo("Cubeset: stored", cubesetFilePath, checksum, time.Since(startTime).String())
+
 	err = cubesetSvc.databaseSvc.Set(cubesetSvc.Bucket, []byte(checksum), data)
-	fmt.Println("Stored", cubesetFilePath, checksum, time.Since(startTime))
 	return err
 }
 

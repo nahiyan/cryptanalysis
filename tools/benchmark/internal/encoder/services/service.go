@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
+	"github.com/sirupsen/logrus"
 )
 
 // Paths
@@ -127,7 +128,7 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []p
 
 		// Skip if encoding already exists
 		if encoderSvc.filesystemSvc.FileExists(encodingFilePath) {
-			fmt.Println("Encoder: skipped", encodingFilePath)
+			logrus.Println("Encoder: skipped", encodingFilePath)
 			return
 		}
 
@@ -161,7 +162,7 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []p
 					dobbertinFlag))...)
 		encoderSvc.OutputToFile(cmd, encodingFilePath)
 
-		fmt.Println("Encoder:", encodingFilePath)
+		logrus.Println("Encoder:", encodingFilePath)
 	})
 
 	encodingPromises := lo.Map(encodings, func(encoding string, _ int) pipeline.EncodingPromise {
@@ -174,7 +175,7 @@ func (encoderSvc *EncoderService) Run(name encoder.Name, parameters pipeline.Enc
 	switch name {
 	case SaeedE:
 		promises := encoderSvc.InvokeSaeedE(parameters)
-		fmt.Println("Encoder:", promises)
+		logrus.Println("Encoder:", promises)
 		return promises
 	}
 

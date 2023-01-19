@@ -48,6 +48,9 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) Add(task solveslurmtask.Task) er
 }
 
 func (solveSlurmTaskSvc *SolveSlurmTaskService) AddMultiple(tasks []solveslurmtask.Task) error {
+	startTime := time.Now()
+	defer solveSlurmTaskSvc.filesystemSvc.LogInfo("Solve slurm task: add multiple took", time.Since(startTime).String())
+
 	keys := lo.Map(tasks, func(task solveslurmtask.Task, _ int) []byte {
 		id := solveSlurmTaskSvc.GenerateId(task)
 		return []byte(id)
@@ -87,6 +90,7 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) Book() (*solveslurmtask.Task, st
 		taskId string
 	)
 
+	startTime := time.Now()
 	err := solveSlurmTaskSvc.databaseSvc.FindAndReplace(solveSlurmTaskSvc.Bucket, func(key, value []byte) []byte {
 		task_ := solveslurmtask.Task{}
 		err := solveSlurmTaskSvc.marshallingSvc.BinDecode(value, &task_)
@@ -111,6 +115,7 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) Book() (*solveslurmtask.Task, st
 
 		return encodedTask
 	})
+	solveSlurmTaskSvc.filesystemSvc.LogInfo("Solve slurk task: book took", time.Since(startTime).String())
 
 	return task, taskId, err
 }

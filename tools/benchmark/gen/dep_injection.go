@@ -179,7 +179,7 @@ func main() {
 		},
 		{
 			Name:            "database",
-			Dependencies:    []string{"error", "config"},
+			Dependencies:    []string{"error", "config", "filesystem"},
 			HasProperties:   true,
 			HasInitFunction: true,
 		},
@@ -224,7 +224,7 @@ func main() {
 		},
 		{
 			Name:            "solve_slurm_task",
-			Dependencies:    []string{"error", "database", "marshalling"},
+			Dependencies:    []string{"error", "database", "marshalling", "filesystem"},
 			Type:            Service,
 			HasProperties:   true,
 			HasInitFunction: true,

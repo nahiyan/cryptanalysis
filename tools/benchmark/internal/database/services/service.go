@@ -3,6 +3,7 @@ package services
 import (
 	errorModule "benchmark/internal/error"
 	"strconv"
+	"time"
 
 	"github.com/boltdb/bolt"
 )
@@ -40,14 +41,19 @@ func (databaseSvc *DatabaseService) Open(readOnly bool) error {
 }
 
 func (databaseSvc *DatabaseService) Close() error {
+	startTime := time.Now()
 	if err := databaseSvc.db.Close(); err != nil {
 		return err
 	}
+	databaseSvc.filesystemSvc.LogInfo("Database: close took", time.Since(startTime).String())
 
 	return nil
 }
 
 func (databaseSvc *DatabaseService) Use(isReadOnly bool, handler func(db *bolt.DB) error) error {
+	startTime := time.Now()
+	defer databaseSvc.filesystemSvc.LogInfo("Database: use took", time.Since(startTime).String(), strconv.FormatBool(isReadOnly))
+
 	if err := databaseSvc.Open(isReadOnly); err != nil {
 		return err
 	}
@@ -69,6 +75,9 @@ func (databaseSvc *DatabaseService) UseReadWrite(handler func(db *bolt.DB) error
 }
 
 func (databaseSvc *DatabaseService) Init() {
+	startTime := time.Now()
+	defer databaseSvc.filesystemSvc.LogInfo("Database: init took", time.Since(startTime).String())
+
 	errorSvc := databaseSvc.errorSvc
 
 	// Open the database

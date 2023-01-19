@@ -19,3 +19,8 @@ const (
 	Unsat
 	Fail
 )
+
+const (
+	Debug = "debug"
+	Info  = "info"
+)

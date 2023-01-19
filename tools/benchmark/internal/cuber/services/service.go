@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/alitto/pond"
+	"github.com/sirupsen/logrus"
 )
 
 type InvokeParameters struct {
@@ -70,7 +71,7 @@ func (cuberSvc *CuberService) ReadMarchOutput(output string) (int, int, error) {
 
 func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control InvokeControl) error {
 	if shouldStop_, exists := control.ShouldStop[parameters.Encoding]; exists && shouldStop_ {
-		fmt.Println("Cuber: read stop signal", parameters.Threshold, parameters.Encoding)
+		logrus.Println("Cuber: read stop signal", parameters.Threshold, parameters.Encoding)
 		return nil
 	}
 
@@ -85,7 +86,7 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 		return err
 	}
 
-	fmt.Println("Cuber:", parameters.Threshold, cubes, "cubes", refutedLeaves, "refuted leaves", runtime, parameters.Encoding)
+	logrus.Println("Cuber:", parameters.Threshold, cubes, "cubes", refutedLeaves, "refuted leaves", runtime, parameters.Encoding)
 
 	instanceName := strings.TrimSuffix(parameters.Encoding, ".cnf")
 	cubesFilePath := cuberSvc.CubesFilePath(parameters.Encoding, parameters.Threshold)
@@ -106,14 +107,14 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 	if maxCubesExceeded {
 		control.ShouldStop[parameters.Encoding] = true
 		cuberSvc.commandSvc.StopGroup(control.CommandGroup)
-		fmt.Println("Cuber: Written stop signal", parameters.Threshold, parameters.Encoding)
+		logrus.Println("Cuber: Written stop signal", parameters.Threshold, parameters.Encoding)
 	}
 
 	if maxCubesExceeded || minRefutedLeavesViolated {
 		if err := os.Remove(cubesFilePath); err != nil {
 			return err
 		}
-		fmt.Println("Cuber: removed", cubesFilePath)
+		logrus.Println("Cuber: removed", cubesFilePath)
 		return cuber.ErrCubesetViolatedConstraints
 	}
 
@@ -177,11 +178,11 @@ func (cuberSvc *CuberService) RunRegular(encodingPromises []pipeline.EncodingPro
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 	shouldStop := map[string]bool{}
 	commandGrps := map[string]*command.Group{}
-	fmt.Println("Cuber: started")
+	logrus.Println("Cuber: started")
 
 	cuberSvc.Loop(encodingPromises, parameters, func(encoding string, threshold, timeout int) {
 		if cuberSvc.ShouldSkip(encoding, threshold) {
-			fmt.Println("Cuber: skipped", threshold, encoding)
+			logrus.Println("Cuber: skipped", threshold, encoding)
 			cubesFilePaths = append(cubesFilePaths, cuberSvc.CubesFilePath(encoding, threshold))
 			return
 		}
@@ -215,7 +216,7 @@ func (cuberSvc *CuberService) RunRegular(encodingPromises []pipeline.EncodingPro
 	})
 
 	pool.StopAndWait()
-	fmt.Println("Cuber: stopped")
+	logrus.Println("Cuber: stopped")
 	return cubesFilePaths
 }
 
@@ -235,7 +236,7 @@ func (cuberSvc *CuberService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutp
 	counter := 1
 	cuberSvc.Loop(encodingPromises, parameters, func(encoding string, threshold int, timeout int) {
 		if cuberSvc.ShouldSkip(encoding, threshold) {
-			fmt.Println("Cuber: skipped", threshold, encoding)
+			logrus.Println("Cuber: skipped", threshold, encoding)
 			return
 		}
 
@@ -249,7 +250,7 @@ func (cuberSvc *CuberService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutp
 		counter++
 	})
 
-	fmt.Println("Cuber: added", counter-1, "slurm tasks")
+	logrus.Println("Cuber: added", counter-1, "slurm tasks")
 
 	numTasks := counter - 1
 	timeout := parameters.Timeout
@@ -266,7 +267,7 @@ func (cuberSvc *CuberService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutp
 
 	jobId, err := slurmSvc.ScheduleJob(jobFilePath, dependencies)
 	errorSvc.Fatal(err, "Solver: failed to schedule the job")
-	fmt.Println("Cuber: scheduled job with ID", jobId)
+	logrus.Println("Cuber: scheduled job with ID", jobId)
 
 	return pipeline.SlurmPipeOutput{
 		Jobs:   []slurm.Job{{Id: jobId}},

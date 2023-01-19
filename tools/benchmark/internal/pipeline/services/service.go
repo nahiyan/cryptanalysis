@@ -205,7 +205,6 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 			}
 
 			lastValue = pipelineSvc.slurmSvc.SlurmifyFromEncoding(input)
-			// fmt.Println(lastValue)
 		}
 	})
 }
