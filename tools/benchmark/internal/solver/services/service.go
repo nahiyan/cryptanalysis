@@ -187,6 +187,7 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 
 	// Invoke
 	runtime, result, exitCode := solverSvc.Invoke(encoding, solver_, timeout)
+	runtime = runtime.Round(time.Millisecond)
 
 	resultString := "Fail"
 	if result == consts.Sat {
@@ -195,7 +196,7 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 		resultString = "UNSAT"
 	}
 
-	fmt.Println("Solver:", solver_, resultString, exitCode, runtime, encoding)
+	logrus.Println("Solver:", solver_, resultString, exitCode, runtime, encoding)
 
 	// Store in the database
 	instanceName := strings.TrimSuffix(path.Base(encoding), ".cnf")
