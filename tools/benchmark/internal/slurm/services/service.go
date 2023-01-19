@@ -4,16 +4,19 @@ import (
 	"benchmark/internal/pipeline"
 	"benchmark/internal/slurm"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"strconv"
 	"text/template"
+
+	"github.com/sirupsen/logrus"
 )
 
 func (slurmSvc *SlurmService) GenerateJob(numTasks, nodes, cpuCores, memory, timeout int, command string) (string, error) {
 	randomSvc := slurmSvc.randomSvc
 	config := slurmSvc.configSvc.Config
-	commandTmpl := "#!/bin/bash\n#SBATCH --nodes={{.Nodes}}\n#SBATCH --cpus-per-task={{.CpuCores}}\n#SBATCH --mem={{.Memory}}M\n#SBATCH --time=00:{{.GlobalTimeout}}\n#SBATCH --array=1-{{.NumTasks}}\n\n{{.Command}}\n"
+	commandTmpl := "#!/bin/bash\n#SBATCH --nodes={{.Nodes}}\n#SBATCH --cpus-per-task={{.CpuCores}}\n#SBATCH --mem={{.Memory}}M\n#SBATCH --time=00:{{.Timeout}}\n#SBATCH --array=1-{{.NumTasks}}\n\n{{.Command}}\n"
 
 	tmpl, err := template.New("tmpl").Parse(commandTmpl)
 	if err != nil {
@@ -30,15 +33,16 @@ func (slurmSvc *SlurmService) GenerateJob(numTasks, nodes, cpuCores, memory, tim
 	}
 	defer jobFile.Close()
 
+	timeout_ := math.Round(float64(timeout) * 1.1) // 10% extra time for other operations
+
 	if err := tmpl.Execute(jobFile, map[string]interface{}{
-		"Nodes":         nodes,
-		"CpuCores":      cpuCores,
-		"Memory":        memory,
-		"Timeout":       timeout,
-		"GlobalTimeout": timeout + 5, // 5 extra seconds to gracefully shutdown
-		"BenchmarkBin":  config.Paths.Bin.Benchmark,
-		"Command":       command,
-		"NumTasks":      numTasks,
+		"Nodes":        nodes,
+		"CpuCores":     cpuCores,
+		"Memory":       memory,
+		"Timeout":      timeout_,
+		"BenchmarkBin": config.Paths.Bin.Benchmark,
+		"Command":      command,
+		"NumTasks":     numTasks,
 	}); err != nil {
 		return "", err
 	}
