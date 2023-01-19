@@ -109,7 +109,7 @@ func (logSvc *LogService) WriteSimplificationLog(basePath string) {
 			processTime := fmt.Sprintf("%.3f", simplification.ProcessTime.Seconds())
 			instanceName := simplification.InstanceName
 
-			writer.Write([]string{conflicts, freeVariables, elimination, clauses, processTime, simplifier, instanceName})
+			writer.Write([]string{conflicts, freeVariables, elimination, simplifier, clauses, processTime, instanceName})
 		}
 	})
 }
