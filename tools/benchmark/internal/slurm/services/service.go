@@ -33,7 +33,7 @@ func (slurmSvc *SlurmService) GenerateJob(numTasks, nodes, cpuCores, memory, tim
 	}
 	defer jobFile.Close()
 
-	timeout_ := math.Round(float64(timeout) * 1.1) // 10% extra time for other operations
+	timeout_ := math.Round(float64(timeout) * config.Slurm.ExtraTime) // extra time for other operations
 
 	if err := tmpl.Execute(jobFile, map[string]interface{}{
 		"Nodes":        nodes,
@@ -75,7 +75,7 @@ func (slurmSvc *SlurmService) ScheduleJob(jobPath string, dependencies []slurm.J
 	if err != nil {
 		return 0, err
 	}
-	fmt.Println("Submitted job", jobId)
+	logrus.Println("Submitted job", jobId)
 
 	return jobId, nil
 }

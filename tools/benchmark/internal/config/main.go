@@ -21,6 +21,7 @@ type Config struct {
 	}
 
 	Slurm struct {
-		MaxJobs int
+		MaxJobs   int
+		ExtraTime float64
 	}
 }
