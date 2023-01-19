@@ -175,6 +175,8 @@ func (logSvc *LogService) WriteSummaryLog(basePath string) {
 		sat_ := humanize.Comma(int64(sat))
 		unsat_ := humanize.Comma(int64(unsat))
 		others_ := humanize.Comma(int64(others))
+		quantity_ := humanize.Comma(int64(quantity))
+		cubesCount_ := humanize.Comma(int64(cubesCount))
 
 		summary += fmt.Sprintf("## %s\n\n%s SAT, %s UNSAT, %s Others", encoding, sat_, unsat_, others_)
 		percentageComplete := float64(quantity) / float64(cubesCount) * 100
@@ -189,7 +191,9 @@ func (logSvc *LogService) WriteSummaryLog(basePath string) {
 
 		if quantity > 1 {
 			estimate := time.Duration(totalTime.Seconds()/float64(quantity)*float64(cubesCount)) * time.Second
-			summary += fmt.Sprintf("Estimate: %s\n", estimate.Round(time.Millisecond))
+			summary += fmt.Sprintf("Estimate: %s for %s cubes\n", estimate.Round(time.Millisecond), cubesCount_)
+
+			summary += fmt.Sprintf("Real time: %s for %s cubes\n", totalTime.Round(time.Millisecond), quantity_)
 		}
 		summary += "\n"
 	}
