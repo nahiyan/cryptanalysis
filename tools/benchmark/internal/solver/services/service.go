@@ -139,7 +139,6 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 	solverSvc.Loop(encodingPromises, parameters, func(encodingPromise pipeline.EncodingPromise, solver_ solver.Solver) {
 		// Note: We aren't checking if this task is already solved, since we'd have to retrieve the promised encoding, triggering the generation of cube encodings that are expensive on the FS to produce
 		timeout := time.Duration(parameters.Timeout) * time.Second
-
 		task := solveslurmtask.Task{
 			EncodingPromise: encodingPromise,
 			Solver:          solver_,
