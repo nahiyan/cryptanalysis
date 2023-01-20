@@ -50,11 +50,10 @@ func initSlurmTaskCmd() *cobra.Command {
 					}
 					encoding := task.EncodingPromise.Get(dependencies)
 					timeout := int(task.Timeout.Seconds())
-					if solverSvc.ShouldSkip(encoding, task.Solver, timeout) {
-						logrus.Println("Slurk task: skipped", task.Solver, encoding)
-						continue
-					}
-
+					// if solverSvc.ShouldSkip(encoding, task.Solver, timeout) {
+					// 	logrus.Println("Slurk task: skipped", task.Solver, encoding)
+					// 	continue
+					// }
 					solverSvc.TrackedInvoke(encoding, solver.Solver(task.Solver), timeout)
 					err = solveSlurmTaskSvc.Remove(taskId)
 					errorSvc.Fatal(err, "Slurm task: failed to remove "+taskId+" after completion")
