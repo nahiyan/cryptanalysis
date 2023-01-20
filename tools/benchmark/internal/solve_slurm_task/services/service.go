@@ -91,6 +91,8 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) Book() (*solveslurmtask.Task, st
 	)
 
 	startTime := time.Now()
+	defer solveSlurmTaskSvc.filesystemSvc.LogInfo("Solve slurk task: book took", time.Since(startTime).String())
+
 	err := solveSlurmTaskSvc.databaseSvc.FindAndReplace(solveSlurmTaskSvc.Bucket, func(key, value []byte) []byte {
 		task_ := solveslurmtask.Task{}
 		err := solveSlurmTaskSvc.marshallingSvc.BinDecode(value, &task_)
@@ -115,7 +117,6 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) Book() (*solveslurmtask.Task, st
 
 		return encodedTask
 	})
-	solveSlurmTaskSvc.filesystemSvc.LogInfo("Solve slurk task: book took", time.Since(startTime).String())
 
 	return task, taskId, err
 }
