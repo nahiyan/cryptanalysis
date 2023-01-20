@@ -113,6 +113,10 @@ func (filesystemSvc *FilesystemService) Checksum(filePath string) (string, error
 	startTime := time.Now()
 	defer filesystemSvc.LogInfo("Checksum: took", time.Since(startTime).String())
 
+	if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
+		return "", os.ErrNotExist
+	}
+
 	file, err := os.Open(filePath)
 	if err != nil {
 		return "", err
