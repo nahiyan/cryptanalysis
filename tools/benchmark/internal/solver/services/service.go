@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"os"
 	"os/exec"
 	"path"
 	"strings"
@@ -103,9 +104,8 @@ func (solverSvc *SolverService) ShouldSkip(encoding string, solver_ solver.Solve
 	errorSvc := solverSvc.errorSvc
 
 	solution, err := solutionSvc.Find(encoding, solver_)
-
 	// Don't skip if there is no solution
-	if err == errorModule.ErrKeyNotFound {
+	if err == errorModule.ErrKeyNotFound || err == os.ErrNotExist {
 		return false
 	}
 
@@ -136,13 +136,24 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 	dependencies := previousPipeOutput.Jobs
 
 	tasks := []solveslurmtask.Task{}
+	i := 0
+	numOfPromises := len(encodingPromises)
 	solverSvc.Loop(encodingPromises, parameters, func(encodingPromise pipeline.EncodingPromise, solver_ solver.Solver) {
+
 		// Note: We aren't checking if this task is already solved, since we'd have to retrieve the promised encoding, triggering the generation of cube encodings that are expensive on the FS to produce
 		timeout := time.Duration(parameters.Timeout) * time.Second
 		task := solveslurmtask.Task{
 			EncodingPromise: encodingPromise,
 			Solver:          solver_,
 			Timeout:         timeout,
+		}
+
+		i += 1
+		logrus.Printf("Solver: [%d/%d] tasks processed", i, numOfPromises)
+
+		// Check if a task should be skipped
+		if solverSvc.ShouldSkip(encodingPromise.GetPath(), solver_, parameters.Timeout) {
+			return
 		}
 
 		// Prevent overwriting of any existing task
