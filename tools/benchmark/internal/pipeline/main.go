@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"benchmark/internal/encoder"
 	"benchmark/internal/slurm"
 	"benchmark/internal/solver"
 )
@@ -19,15 +20,13 @@ const (
 
 type Type string
 type Solver string
-type AdderType string
-type Encoder string
 
 type Encoding struct {
-	Encoder       Encoder
+	Encoder       encoder.Encoder
 	Xor           []int
 	Dobbertin     []int
 	DobbertinBits []int
-	Adders        []AdderType
+	Adders        []encoder.AdderType
 	Hashes        []string
 	Steps         []int
 	Solvers       []Solver
