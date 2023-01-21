@@ -156,7 +156,10 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 	pipelineSvc.Loop(pipes, func(pipe, nextPipe *pipeline.Pipe) {
 		switch pipe.Type {
 		case pipeline.Encode:
-			lastValue = pipelineSvc.encoderSvc.Run(encoderServices.SaeedE, pipe.Encoding)
+			if pipe.Encoding.Encoder == "" {
+				pipe.Encoding.Encoder = encoderServices.SaeedE
+			}
+			lastValue = pipelineSvc.encoderSvc.Run(pipe.Encoding)
 
 			if nextPipe == nil {
 				return

@@ -1,21 +1,23 @@
 package services
 
 import (
+	"benchmark/internal/consts"
 	"benchmark/internal/encoder"
 	"benchmark/internal/pipeline"
 	"fmt"
 	"log"
 	"os/exec"
 	"path"
-	"strings"
 
 	"github.com/samber/lo"
+	"github.com/samber/mo"
 	"github.com/sirupsen/logrus"
 )
 
-// Paths
+// Encoders
 const (
-	SaeedE = "saeed_e" // Short for Saeed's Encoder
+	SaeedE   = "saeed_e" // Short for Saeed's Encoder
+	Transalg = "transalg"
 )
 
 // Adders

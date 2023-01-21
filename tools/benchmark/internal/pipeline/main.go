@@ -20,8 +20,10 @@ const (
 type Type string
 type Solver string
 type AdderType string
+type Encoder string
 
 type Encoding struct {
+	Encoder       Encoder
 	Xor           []int
 	Dobbertin     []int
 	DobbertinBits []int

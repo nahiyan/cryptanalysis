@@ -15,6 +15,7 @@ type Config struct {
 			SolutionAnalyzer string
 			SaeedE           string
 			Benchmark        string
+			Transalg         string
 		}
 
 		Database string

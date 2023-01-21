@@ -29,6 +29,7 @@ func (configSvc *ConfigService) Process() {
 	viper.SetDefault("Paths.Bin.Satelite", "satelite")
 	viper.SetDefault("Paths.Bin.SolutionAnalyzer", "solution_analyzer")
 	viper.SetDefault("Paths.Bin.SaeedE", "saeed_e")
+	viper.SetDefault("Paths.Bin.Transalg", "transalg")
 	viper.SetDefault("Paths.Bin.Verifier", "saeede_verify")
 	viper.SetDefault("Paths.Bin.Benchmark", "benchmark")
 
