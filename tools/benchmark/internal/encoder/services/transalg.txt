@@ -1,0 +1,86 @@
+__in bit M[16][32];
+bit K[32] = {{ .DobbertinConstant }};
+__out bit Hash[4][40];
+
+bit A[32] = 0x67452301;
+bit B[32] = 0xEFCDAB89;
+bit C[32] = 0x98BADCFE;
+bit D[32] = 0x10325476;
+
+bit F(bit X[32], bit Y[32], bit Z[32])
+{
+    return (X & Y) | (!X & Z);
+}
+
+bit G(bit X[32], bit Y[32], bit Z[32])
+{
+    return X & Y | X & Z | Y & Z;
+}
+
+bit H(bit X[32], bit Y[32], bit Z[32])
+{
+    return X ^ Y ^ Z;
+}
+
+// Round 1, (a + F(b, c, d) + M) <<< s
+bit FF(bit a[32], bit b[32], bit c[32], bit d[32], bit M[32], int s)
+{
+    a = sum(sum(a, F(b, c, d), 32), M, 32);
+    return (a <<< s);
+}
+
+// Round 2, (a + G(b, c, d) + M + 0x5A827999) <<< s
+bit GG(bit a[32], bit b[32], bit c[32], bit d[32], bit M[32], int s)
+{
+    a = sum(sum(sum(a, G(b, c, d), 32), M, 32), 0x5A827999, 32);
+    return (a <<< s);
+}
+
+// Round 3, (a + H(b, c, d) + M + 0x6ED9EBA1) <<< s
+bit HH(bit a[32], bit b[32], bit c[32], bit d[32], bit M[32], int s)
+{
+    a = sum(sum(sum(a, H(b, c, d), 32), M, 32), 0x6ED9EBA1, 32);
+    return (a <<< s);
+}
+
+void main()
+{
+
+    bit a[32] = A;
+    bit b[32] = B;
+    bit c[32] = C;
+    bit d[32] = D;
+
+    {{ range $i, $item := .m -}}
+    {{- if eq $i 0 -}}
+    // Round 1
+    {{- else if eq $i 16 }}
+
+    // Round 2
+    {{- else if eq $i 32 }}
+
+    // Round 3
+    {{- end }}
+    {{ index $.Registers (quo $i 4) }} = {{ function $i }}({{ index $.Registers (quo $i 4) }}, {{ index $.Registers (add (quo $i 4) 4) }}, {{ index $.Registers (add (quo $i 4) 8) }}, {{ index $.Registers (add (quo $i 4) 12) }}, M[{{ $item }}], {{ index $.n $i }}); // Step {{ inc $i }}
+    {{- dobbertinsConstraint $i (index $.Registers (quo $i 4)) }}
+    {{- end }}
+    
+    Hash[0] = a;
+    Hash[1] = b;
+    Hash[2] = c;
+    Hash[3] = d;
+
+    {{ if eq $.OneTargetHash true -}}
+    // 1^(128)
+    assert(Hash[0]);
+    assert(Hash[1]);
+    assert(Hash[2]);
+    assert(Hash[3]);
+    {{- else }}
+    // 0^(128)
+    assert(!Hash[0]);
+    assert(!Hash[1]);
+    assert(!Hash[2]);
+    assert(!Hash[3]);
+    {{- end }}
+}
