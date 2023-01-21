@@ -50,6 +50,7 @@ func initSlurmTaskCmd() *cobra.Command {
 					}
 					encoding := task.EncodingPromise.Get(dependencies)
 					timeout := int(task.Timeout.Seconds())
+					// * Note: The skipping isn't done to speed things up
 					// if solverSvc.ShouldSkip(encoding, task.Solver, timeout) {
 					// 	logrus.Println("Slurk task: skipped", task.Solver, encoding)
 					// 	continue
