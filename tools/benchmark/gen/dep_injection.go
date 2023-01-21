@@ -155,7 +155,7 @@ func main() {
 		},
 		{
 			Name:         "encoder",
-			Dependencies: []string{"config", "filesystem", "error"},
+			Dependencies: []string{"config", "filesystem", "error", "command"},
 		},
 		{
 			Name: "error",

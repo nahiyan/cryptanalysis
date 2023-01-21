@@ -3,6 +3,9 @@ package services
 import (
 	"benchmark/internal/command"
 	"os/exec"
+	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 func (commandSvc *CommandService) CreateGroup() *command.Group {
@@ -22,4 +25,14 @@ func (commandSvc *CommandService) StopGroup(group *command.Group) error {
 	}
 
 	return err
+}
+
+func (commandSvc *CommandService) Create(command string) *exec.Cmd {
+	segments := strings.Fields(command)
+	if len(segments) == 0 {
+		logrus.Fatal("Command: empty")
+	}
+
+	cmd := exec.Command(segments[0], segments[1:]...)
+	return cmd
 }
