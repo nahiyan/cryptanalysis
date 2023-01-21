@@ -2,7 +2,7 @@ package services
 
 import (
 	"benchmark/internal/consts"
-	encoderServices "benchmark/internal/encoder/services"
+	"benchmark/internal/encoder"
 	"benchmark/internal/pipeline"
 	"benchmark/internal/solver"
 	"log"
@@ -102,7 +102,7 @@ func (pipelineSvc *PipelineService) TestRun(pipes []pipeline.Pipe) {
 		Xor:           []int{0},
 		Dobbertin:     []int{0},
 		DobbertinBits: []int{32},
-		Adders:        []pipeline.AdderType{encoderServices.Espresso},
+		Adders:        []encoder.AdderType{encoder.Espresso},
 		Hashes:        []string{"ffffffffffffffffffffffffffffffff", "00000000000000000000000000000000"},
 		Steps:         []int{16},
 	}
@@ -156,8 +156,9 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 	pipelineSvc.Loop(pipes, func(pipe, nextPipe *pipeline.Pipe) {
 		switch pipe.Type {
 		case pipeline.Encode:
+			// SaeedE is the default encoder
 			if pipe.Encoding.Encoder == "" {
-				pipe.Encoding.Encoder = encoderServices.SaeedE
+				pipe.Encoding.Encoder = encoder.SaeedE
 			}
 			lastValue = pipelineSvc.encoderSvc.Run(pipe.Encoding)
 
