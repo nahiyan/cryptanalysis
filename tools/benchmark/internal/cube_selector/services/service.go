@@ -138,10 +138,8 @@ func (cubeSelectorSvc *CubeSelectorService) RunRandom(cubesets []string, paramet
 	encodings := []pipeline.EncodingPromise{}
 
 	// temporary directory for holding the cubes
-	if !cubeSelectorSvc.filesystemSvc.FileExists("tmp") {
-		err := os.Mkdir("tmp", os.ModePerm)
-		cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to create the ./tmp dir")
-	}
+	err := cubeSelectorSvc.filesystemSvc.PrepareTempDir()
+	cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to create tmp dir")
 
 	for _, cubeset := range cubesets {
 		encoding, err := cubeSelectorSvc.GetInfo(cubeset)

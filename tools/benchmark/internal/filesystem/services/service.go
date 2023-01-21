@@ -131,3 +131,14 @@ func (filesystemSvc *FilesystemService) Checksum(filePath string) (string, error
 
 	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
+
+func (filesystemSvc *FilesystemService) PrepareTempDir() error {
+	if !filesystemSvc.FileExists("tmp") {
+		err := os.Mkdir("tmp", os.ModePerm)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
