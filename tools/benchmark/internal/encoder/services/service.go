@@ -40,23 +40,52 @@ func (encodingPromise EncodingPromise) GetPath() string {
 	return encodingPromise.Encoding
 }
 
-func (encoderSvc *EncoderService) GetInstanceName(steps int, adderType pipeline.AdderType, xor int, hash string, dobbertin, dobbertinBits int, cubeIndex *int) string {
-	return fmt.Sprintf("%smd4_%d_%s_xor%d_%s_dobbertin%d_b%d", func(cubeIndex *int) string {
-		if cubeIndex != nil {
-			return fmt.Sprintf("cube%d_", *cubeIndex)
-		}
+func (encoderSvc *EncoderService) GetInstanceName(info encoder.InstanceInfo) string {
+	encoder := info.Encoder
+	function := info.Function
+	steps := info.Steps
+	adderType := info.AdderType
+	targetHash := info.TargetHash
 
-		return ""
-	}(cubeIndex), steps, adderType, xor, hash, dobbertin, dobbertinBits)
+	instanceName := fmt.Sprintf("%s_%s_%d_%s_%s",
+		encoder,
+		function,
+		steps,
+		adderType,
+		targetHash)
+	if dobbertinInfo, enabled := info.Dobbertin.Get(); enabled {
+		instanceName += fmt.Sprintf("_dobbertin%d", dobbertinInfo.Bits)
+	}
+	if info.IsXorEnabled {
+		instanceName += "_xor"
+	}
+	instanceName += ".cnf"
+
+	if simplificationInfo, exists := info.Simplification.Get(); exists {
+		instanceName += "." + simplificationInfo.Simplifier
+		if simplificationInfo.Simplifier == consts.Cadical {
+			instanceName += fmt.Sprintf("_c%d.cnf", simplificationInfo.Conflicts)
+		}
+	}
+
+	if cubingInfo, exists := info.Cubing.Get(); exists {
+		instanceName += fmt.Sprintf(".march_n%d.cubes", cubingInfo.Threshold)
+	}
+
+	if cubeIndex, exists := info.CubeIndex.Get(); exists {
+		instanceName += fmt.Sprintf(".cube%d.cnf", cubeIndex)
+	}
+
+	return instanceName
 }
 
-func (encoderSvc *EncoderService) LoopThroughVariation(variations pipeline.Encoding, cb func(int, string, int, pipeline.AdderType, int, int)) {
-	for _, steps := range variations.Steps {
-		for _, hash := range variations.Hashes {
-			for _, xorOption := range variations.Xor {
-				for _, adderType := range variations.Adders {
-					for _, dobbertin := range variations.Dobbertin {
-						for _, dobbertinBits := range variations.DobbertinBits {
+func (encoderSvc *EncoderService) LoopThroughVariation(params pipeline.Encoding, cb func(instanceInfo encoder.InstanceInfo)) {
+	for _, steps := range params.Steps {
+		for _, hash := range params.Hashes {
+			for _, xorOption := range params.Xor {
+				for _, adderType := range params.Adders {
+					for _, dobbertin := range params.Dobbertin {
+						for _, dobbertinBits := range params.DobbertinBits {
 							// Skip any dobbertin bit variation when dobbertin's attack isn't on
 							if dobbertin == 0 && dobbertinBits != 32 {
 								continue
@@ -67,7 +96,22 @@ func (encoderSvc *EncoderService) LoopThroughVariation(variations pipeline.Encod
 								continue
 							}
 
-							cb(steps, hash, xorOption, adderType, dobbertin, dobbertinBits)
+							dobbertin_ := mo.None[encoder.DobbertinInfo]()
+							if dobbertin == 1 {
+								dobbertin_ = mo.Some(encoder.DobbertinInfo{
+									Bits: dobbertinBits,
+								})
+							}
+
+							cb(encoder.InstanceInfo{
+								Encoder:      params.Encoder,
+								Function:     "md4",
+								Steps:        steps,
+								TargetHash:   hash,
+								AdderType:    adderType,
+								IsXorEnabled: xorOption == 1,
+								Dobbertin:    dobbertin_,
+							})
 						}
 					}
 				}
@@ -95,21 +139,6 @@ func (encoderSvc *EncoderService) OutputToFile(cmd *exec.Cmd, filePath string) {
 	errorSvc.Fatal(err, failureMsg)
 }
 
-func (encoderSvc *EncoderService) ResolveSaeedEAdderType(adderType pipeline.AdderType) pipeline.AdderType {
-	switch adderType {
-	case CounterChain:
-		return "counter_chain"
-	case DotMatrix:
-		return "dot_matrix"
-	case Espresso:
-		return "espresso"
-	case TwoOperand:
-		return "two_operand"
-	default:
-		return ""
-	}
-}
-
 func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []pipeline.EncodingPromise {
 	config := &encoderSvc.configSvc.Config
 	filesystemSvc := encoderSvc.filesystemSvc
@@ -122,10 +151,9 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []p
 	encodings := []string{}
 
 	// * Loop through the variations
-	encoderSvc.LoopThroughVariation(parameters, func(steps int, hash string, xorOption int, adderType pipeline.AdderType, dobbertin, dobbertinBits int) {
-		instanceName := encoderSvc.GetInstanceName(steps, adderType, xorOption, hash, dobbertin, dobbertinBits, nil)
-
-		encodingFilePath := path.Join(parameters.OutputDir, instanceName+".cnf")
+	encoderSvc.LoopThroughVariation(parameters, func(instanceInfo encoder.InstanceInfo) {
+		instanceName := encoderSvc.GetInstanceName(instanceInfo)
+		encodingFilePath := path.Join(parameters.OutputDir, instanceName)
 		encodings = append(encodings, encodingFilePath)
 
 		// Skip if encoding already exists
@@ -134,34 +162,30 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []p
 			return
 		}
 
-		dobbertinFlag := func(enabled int) string {
-			if enabled == 1 {
-				return "--dobbertin"
-			}
+		dobbertinFlag := ""
+		dobbertinBits := 0
+		dobbertinInfo, isDobbertinEnabled := instanceInfo.Dobbertin.Get()
+		if isDobbertinEnabled {
+			dobbertinFlag = "--dobbertin"
+			dobbertinBits = dobbertinInfo.Bits
+		}
 
-			return ""
-		}(dobbertin)
-
-		xorFlag := func(xorOption int) string {
-			if xorOption == 1 {
-				return "--xor"
-			}
-
-			return ""
-		}(xorOption)
+		xorFlag := ""
+		if instanceInfo.IsXorEnabled {
+			xorFlag = "--xor"
+		}
 
 		// * Drive the encoder
-		cmd := exec.Command(
+		command := fmt.Sprintf(
+			"%s -f md4 -a preimage -r %d -A %s -t %s %s --bits %d %s",
 			config.Paths.Bin.SaeedE,
-			strings.Fields(
-				fmt.Sprintf(
-					"-A %s -r %d -f md4 -a preimage -t %s --bits %d %s %s",
-					string(encoderSvc.ResolveSaeedEAdderType(adderType)),
-					steps,
-					hash,
-					dobbertinBits,
-					xorFlag,
-					dobbertinFlag))...)
+			instanceInfo.Steps,
+			instanceInfo.AdderType,
+			instanceInfo.TargetHash,
+			dobbertinFlag,
+			dobbertinBits,
+			xorFlag)
+		cmd := encoderSvc.commandSvc.Create(command)
 		encoderSvc.OutputToFile(cmd, encodingFilePath)
 
 		logrus.Println("Encoder:", encodingFilePath)
@@ -173,13 +197,17 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []p
 	return encodingPromises
 }
 
-func (encoderSvc *EncoderService) Run(name encoder.Name, parameters pipeline.Encoding) []pipeline.EncodingPromise {
-	switch name {
+func (encoderSvc *EncoderService) Run(parameters pipeline.Encoding) []pipeline.EncodingPromise {
+	switch parameters.Encoder {
 	case SaeedE:
 		promises := encoderSvc.InvokeSaeedE(parameters)
-		logrus.Println("Encoder:", promises)
+		logrus.Println("Encoder: saeed_e", promises)
+		return promises
+	case Transalg:
+		promises := encoderSvc.InvokeTransalg(parameters)
+		logrus.Println("Encoder: transalg", promises)
 		return promises
 	}
 
-	panic("Encoder not found: " + name)
+	panic("Encoder not found: " + parameters.Encoder)
 }
