@@ -1,12 +1,25 @@
 package encoder
 
 import (
-	"benchmark/internal/pipeline"
-
 	"github.com/samber/mo"
 )
 
-type Name string
+type AdderType string
+type Encoder string
+
+// Encoders
+const (
+	SaeedE   = "saeed_e" // Short for Saeed's Encoder
+	Transalg = "transalg"
+)
+
+// Adders
+const (
+	TwoOperand   = "two_operand"
+	DotMatrix    = "dot_matrix"
+	CounterChain = "counter_chain"
+	Espresso     = "espresso"
+)
 
 type EncoderService interface {
 	TestRun() []string
@@ -38,10 +51,10 @@ type DobbertinInfo struct {
 }
 
 type InstanceInfo struct {
-	Encoder        pipeline.Encoder
+	Encoder        Encoder
 	Function       string
 	Steps          int
-	AdderType      pipeline.AdderType
+	AdderType      AdderType
 	IsXorEnabled   bool
 	TargetHash     string
 	Dobbertin      mo.Option[DobbertinInfo]
