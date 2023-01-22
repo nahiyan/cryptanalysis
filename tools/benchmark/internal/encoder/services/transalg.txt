@@ -1,6 +1,6 @@
 __in bit M[16][32];
 bit K[32] = {{ .DobbertinConstant }};
-__out bit Hash[4][40];
+__out bit Hash[4][32];
 
 bit A[32] = 0x67452301;
 bit B[32] = 0xEFCDAB89;
