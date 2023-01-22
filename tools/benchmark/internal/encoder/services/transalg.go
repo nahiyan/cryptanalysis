@@ -134,14 +134,6 @@ func (encoderSvc *EncoderService) GenerateTransalgCode(instanceInfo encoder.Inst
 }
 
 func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.Encoding) []pipeline.EncodingPromise {
-	// config := &encoderSvc.configSvc.Config
-	// filesystemSvc := encoderSvc.filesystemSvc
-
-	// Check if the encoder exists
-	// if !filesystemSvc.FileExists(config.Paths.Bin.Transalg) {
-	// 	log.Fatal("Failed to find the encoder in the path '" + config.Paths.Bin.Transalg + "'. Can you ensure that you compiled it?")
-	// }
-
 	err := encoderSvc.filesystemSvc.PrepareTempDir()
 	encoderSvc.errorSvc.Fatal(err, "Encoder: failed to create tmp dir")
 
