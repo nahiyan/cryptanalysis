@@ -1,13 +1,12 @@
 package services
 
 import (
-	"log"
-
 	"github.com/sirupsen/logrus"
 )
 
 func (errorSvc *ErrorService) Check(err error, message string) {
 	if err != nil {
+		logrus.Error(err)
 		logrus.Error("Error:", message)
 	}
 }
@@ -15,7 +14,7 @@ func (errorSvc *ErrorService) Check(err error, message string) {
 func (errorSvc *ErrorService) Fatal(err error, message string) {
 	if err != nil {
 		logrus.Error(err)
-		log.Fatal("Error:", message)
+		logrus.Fatal("Error:", message)
 	}
 }
 
