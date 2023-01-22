@@ -21,56 +21,64 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (solverSvc *SolverService) GetCmdInfo(encoding string, solver solver.Solver) (string, []string) {
+func (solverSvc *SolverService) GetCmdInfo(encoding string, solver solver.Solver, solutionPath string) (string, []string) {
 	config := solverSvc.configSvc.Config
 
 	var binPath string
-	var args__ string
+	var args string
 	switch solver {
 	case consts.Kissat:
 		binPath = config.Paths.Bin.Kissat
-		args__ = "-q"
+		args = "-q"
 	case consts.Cadical:
 		binPath = config.Paths.Bin.Cadical
-		args__ = "-q"
-	case consts.MapleSat:
-		binPath = config.Paths.Bin.MapleSat
-		args__ = "-verb=0"
+		args = "-q"
 	case consts.CryptoMiniSat:
 		binPath = config.Paths.Bin.CryptoMiniSat
-		args__ = "--verb=0"
+		args = "--verb=0"
+	case consts.MapleSat:
+		binPath = config.Paths.Bin.MapleSat
+		args = "-verb=0"
 	case consts.Glucose:
 		binPath = config.Paths.Bin.Glucose
-		args__ = "-verb=0"
+		args = "-verb=0"
 	}
 
-	args_ := args__ + " " + encoding
-	args := strings.Fields(args_)
+	args += " " + encoding
+	if solver == consts.MapleSat || solver == consts.Glucose {
+		args += " " + solutionPath
+	}
+	args_ := strings.Fields(args)
 
-	return binPath, args
+	return binPath, args_
 }
 
-func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, timeout int) (time.Duration, solver.Result, int) {
-	filesystemSvc := solverSvc.filesystemSvc
+func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, timeout int) (string, time.Duration, solver.Result, int) {
 	errorSvc := solverSvc.errorSvc
-	binPath, solverArgs := solverSvc.GetCmdInfo(encoding, solver_)
+	solutionPath := path.Join("./tmp", path.Base(encoding)+".sol")
+	binPath, solverArgs := solverSvc.GetCmdInfo(encoding, solver_, solutionPath)
 	duration := time.Duration(timeout) * time.Second
-
-	if !filesystemSvc.FileExists(binPath) {
-		log.Fatalf("%s doesn't exist. Did you forget to compile it?", binPath)
-	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
 	defer cancel()
 
 	// Run and handle result
 	cmd := exec.CommandContext(ctx, binPath, solverArgs...)
-	startTime := time.Now()
-	err := cmd.Run()
+	pipe, err := cmd.StdoutPipe()
+	solverSvc.errorSvc.Fatal(err, "Solver: failed to open pipe")
+	cmd.Start()
+
+	if solver_ != consts.MapleSat && solver_ != consts.Glucose {
+		err = solverSvc.filesystemSvc.WriteFromPipe(pipe, solutionPath)
+		solverSvc.errorSvc.Fatal(err, "Solver: failed to write from pipe")
+	}
+
 	var (
-		result   solver.Result = consts.Fail
-		exitCode int
+		startTime               = time.Now()
+		result    solver.Result = consts.Fail
+		exitCode  int
 	)
+	err = cmd.Wait()
 	errorSvc.Handle(err, func(err error) {
 		exiterr, ok := err.(*exec.ExitError)
 		if !ok {
@@ -88,7 +96,39 @@ func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, t
 	})
 	runtime := time.Since(startTime)
 
-	return runtime, result, exitCode
+	return solutionPath, runtime, result, exitCode
+}
+
+func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.Solver, timeout int) {
+	solutionSvc := solverSvc.solutionSvc
+
+	// Invoke
+	solutionPath, runtime, result, exitCode := solverSvc.Invoke(encoding, solver_, timeout)
+	runtime = runtime.Round(time.Millisecond)
+
+	resultString := "Fail"
+	if result == consts.Sat {
+		resultString = "SAT"
+	} else if result == consts.Unsat {
+		resultString = "UNSAT"
+	}
+
+	if result == consts.Sat {
+		err := solutionSvc.Normalize(solutionPath)
+		solverSvc.errorSvc.Fatal(err, "Solver: failed to normalize solution")
+	}
+
+	logrus.Println("Solver:", solver_, resultString, exitCode, runtime, encoding)
+
+	// Store in the database
+	instanceName := strings.TrimSuffix(path.Base(encoding), ".cnf")
+	solutionSvc.Register(encoding, solver_, solver.Solution{
+		Runtime:      runtime,
+		Result:       result,
+		Solver:       solver_,
+		ExitCode:     exitCode,
+		InstanceName: instanceName,
+	})
 }
 
 func (solverSvc *SolverService) Loop(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Solving, handler func(encodingPromise pipeline.EncodingPromise, solver solver.Solver)) {
@@ -139,7 +179,6 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 	i := 0
 	numOfPromises := len(encodingPromises)
 	solverSvc.Loop(encodingPromises, parameters, func(encodingPromise pipeline.EncodingPromise, solver_ solver.Solver) {
-
 		// Note: We aren't checking if this task is already solved, since we'd have to retrieve the promised encoding, triggering the generation of cube encodings that are expensive on the FS to produce
 		timeout := time.Duration(parameters.Timeout) * time.Second
 		task := solveslurmtask.Task{
@@ -191,33 +230,6 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 		Jobs:   []slurm.Job{{Id: jobId}},
 		Values: []string{},
 	}
-}
-
-func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.Solver, timeout int) {
-	solutionSvc := solverSvc.solutionSvc
-
-	// Invoke
-	runtime, result, exitCode := solverSvc.Invoke(encoding, solver_, timeout)
-	runtime = runtime.Round(time.Millisecond)
-
-	resultString := "Fail"
-	if result == consts.Sat {
-		resultString = "SAT"
-	} else if result == consts.Unsat {
-		resultString = "UNSAT"
-	}
-
-	logrus.Println("Solver:", solver_, resultString, exitCode, runtime, encoding)
-
-	// Store in the database
-	instanceName := strings.TrimSuffix(path.Base(encoding), ".cnf")
-	solutionSvc.Register(encoding, solver_, solver.Solution{
-		Runtime:      runtime,
-		Result:       result,
-		Solver:       solver_,
-		ExitCode:     exitCode,
-		InstanceName: instanceName,
-	})
 }
 
 func (solverSvc *SolverService) RunRegular(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Solving) {
