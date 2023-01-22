@@ -67,6 +67,7 @@ func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, t
 	cmd := exec.CommandContext(ctx, binPath, solverArgs...)
 	pipe, err := cmd.StdoutPipe()
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to open pipe")
+	startTime := time.Now()
 	cmd.Start()
 
 	if solver_ != consts.MapleSat && solver_ != consts.Glucose {
@@ -75,11 +76,11 @@ func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, t
 	}
 
 	var (
-		startTime               = time.Now()
-		result    solver.Result = consts.Fail
-		exitCode  int
+		result   solver.Result = consts.Fail
+		exitCode int
 	)
 	err = cmd.Wait()
+	runtime := time.Since(startTime)
 	errorSvc.Handle(err, func(err error) {
 		exiterr, ok := err.(*exec.ExitError)
 		if !ok {
