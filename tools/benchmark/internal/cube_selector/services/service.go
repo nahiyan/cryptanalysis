@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	Random = "random"
+	Random   = "random"
+	Specific = "specific"
 )
 
 type EncodingPromise struct {
@@ -163,6 +164,42 @@ func (cubeSelectorSvc *CubeSelectorService) RunRandom(cubesets []string, paramet
 		}
 	}
 
+	logrus.Println("Cube selector: specifically selected", len(encodings), "cubes")
+	return encodings
+}
+
+func (cubeSelectorSvc *CubeSelectorService) RunSpecific(cubesets []string, parameters pipeline.CubeSelecting) []pipeline.EncodingPromise {
+	encodings := []pipeline.EncodingPromise{}
+
+	// temporary directory for holding the cubes
+	err := cubeSelectorSvc.filesystemSvc.PrepareTempDir()
+	cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to create tmp dir")
+
+	for _, cubeset := range cubesets {
+		encoding, err := cubeSelectorSvc.GetInfo(cubeset)
+		cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to get cubeset details "+cubeset)
+
+		cubesCount, err := cubeSelectorSvc.filesystemSvc.CountLines(cubeset)
+		cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to count lines "+cubeset)
+
+		cubeIndices := parameters.Indices
+		for _, cubeIndex := range cubeIndices {
+			if cubeIndex > cubesCount {
+				logrus.Fatalf("Cube selector: index %d is out of range of the cubeset of size %d", cubeIndex, cubesCount)
+			}
+
+			subProblemFilePath := path.Join("./tmp", fmt.Sprintf("%s.cube%d.cnf", cubeset, cubeIndex))
+
+			encodingPromise := EncodingPromise{
+				BaseEncodingPath: encoding,
+				CubeIndex:        cubeIndex,
+				CubesetPath:      cubeset,
+				SubProblemPath:   subProblemFilePath,
+			}
+			encodings = append(encodings, encodingPromise)
+		}
+	}
+
 	logrus.Println("Cube selector: randomly selected", len(encodings), "cubes")
 	return encodings
 }
@@ -171,6 +208,9 @@ func (cubeSelectorSvc *CubeSelectorService) Run(cubesets []string, parameters pi
 	switch parameters.Type {
 	case Random:
 		encodings := cubeSelectorSvc.RunRandom(cubesets, parameters)
+		return encodings
+	case Specific:
+		encodings := cubeSelectorSvc.RunSpecific(cubesets, parameters)
 		return encodings
 	}
 

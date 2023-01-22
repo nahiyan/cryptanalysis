@@ -52,6 +52,7 @@ type CubeSelecting struct {
 	Quantity int
 	Seed     int64
 	Offset   int
+	Indices  []int
 }
 
 type Simplifying struct {
