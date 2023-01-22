@@ -185,7 +185,7 @@ func main() {
 		},
 		{
 			Name:            "solution",
-			Dependencies:    []string{"error", "database", "config", "filesystem", "marshalling"},
+			Dependencies:    []string{"error", "database", "config", "filesystem", "marshalling", "command"},
 			Type:            Service,
 			HasInitFunction: true,
 			HasProperties:   true,
