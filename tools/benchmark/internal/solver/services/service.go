@@ -5,6 +5,7 @@ import (
 	errorModule "benchmark/internal/error"
 	"benchmark/internal/pipeline"
 	"benchmark/internal/slurm"
+	"benchmark/internal/solution"
 	solveslurmtask "benchmark/internal/solve_slurm_task"
 	"benchmark/internal/solver"
 	"context"
@@ -113,12 +114,29 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 		resultString = "UNSAT"
 	}
 
+	verified := false
+	checksum := ""
 	if result == consts.Sat {
 		err := solutionSvc.Normalize(solutionPath)
 		solverSvc.errorSvc.Fatal(err, "Solver: failed to normalize solution")
+
+		if solverSvc.filesystemSvc.FileExists(encoding + ".rs.txt") {
+			err := solutionSvc.ReconstructCadical(encoding, []solution.Range{{Start: 1, End: 512}, {Start: 641, End: 768}})
+			solverSvc.errorSvc.Fatal(err, "Solver: failed to reconstruct solution")
+		} else {
+			verified, err = solutionSvc.Verify(solutionPath)
+			solverSvc.errorSvc.Check(err, "Solver: verification failed")
+		}
+
+		checksum, err = solverSvc.filesystemSvc.Checksum(solutionPath)
+		solverSvc.errorSvc.Fatal(err, "Solver: failed to calculate checksum of the solution "+solutionPath)
 	}
 
-	logrus.Println("Solver:", solver_, resultString, exitCode, runtime, encoding)
+	message := []any{"Solver:", solver_, resultString, exitCode, runtime, encoding}
+	if verified {
+		message = append(message, "verified")
+	}
+	logrus.Println(message)
 
 	// Store in the database
 	instanceName := strings.TrimSuffix(path.Base(encoding), ".cnf")
@@ -128,6 +146,8 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 		Solver:       solver_,
 		ExitCode:     exitCode,
 		InstanceName: instanceName,
+		Verified:     verified,
+		Checksum:     checksum,
 	})
 }
 
@@ -238,6 +258,9 @@ func (solverSvc *SolverService) RunRegular(encodingPromises []pipeline.EncodingP
 	dependencies := map[string]interface{}{
 		"CubeSelectorService": solverSvc.cubeSelectorSvc,
 	}
+
+	err := solverSvc.filesystemSvc.PrepareTempDir()
+	solverSvc.errorSvc.Fatal(err, "Solver: failed to prepare tmp dir")
 
 	solverSvc.Loop(encodingPromises, parameters, func(encodingPromise pipeline.EncodingPromise, solver_ solver.Solver) {
 		encoding := encodingPromise.Get(dependencies)
