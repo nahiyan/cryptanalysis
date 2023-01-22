@@ -15,4 +15,5 @@ type Solution struct {
 	ExitCode     int
 	InstanceName string
 	Verified     bool
+	Checksum     string
 }
