@@ -25,11 +25,13 @@ void extract(unsigned* v, int n, vector<int>& sol, int offset)
 int main(int argc, char** argv)
 {
     int rounds = 48;
-    int initBlock = 1;
+    int hashTargetOffset = 16 * 32 + 4 * 32;
     if (argc >= 2)
         rounds = atoi(argv[1]);
     if (argc >= 3)
-        initBlock = atoi(argv[2]);
+        hashTargetOffset = atoi(argv[2]);
+    printf("Hash target offset: %d\n", hashTargetOffset);
+
     /*if ( argc < 2 )
     {
         printf("USAGE: ./verify-sha1 {number_of_rounds} {initial_block(0/1)}\n");
@@ -60,7 +62,7 @@ int main(int argc, char** argv)
 
     /* Extracting the correct hash output */
     unsigned hash[4];
-    extract(hash, 4, solution, 16 * 32 + 4 * 32); // Extract 641-768 bits
+    extract(hash, 4, solution, hashTargetOffset); // Extract 641-768 bits
 
     md4_comp(w, cv, rounds);
     bool matched = true;
