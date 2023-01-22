@@ -96,7 +96,6 @@ func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, t
 			logrus.Error(err)
 		}
 	})
-	runtime := time.Since(startTime)
 
 	return solutionPath, runtime, result, exitCode
 }
@@ -212,7 +211,7 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 		logrus.Printf("Solver: [%d/%d] tasks processed", i, numOfPromises)
 
 		// Check if a task should be skipped
-		if solverSvc.ShouldSkip(encodingPromise.GetPath(), solver_, parameters.Timeout) {
+		if !parameters.Redundant && solverSvc.ShouldSkip(encodingPromise.GetPath(), solver_, parameters.Timeout) {
 			return
 		}
 
@@ -265,7 +264,7 @@ func (solverSvc *SolverService) RunRegular(encodingPromises []pipeline.EncodingP
 
 	solverSvc.Loop(encodingPromises, parameters, func(encodingPromise pipeline.EncodingPromise, solver_ solver.Solver) {
 		encoding := encodingPromise.Get(dependencies)
-		if solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
+		if !parameters.Redundant && solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
 			logrus.Println("Solver: skipped", encoding, "with "+string(solver_))
 			return
 		}

@@ -33,9 +33,10 @@ type Encoding struct {
 	OutputDir     string
 }
 type Solving struct {
-	Solvers []solver.Solver
-	Timeout int
-	Workers int
+	Solvers   []solver.Solver
+	Timeout   int
+	Workers   int
+	Redundant bool
 }
 
 type Cubing struct {
@@ -68,8 +69,8 @@ type Pipe struct {
 	// Type: encode
 	Encoding
 
-	// Type: solve
-	Solving
+	// Type: simplifying
+	Simplifying
 
 	// Type: cube
 	Cubing
@@ -77,8 +78,8 @@ type Pipe struct {
 	// Type: cube_select
 	CubeSelecting
 
-	// Type: simplifying
-	Simplifying
+	// Type: solve
+	Solving
 }
 
 type Value interface {
