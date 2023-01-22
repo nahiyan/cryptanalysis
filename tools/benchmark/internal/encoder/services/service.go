@@ -4,9 +4,13 @@ import (
 	"benchmark/internal/consts"
 	"benchmark/internal/encoder"
 	"benchmark/internal/pipeline"
+	"benchmark/internal/simplifier"
+	"errors"
 	"fmt"
 	"os/exec"
 	"path"
+	"strconv"
+	"strings"
 
 	"github.com/samber/mo"
 	"github.com/sirupsen/logrus"
@@ -49,6 +53,123 @@ func (encoderSvc *EncoderService) GetInstanceName(info encoder.InstanceInfo) str
 	}
 
 	return instanceName
+}
+
+func (encoderSvc *EncoderService) ProcessInstanceName(instanceName string) (encoder.InstanceInfo, error) {
+	info := encoder.InstanceInfo{}
+	errInvalidFormat := errors.New("instance name processor: invalid format")
+
+	segments := strings.Split(instanceName, ".")
+	if len(segments) == 0 {
+		return info, errInvalidFormat
+	}
+
+	// Processing the main segment
+	{
+		mainSegment := segments[0]
+
+		// Encoder
+		if strings.HasPrefix(mainSegment, encoder.Transalg) {
+			info.Encoder = encoder.Transalg
+		} else if strings.HasPrefix(mainSegment, encoder.SaeedE) {
+			info.Encoder = encoder.SaeedE
+		}
+		mainSegment = strings.TrimPrefix(mainSegment, string(info.Encoder)+"_")
+
+		// Function
+		if strings.HasPrefix(mainSegment, "md4") {
+			info.Function = "md4"
+		}
+		mainSegment = strings.TrimPrefix(mainSegment, string(info.Function)+"_")
+
+		// Steps
+		steps, err := strconv.Atoi(strings.Split(mainSegment, "_")[0])
+		if err != nil {
+			return info, errInvalidFormat
+		}
+		mainSegment = strings.TrimPrefix(mainSegment, fmt.Sprintf("%d_", steps))
+		info.Steps = steps
+
+		// Adder type
+		if strings.HasPrefix(mainSegment, encoder.Espresso) {
+			info.AdderType = encoder.Espresso
+		} else if strings.HasPrefix(mainSegment, encoder.DotMatrix) {
+			info.AdderType = encoder.DotMatrix
+		} else if strings.HasPrefix(mainSegment, encoder.CounterChain) {
+			info.AdderType = encoder.CounterChain
+		} else if strings.HasPrefix(mainSegment, encoder.TwoOperand) {
+			info.AdderType = encoder.TwoOperand
+		}
+		mainSegment = strings.TrimPrefix(mainSegment, string(info.AdderType)+"_")
+
+		// Target hash
+		info.TargetHash = strings.Split(mainSegment, "_")[0]
+		mainSegment = strings.TrimPrefix(mainSegment, info.TargetHash+"_")
+
+		// Dobbertin
+		if index := strings.Index(mainSegment, "dobbertin"); index != -1 {
+			bits := strings.Split(mainSegment[index+len("dobbertin"):], "_")[0]
+			bits_, err := strconv.Atoi(bits)
+			if err != nil {
+				return info, errInvalidFormat
+			}
+			info.Dobbertin = mo.Some(encoder.DobbertinInfo{
+				Bits: bits_,
+			})
+		}
+
+		// Xor
+		if index := strings.Index(mainSegment, "xor"); index != -1 {
+			info.IsXorEnabled = true
+		}
+	}
+
+	// Cube info
+	if index := strings.Index(instanceName, ".march_n"); index != -1 {
+		threshold := strings.Split(instanceName[index+len(".march_n"):], ".")[0]
+		threshold_, err := strconv.Atoi(threshold)
+		if err != nil {
+			return info, err
+		}
+
+		info.Cubing = mo.Some(encoder.CubingInfo{
+			Threshold: threshold_,
+		})
+	}
+
+	// Cube index
+	if index := strings.Index(instanceName, ".cubes.cube"); index != -1 {
+		cubeIndex := strings.Split(instanceName[index+len(".cubes.cube"):], ".")[0]
+		cubeIndex_, err := strconv.Atoi(cubeIndex)
+		if err != nil {
+			return info, err
+		}
+
+		info.CubeIndex = mo.Some(cubeIndex_)
+	}
+
+	// CaDiCaL Simplification
+	if index := strings.Index(instanceName, ".cadical_c"); index != -1 {
+		conflicts := strings.Split(instanceName[index+len(".cadical_c"):], ".")[0]
+		conflicts_, err := strconv.Atoi(conflicts)
+		if err != nil {
+			return info, err
+		}
+
+		info.Simplification = mo.Some(encoder.SimplificationInfo{
+			Simplifier: simplifier.Cadical,
+			Conflicts:  conflicts_,
+		})
+	}
+
+	// SatELite Simplification
+	if index := strings.Index(instanceName, ".satelite"); index != -1 {
+		info.Simplification = mo.Some(encoder.SimplificationInfo{
+			Simplifier: simplifier.Satelite,
+		})
+	}
+
+	return info, nil
 }
 
 func (encoderSvc *EncoderService) LoopThroughVariation(params pipeline.Encoding, cb func(instanceInfo encoder.InstanceInfo)) {
