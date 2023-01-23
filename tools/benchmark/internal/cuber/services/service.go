@@ -5,6 +5,7 @@ import (
 	cubeslurmtask "benchmark/internal/cube_slurm_task"
 	"benchmark/internal/cuber"
 	"benchmark/internal/cubeset"
+	"benchmark/internal/encoder"
 	"benchmark/internal/pipeline"
 	"benchmark/internal/slurm"
 	"context"
@@ -19,6 +20,7 @@ import (
 	"time"
 
 	"github.com/alitto/pond"
+	"github.com/samber/mo"
 	"github.com/sirupsen/logrus"
 )
 
@@ -37,9 +39,15 @@ type InvokeControl struct {
 }
 
 func (cuberSvc *CuberService) CubesFilePath(encoding string, threshold int) string {
-	encodingDir, fileName := path.Split(encoding)
-	cubesFilePath := path.Join(encodingDir, fmt.Sprintf("%s.n%d.cubes", fileName, threshold))
+	encodingDir, instanceName := path.Split(encoding)
+	info, err := cuberSvc.encoderSvc.ProcessInstanceName(instanceName)
+	cuberSvc.errorSvc.Fatal(err, "Cuber: failed to process encoding")
+	info.Cubing = mo.Some(encoder.CubingInfo{
+		Threshold: threshold,
+	})
+	newInstanceName := cuberSvc.encoderSvc.GetInstanceName(info)
 
+	cubesFilePath := path.Join(encodingDir, newInstanceName)
 	return cubesFilePath
 }
 

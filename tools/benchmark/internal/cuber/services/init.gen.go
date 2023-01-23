@@ -6,6 +6,7 @@ import (
 	services6 "benchmark/internal/cube_slurm_task/services"
 	services4 "benchmark/internal/cubeset/services"
 	services1 "benchmark/internal/database/services"
+	services9 "benchmark/internal/encoder/services"
 	services5 "benchmark/internal/encoding/services"
 	services "benchmark/internal/error/services"
 	services2 "benchmark/internal/filesystem/services"
@@ -23,6 +24,7 @@ type CuberService struct {
 	cubeSlurmTaskSvc *services6.CubeSlurmTaskService
 	slurmSvc         *services7.SlurmService
 	commandSvc       *services8.CommandService
+	encoderSvc       *services9.EncoderService
 }
 
 func NewCuberService(injector *do.Injector) (*CuberService, error) {
@@ -35,6 +37,7 @@ func NewCuberService(injector *do.Injector) (*CuberService, error) {
 	cubeSlurmTaskSvc := do.MustInvoke[*services6.CubeSlurmTaskService](injector)
 	slurmSvc := do.MustInvoke[*services7.SlurmService](injector)
 	commandSvc := do.MustInvoke[*services8.CommandService](injector)
-	svc := &CuberService{errorSvc: errorSvc, databaseSvc: databaseSvc, filesystemSvc: filesystemSvc, configSvc: configSvc, cubesetSvc: cubesetSvc, encodingSvc: encodingSvc, cubeSlurmTaskSvc: cubeSlurmTaskSvc, slurmSvc: slurmSvc, commandSvc: commandSvc}
+	encoderSvc := do.MustInvoke[*services9.EncoderService](injector)
+	svc := &CuberService{errorSvc: errorSvc, databaseSvc: databaseSvc, filesystemSvc: filesystemSvc, configSvc: configSvc, cubesetSvc: cubesetSvc, encodingSvc: encodingSvc, cubeSlurmTaskSvc: cubeSlurmTaskSvc, slurmSvc: slurmSvc, commandSvc: commandSvc, encoderSvc: encoderSvc}
 	return svc, nil
 }

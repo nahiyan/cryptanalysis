@@ -2,8 +2,10 @@ package services
 
 import (
 	"benchmark/internal/consts"
+	"benchmark/internal/encoder"
 	errorModule "benchmark/internal/error"
 	"benchmark/internal/pipeline"
+	"benchmark/internal/simplifier"
 	"benchmark/internal/slurm"
 	"benchmark/internal/solution"
 	solveslurmtask "benchmark/internal/solve_slurm_task"
@@ -19,6 +21,7 @@ import (
 	"time"
 
 	"github.com/alitto/pond"
+	"github.com/samber/mo"
 	"github.com/sirupsen/logrus"
 )
 
@@ -56,7 +59,7 @@ func (solverSvc *SolverService) GetCmdInfo(encoding string, solver solver.Solver
 
 func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, timeout int) (string, time.Duration, solver.Result, int) {
 	errorSvc := solverSvc.errorSvc
-	solutionPath := path.Join("./tmp", path.Base(encoding)+".sol")
+	solutionPath := path.Join("./tmp", path.Base(encoding)+"."+string(solver_)+".sol")
 	binPath, solverArgs := solverSvc.GetCmdInfo(encoding, solver_, solutionPath)
 	duration := time.Duration(timeout) * time.Second
 
@@ -119,12 +122,30 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 	if result == consts.Sat {
 		err := solutionSvc.Normalize(solutionPath)
 		solverSvc.errorSvc.Fatal(err, "Solver: failed to normalize solution")
+		info, err := solverSvc.encoderSvc.ProcessInstanceName(encoding)
+		solverSvc.errorSvc.Fatal(err, "Solver: failed to process instance name")
 
-		if solverSvc.filesystemSvc.FileExists(encoding + ".rs.txt") {
-			err := solutionSvc.ReconstructCadical(encoding, []solution.Range{{Start: 1, End: 512}, {Start: 641, End: 768}})
+		needsReconstruction := false
+		{
+			if simplificationInfo, exists := info.Simplification.Get(); exists {
+				needsReconstruction = simplificationInfo.Simplifier == simplifier.Cadical
+			}
+		}
+
+		if needsReconstruction {
+			info.Cubing = mo.None[encoder.CubingInfo]()
+			info.CubeIndex = mo.None[int]()
+			instance := path.Join(path.Dir(encoding), "..", solverSvc.encoderSvc.GetInstanceName(info))
+			reconstructionFilePath := instance + ".rs.txt"
+			err := solutionSvc.ReconstructAndVerify(solutionPath, reconstructionFilePath, []solution.Range{{Start: 1, End: 512}, {Start: 641, End: 768}})
 			solverSvc.errorSvc.Fatal(err, "Solver: failed to reconstruct solution")
 		} else {
-			verified, err = solutionSvc.Verify(solutionPath)
+			info, err := solverSvc.encoderSvc.ProcessInstanceName(encoding)
+			solverSvc.errorSvc.Fatal(err, "Solver: failed to process instance name")
+			solutionFile, err := os.Open(solutionPath)
+			solverSvc.errorSvc.Fatal(err, "Solver: failed to read the solution")
+
+			verified, err = solutionSvc.Verify(solutionFile, info.Steps)
 			solverSvc.errorSvc.Check(err, "Solver: verification failed")
 		}
 

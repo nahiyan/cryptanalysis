@@ -4,6 +4,7 @@ import (
 	services5 "benchmark/internal/command/services"
 	services2 "benchmark/internal/config/services"
 	services1 "benchmark/internal/database/services"
+	services6 "benchmark/internal/encoder/services"
 	services "benchmark/internal/error/services"
 	services3 "benchmark/internal/filesystem/services"
 	services4 "benchmark/internal/marshalling/services"
@@ -17,6 +18,7 @@ type SolutionService struct {
 	filesystemSvc  *services3.FilesystemService
 	marshallingSvc *services4.MarshallingService
 	commandSvc     *services5.CommandService
+	encoderSvc     *services6.EncoderService
 	Properties
 }
 
@@ -27,7 +29,8 @@ func NewSolutionService(injector *do.Injector) (*SolutionService, error) {
 	filesystemSvc := do.MustInvoke[*services3.FilesystemService](injector)
 	marshallingSvc := do.MustInvoke[*services4.MarshallingService](injector)
 	commandSvc := do.MustInvoke[*services5.CommandService](injector)
-	svc := &SolutionService{errorSvc: errorSvc, databaseSvc: databaseSvc, configSvc: configSvc, filesystemSvc: filesystemSvc, marshallingSvc: marshallingSvc, commandSvc: commandSvc}
+	encoderSvc := do.MustInvoke[*services6.EncoderService](injector)
+	svc := &SolutionService{errorSvc: errorSvc, databaseSvc: databaseSvc, configSvc: configSvc, filesystemSvc: filesystemSvc, marshallingSvc: marshallingSvc, commandSvc: commandSvc, encoderSvc: encoderSvc}
 	svc.Init()
 	return svc, nil
 }

@@ -175,7 +175,7 @@ func main() {
 		},
 		{
 			Name:         "solver",
-			Dependencies: []string{"config", "filesystem", "error", "solution", "slurm", "solve_slurm_task", "cube_selector"},
+			Dependencies: []string{"config", "filesystem", "error", "solution", "slurm", "solve_slurm_task", "cube_selector", "encoder"},
 		},
 		{
 			Name:            "database",
@@ -185,7 +185,7 @@ func main() {
 		},
 		{
 			Name:            "solution",
-			Dependencies:    []string{"error", "database", "config", "filesystem", "marshalling", "command"},
+			Dependencies:    []string{"error", "database", "config", "filesystem", "marshalling", "command", "encoder"},
 			Type:            Service,
 			HasInitFunction: true,
 			HasProperties:   true,
@@ -207,7 +207,7 @@ func main() {
 		},
 		{
 			Name:         "cuber",
-			Dependencies: []string{"error", "database", "filesystem", "config", "cubeset", "encoding", "cube_slurm_task", "slurm", "command"},
+			Dependencies: []string{"error", "database", "filesystem", "config", "cubeset", "encoding", "cube_slurm_task", "slurm", "command", "encoder"},
 			Type:         Service,
 		},
 		{

@@ -164,7 +164,7 @@ func (cubeSelectorSvc *CubeSelectorService) RunRandom(cubesets []string, paramet
 		}
 	}
 
-	logrus.Println("Cube selector: specifically selected", len(encodings), "cubes")
+	logrus.Println("Cube selector: randomly selected", len(encodings), "cubes")
 	return encodings
 }
 
@@ -200,7 +200,7 @@ func (cubeSelectorSvc *CubeSelectorService) RunSpecific(cubesets []string, param
 		}
 	}
 
-	logrus.Println("Cube selector: randomly selected", len(encodings), "cubes")
+	logrus.Println("Cube selector: specifically selected", len(encodings), "cubes")
 	return encodings
 }
 
