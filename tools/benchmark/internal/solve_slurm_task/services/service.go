@@ -32,7 +32,6 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) RemoveAll() error {
 
 func (solveSlurmTaskSvc *SolveSlurmTaskService) GenerateId(task solveslurmtask.Task) string {
 	combination := task.EncodingPromise.GetPath() + string(task.Solver) + task.Timeout.Round(time.Second).String()
-	fmt.Println(combination)
 
 	checksum := sha1.Sum([]byte(combination))
 	return fmt.Sprintf("%x", checksum)
