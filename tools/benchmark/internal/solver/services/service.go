@@ -126,9 +126,11 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 		solverSvc.errorSvc.Fatal(err, "Solver: failed to process instance name")
 
 		needsReconstruction := false
+		needsRemapping := false
 		{
 			if simplificationInfo, exists := info.Simplification.Get(); exists {
 				needsReconstruction = simplificationInfo.Simplifier == simplifier.Cadical
+				needsRemapping = simplificationInfo.Simplifier == simplifier.Satelite
 			}
 		}
 
@@ -136,9 +138,16 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 			info.Cubing = mo.None[encoder.CubingInfo]()
 			info.CubeIndex = mo.None[int]()
 			instance := path.Join(path.Dir(encoding), "..", solverSvc.encoderSvc.GetInstanceName(info))
-			reconstructionFilePath := instance + ".rs.txt"
-			err := solutionSvc.ReconstructAndVerify(solutionPath, reconstructionFilePath, []solution.Range{{Start: 1, End: 512}, {Start: 641, End: 768}})
+			reconstructionPath := instance + ".rs.txt"
+			err := solutionSvc.ReconstructAndVerify(solutionPath, reconstructionPath, []solution.Range{{Start: 1, End: 512}, {Start: 641, End: 768}})
 			solverSvc.errorSvc.Fatal(err, "Solver: failed to reconstruct solution")
+		} else if needsRemapping {
+			info.Cubing = mo.None[encoder.CubingInfo]()
+			info.CubeIndex = mo.None[int]()
+			instance := path.Join(path.Dir(encoding), "..", solverSvc.encoderSvc.GetInstanceName(info))
+			varMapPath := instance + ".var_map.txt"
+			err := solutionSvc.RemapAndVerify(solutionPath, varMapPath)
+			solverSvc.errorSvc.Fatal(err, "Solver: failed to remap variables in the solution")
 		} else {
 			info, err := solverSvc.encoderSvc.ProcessInstanceName(encoding)
 			solverSvc.errorSvc.Fatal(err, "Solver: failed to process instance name")
