@@ -8,9 +8,11 @@ import (
 	"encoding/gob"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/samber/lo"
+	"github.com/samber/mo"
 )
 
 type Properties struct {
@@ -30,6 +32,7 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) RemoveAll() error {
 
 func (solveSlurmTaskSvc *SolveSlurmTaskService) GenerateId(task solveslurmtask.Task) string {
 	combination := task.EncodingPromise.GetPath() + string(task.Solver) + task.Timeout.Round(time.Second).String()
+	fmt.Println(combination)
 
 	checksum := sha1.Sum([]byte(combination))
 	return fmt.Sprintf("%x", checksum)
@@ -84,41 +87,29 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) Get(id string) (solveslurmtask.T
 	return task, err
 }
 
-func (solveSlurmTaskSvc *SolveSlurmTaskService) Book() (*solveslurmtask.Task, string, error) {
-	var (
-		task   *solveslurmtask.Task
-		taskId string
-	)
+func (solveSlurmTaskSvc *SolveSlurmTaskService) Book() (mo.Option[solveslurmtask.Task], string, error) {
+	task := solveslurmtask.Task{}
+	taskId := ""
 
 	startTime := time.Now()
 	defer solveSlurmTaskSvc.filesystemSvc.LogInfo("Solve slurk task: book took", time.Since(startTime).String())
 
-	err := solveSlurmTaskSvc.databaseSvc.FindAndReplace(solveSlurmTaskSvc.Bucket, func(key, value []byte) []byte {
-		task_ := solveslurmtask.Task{}
-		err := solveSlurmTaskSvc.marshallingSvc.BinDecode(value, &task_)
-		if err != nil {
-			return nil
-		}
+	key, value, err := solveSlurmTaskSvc.databaseSvc.Consume(solveSlurmTaskSvc.Bucket)
+	if err == os.ErrNotExist {
+		return mo.None[solveslurmtask.Task](), taskId, nil
+	}
+	if err != nil {
+		return mo.None[solveslurmtask.Task](), taskId, err
+	}
 
-		if task_.Booked {
-			return nil
-		}
+	err = solveSlurmTaskSvc.marshallingSvc.BinDecode(value, &task)
+	if err != nil {
+		return mo.None[solveslurmtask.Task](), taskId, err
+	}
+	taskId = fmt.Sprintf("%x", key)
+	fmt.Println(task, taskId)
 
-		task_.Booked = true
-		task_.PingTime = time.Now()
-		encodedTask, err := solveSlurmTaskSvc.marshallingSvc.BinEncode(task_)
-		if err != nil {
-			return nil
-		}
-
-		task = new(solveslurmtask.Task)
-		*task = solveslurmtask.Task(task_)
-		taskId = string(key)
-
-		return encodedTask
-	})
-
-	return task, taskId, err
+	return mo.Some(task), taskId, err
 }
 
 func (solveSlurmTaskSvc *SolveSlurmTaskService) Remove(id string) error {

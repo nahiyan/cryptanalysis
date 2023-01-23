@@ -79,7 +79,7 @@ func (cuberSvc *CuberService) ReadMarchOutput(output string) (int, int, error) {
 
 func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control InvokeControl) error {
 	if shouldStop_, exists := control.ShouldStop[parameters.Encoding]; exists && shouldStop_ {
-		logrus.Println("Cuber: read stop signal", parameters.Threshold, parameters.Encoding)
+		// logrus.Println("Cuber: read stop signal", parameters.Threshold, parameters.Encoding)
 		return nil
 	}
 

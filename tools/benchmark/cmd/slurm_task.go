@@ -35,11 +35,12 @@ func initSlurmTaskCmd() *cobra.Command {
 				errorSvc := do.MustInvoke[*services3.ErrorService](injector)
 
 				for {
-					task, taskId, err := solveSlurmTaskSvc.Book()
+					maybeTask, taskId, err := solveSlurmTaskSvc.Book()
 					if err != nil {
 						errorSvc.Fatal(err, "Slurm task: failed to book")
 					}
-					if task == nil {
+					task, exists := maybeTask.Get()
+					if !exists {
 						logrus.Println("Slurm task: none to be booked")
 						break
 					}
@@ -50,7 +51,7 @@ func initSlurmTaskCmd() *cobra.Command {
 					}
 					encoding := task.EncodingPromise.Get(dependencies)
 					timeout := int(task.Timeout.Seconds())
-					// * Note: The skipping isn't done to speed things up
+					// * Note: The tasks are assumed to have went through a skipping phase, so we aren't doing them here
 					// if solverSvc.ShouldSkip(encoding, task.Solver, timeout) {
 					// 	logrus.Println("Slurk task: skipped", task.Solver, encoding)
 					// 	continue

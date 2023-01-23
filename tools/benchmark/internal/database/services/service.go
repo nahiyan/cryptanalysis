@@ -2,6 +2,7 @@ package services
 
 import (
 	errorModule "benchmark/internal/error"
+	"os"
 	"strconv"
 	"time"
 
@@ -172,7 +173,7 @@ func (databaseSvc *DatabaseService) All(bucket string, handler func(key, value [
 			// Assume bucket exists and has keys
 			bucket := tx.Bucket([]byte(bucket))
 			err := bucket.ForEach(func(key, value []byte) error {
-				handler(key, value)
+				handler([]byte(key), []byte(value))
 				return nil
 			})
 			return err
@@ -201,30 +202,59 @@ func (databaseSvc *DatabaseService) RemoveAll(bucket string) error {
 	return err
 }
 
-func (databaseSvc *DatabaseService) FindAndReplace(bucket string, handler func(key, value []byte) []byte) error {
+// func (databaseSvc *DatabaseService) FindAndReplace(bucket string, handler func(key, value []byte) []byte) error {
+// 	err := databaseSvc.UseReadWrite(func(db *bolt.DB) error {
+// 		err := db.Update(func(tx *bolt.Tx) error {
+// 			bucket := tx.Bucket([]byte(bucket))
+
+// 			cursor := bucket.Cursor()
+// 			for key, value := cursor.First(); key != nil; key, value = cursor.Next() {
+// 				replacement := handler(key, value)
+// 				if replacement == nil {
+// 					continue
+// 				}
+
+// 				if err := bucket.Put(key, replacement); err != nil {
+// 					return err
+// 				}
+
+// 				break
+// 			}
+
+// 			return nil
+// 		})
+// 		return err
+// 	})
+// 	return err
+// }
+
+func (databaseSvc *DatabaseService) Consume(bucket string) ([]byte, []byte, error) {
+	var (
+		key_   []byte
+		value_ []byte
+	)
 	err := databaseSvc.UseReadWrite(func(db *bolt.DB) error {
 		err := db.Update(func(tx *bolt.Tx) error {
 			bucket := tx.Bucket([]byte(bucket))
 
 			cursor := bucket.Cursor()
-			for key, value := cursor.First(); key != nil; key, value = cursor.Next() {
-				replacement := handler(key, value)
-				if replacement == nil {
-					continue
-				}
-
-				if err := bucket.Put(key, replacement); err != nil {
-					return err
-				}
-
-				break
+			key, value := cursor.First()
+			if key == nil {
+				return os.ErrNotExist
+			}
+			key_ = make([]byte, len(key))
+			value_ = make([]byte, len(value))
+			copy(key_, key)
+			copy(value_, value)
+			if err := bucket.Delete(key); err != nil {
+				return err
 			}
 
 			return nil
 		})
 		return err
 	})
-	return err
+	return key_, value_, err
 }
 
 func (databaseSvc *DatabaseService) Remove(bucket string, key []byte) error {

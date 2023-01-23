@@ -10,6 +10,4 @@ type Task struct {
 	EncodingPromise pipeline.EncodingPromise
 	Solver          solver.Solver
 	Timeout         time.Duration
-	Booked          bool
-	PingTime        time.Time
 }
