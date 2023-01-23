@@ -7,6 +7,7 @@ import (
 	services1 "benchmark/internal/solve_slurm_task/services"
 	"benchmark/internal/solver"
 	solverServices "benchmark/internal/solver/services"
+	"time"
 
 	"github.com/samber/do"
 	"github.com/sirupsen/logrus"
@@ -35,6 +36,7 @@ func initSlurmTaskCmd() *cobra.Command {
 				errorSvc := do.MustInvoke[*services3.ErrorService](injector)
 
 				for {
+					startTime := time.Now()
 					maybeTask, taskId, err := solveSlurmTaskSvc.Book()
 					if err != nil {
 						errorSvc.Fatal(err, "Slurm task: failed to book")
@@ -45,6 +47,7 @@ func initSlurmTaskCmd() *cobra.Command {
 						break
 					}
 					logrus.Println("Slurm task: booked task", taskId)
+					logrus.Info("Slurm task: book took", time.Since(startTime))
 
 					dependencies := map[string]interface{}{
 						"CubeSelectorService": cubeSelectorSvc,
@@ -52,10 +55,6 @@ func initSlurmTaskCmd() *cobra.Command {
 					encoding := task.EncodingPromise.Get(dependencies)
 					timeout := int(task.Timeout.Seconds())
 					// * Note: The tasks are assumed to have went through a skipping phase, so we aren't doing them here
-					// if solverSvc.ShouldSkip(encoding, task.Solver, timeout) {
-					// 	logrus.Println("Slurk task: skipped", task.Solver, encoding)
-					// 	continue
-					// }
 					solverSvc.TrackedInvoke(encoding, solver.Solver(task.Solver), timeout)
 					err = solveSlurmTaskSvc.Remove(taskId)
 					errorSvc.Fatal(err, "Slurm task: failed to remove "+taskId+" after completion")
