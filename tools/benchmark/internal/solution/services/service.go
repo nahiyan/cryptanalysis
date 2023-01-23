@@ -122,15 +122,7 @@ func (solutionSvc *SolutionService) Normalize(encodingPath string) error {
 	return nil
 }
 
-func (solutionSvc *SolutionService) Verify(solutionPath string) (bool, error) {
-	// TODO: Use a dedicated method for breaking down the params. from the instance name
-	instanceName := path.Base(solutionPath)
-	instanceNameTrimmed := instanceName[strings.Index(instanceName, "md4"):]
-	steps, err := strconv.Atoi(strings.Split(instanceNameTrimmed, "_")[1])
-	if err != nil {
-		return false, err
-	}
-
+func (solutionSvc *SolutionService) Verify(solution io.Reader, steps int) (bool, error) {
 	command := fmt.Sprintf("%s %d", solutionSvc.configSvc.Config.Paths.Bin.Verifier, steps)
 	cmd := solutionSvc.commandSvc.Create(command)
 	outPipe, err := cmd.StdoutPipe()
@@ -146,11 +138,7 @@ func (solutionSvc *SolutionService) Verify(solutionPath string) (bool, error) {
 		return false, err
 	}
 
-	file, err := os.Open(solutionPath)
-	if err != nil {
-		return false, err
-	}
-	_, err = io.Copy(inPipe, file)
+	_, err = io.Copy(inPipe, solution)
 	if err != nil {
 		return false, err
 	}
