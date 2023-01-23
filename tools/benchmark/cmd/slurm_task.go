@@ -52,7 +52,9 @@ func initSlurmTaskCmd() *cobra.Command {
 					dependencies := map[string]interface{}{
 						"CubeSelectorService": cubeSelectorSvc,
 					}
+					startTime = time.Now()
 					encoding := task.EncodingPromise.Get(dependencies)
+					logrus.Info("Slurm task: encoding promise get took", time.Since(startTime))
 					timeout := int(task.Timeout.Seconds())
 					// * Note: The tasks are assumed to have went through a skipping phase, so we aren't doing them here
 					solverSvc.TrackedInvoke(encoding, solver.Solver(task.Solver), timeout)
