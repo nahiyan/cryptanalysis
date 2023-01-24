@@ -164,7 +164,7 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 	if result == consts.Sat && verified {
 		message = append(message, "verified")
 	} else {
-		message = append(message, "verification failed")
+		message = append(message, "verification_failed")
 	}
 	logrus.Println(message)
 

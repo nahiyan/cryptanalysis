@@ -48,7 +48,7 @@ func literalToVariable(literal int) int {
 	return variable
 }
 
-func isVariableInRanges(literal int, ranges []solution.Range) bool {
+func isLiteralInRanges(literal int, ranges []solution.Range) bool {
 	variable := literalToVariable(literal)
 	for _, range_ := range ranges {
 		if variable >= range_.Start && variable <= range_.End {
@@ -72,7 +72,7 @@ func countVariables(clauses [][]int) int {
 	return count
 }
 
-func (solutionSvc *SolutionService) ReconstructSolution(solutionPath string, reconstructionFilePath string, ranges []solution.Range) error {
+func (solutionSvc *SolutionService) Reconstruct(solutionPath string, reconstructionFilePath string, ranges []solution.Range) error {
 	reader := script.File(reconstructionFilePath).Reader
 	scanner := bufio.NewScanner(reader)
 	clauses := [][]int{}
@@ -84,7 +84,7 @@ func (solutionSvc *SolutionService) ReconstructSolution(solutionPath string, rec
 		}
 
 		// Ignore variables that we're not interested in
-		if !isVariableInRanges(witness, ranges) {
+		if !isLiteralInRanges(witness, ranges) {
 			continue
 		}
 
@@ -110,7 +110,7 @@ func (solutionSvc *SolutionService) ReconstructSolution(solutionPath string, rec
 					continue
 				}
 
-				if isVariableInRanges(literal_, ranges) {
+				if isLiteralInRanges(literal_, ranges) {
 					continue
 				}
 
