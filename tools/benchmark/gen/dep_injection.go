@@ -248,7 +248,7 @@ func main() {
 		},
 		{
 			Name:         "log",
-			Dependencies: []string{"error", "solution", "cubeset", "simplification"},
+			Dependencies: []string{"error", "solution", "cubeset", "simplification", "encoder"},
 			Type:         Service,
 		},
 		{

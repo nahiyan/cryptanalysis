@@ -3,6 +3,7 @@ package services
 import (
 	"benchmark/internal/consts"
 	"benchmark/internal/cubeset"
+	"benchmark/internal/encoder"
 	"benchmark/internal/solver"
 	"encoding/csv"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/samber/lo"
+	"github.com/samber/mo"
 )
 
 func (logSvc *LogService) WriteLog(filePath string, handler func(writer *csv.Writer)) {
@@ -148,9 +150,16 @@ func (logSvc *LogService) WriteSummaryLog(basePath string) {
 		totalTime := time.Duration(0)
 		quantity := 0
 		cubesCount := 0
+		encodingInfo, err := logSvc.encoderSvc.ProcessInstanceName(encoding)
+		logSvc.errorSvc.Fatal(err, "Logger: failed to process instance name")
 
 		for _, cubeset := range cubesets {
-			if fmt.Sprintf("%s.cnf.n%d", cubeset.InstanceName, cubeset.Threshold) == encoding {
+			info, err := logSvc.encoderSvc.ProcessInstanceName(cubeset.InstanceName)
+			logSvc.errorSvc.Fatal(err, "Logger: failed to process instance name")
+			info.Cubing = mo.Some(encoder.CubingInfo{
+				Threshold: cubeset.Threshold,
+			})
+			if encoding == strings.TrimSuffix(logSvc.encoderSvc.GetInstanceName(info), ".cubes") {
 				cubesCount = cubeset.Cubes
 			}
 		}
@@ -179,22 +188,18 @@ func (logSvc *LogService) WriteSummaryLog(basePath string) {
 		cubesCount_ := humanize.Comma(int64(cubesCount))
 
 		summary += fmt.Sprintf("## %s\n\n%s SAT, %s UNSAT, %s Others", encoding, sat_, unsat_, others_)
-		percentageComplete := float64(quantity) / float64(cubesCount) * 100
-		{
-			split := strings.Split(encoding, ".")
-			len := len(split)
-			if strings.HasPrefix(split[len-1], "n") {
-				summary += fmt.Sprintf(", %.2f%% complete", percentageComplete)
-			}
-		}
-		summary += "\n"
+		if _, exists := encodingInfo.Cubing.Get(); exists {
+			percentageComplete := float64(quantity) / float64(cubesCount) * 100
+			summary += fmt.Sprintf(", %.2f%% complete\n", percentageComplete)
 
-		if quantity > 1 {
 			estimate := time.Duration(totalTime.Seconds()/float64(quantity)*float64(cubesCount)) * time.Second
 			summary += fmt.Sprintf("Estimate: %s for %s cubes\n", estimate.Round(time.Millisecond), cubesCount_)
 
 			summary += fmt.Sprintf("Real time: %s for %s cubes\n", totalTime.Round(time.Millisecond), quantity_)
+		} else {
+			summary += "\n"
 		}
+
 		summary += "\n"
 	}
 

@@ -21,6 +21,10 @@ require (
 )
 
 require (
+	bitbucket.org/creachadair/shell v0.0.7 // indirect
+	github.com/bitfield/script v0.21.4 // indirect
+	github.com/itchyny/gojq v0.12.7 // indirect
+	github.com/itchyny/timefmt-go v0.1.3 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
