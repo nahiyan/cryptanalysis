@@ -42,16 +42,16 @@ func (encoderSvc *EncoderService) GenerateTransalgCode(instanceInfo encoder.Inst
 			return "HH"
 		},
 		"dobbertinsConstraint": func(i int, register string) string {
-			dobbertinConstraints := []int{
+			dobbertinIndices := []int{
 				12, 13, 14,
 				16, 17, 18,
 				20, 21, 22,
 				24, 25, 26,
 			}
 
-			if _, exists := lo.Find(dobbertinConstraints, func(index int) bool {
+			if _, exists := lo.Find(dobbertinIndices, func(index int) bool {
 				return i == index
-			}); exists {
+			}); exists && i != 12 {
 				return fmt.Sprintf("\n\tassert(!(%s ^ K));", register)
 			}
 
