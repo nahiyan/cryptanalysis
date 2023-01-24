@@ -106,7 +106,6 @@ func (solveSlurmTaskSvc *SolveSlurmTaskService) Book() (mo.Option[solveslurmtask
 		return mo.None[solveslurmtask.Task](), taskId, err
 	}
 	taskId = fmt.Sprintf("%x", key)
-	fmt.Println(task, taskId)
 
 	return mo.Some(task), taskId, err
 }

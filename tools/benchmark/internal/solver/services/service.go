@@ -5,9 +5,7 @@ import (
 	"benchmark/internal/encoder"
 	errorModule "benchmark/internal/error"
 	"benchmark/internal/pipeline"
-	"benchmark/internal/simplifier"
 	"benchmark/internal/slurm"
-	"benchmark/internal/solution"
 	solveslurmtask "benchmark/internal/solve_slurm_task"
 	"benchmark/internal/solver"
 	"context"
@@ -125,23 +123,16 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 		info, err := solverSvc.encoderSvc.ProcessInstanceName(encoding)
 		solverSvc.errorSvc.Fatal(err, "Solver: failed to process instance name")
 
-		needsReconstruction := false
+		// needsReconstruction := false
 		needsRemapping := false
-		{
-			if simplificationInfo, exists := info.Simplification.Get(); exists {
-				needsReconstruction = simplificationInfo.Simplifier == simplifier.Cadical
-				needsRemapping = simplificationInfo.Simplifier == simplifier.Satelite
-			}
-		}
+		// {
+		// 	if simplificationInfo, exists := info.Simplification.Get(); exists {
+		// 		needsReconstruction = simplificationInfo.Simplifier == simplifier.Cadical
+		// 		needsRemapping = simplificationInfo.Simplifier == simplifier.Satelite
+		// 	}
+		// }
 
-		if needsReconstruction {
-			info.Cubing = mo.None[encoder.CubingInfo]()
-			info.CubeIndex = mo.None[int]()
-			instance := path.Join(path.Dir(encoding), "..", solverSvc.encoderSvc.GetInstanceName(info))
-			reconstructionPath := instance + ".rs.txt"
-			err := solutionSvc.ReconstructSolution(solutionPath, reconstructionPath, []solution.Range{{Start: 1, End: 512}, {Start: 641, End: 768}})
-			solverSvc.errorSvc.Fatal(err, "Solver: failed to reconstruct solution")
-		} else if needsRemapping {
+		if needsRemapping {
 			info.Cubing = mo.None[encoder.CubingInfo]()
 			info.CubeIndex = mo.None[int]()
 			instance := path.Join(path.Dir(encoding), "..", solverSvc.encoderSvc.GetInstanceName(info))
@@ -161,10 +152,12 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 	}
 
 	message := []any{"Solver:", solver_, resultString, exitCode, runtime, encoding}
-	if result == consts.Sat && verified {
-		message = append(message, "verified")
-	} else {
-		message = append(message, "verification_failed")
+	if result == consts.Sat {
+		if verified {
+			message = append(message, "verified")
+		} else {
+			message = append(message, "verification_failed")
+		}
 	}
 	logrus.Println(message)
 
