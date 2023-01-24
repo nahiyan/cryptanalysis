@@ -1,20 +1,8 @@
 package services
 
 import (
-	"benchmark/internal/solution"
 	"benchmark/internal/solver"
-	"bufio"
-	"fmt"
-	"io"
-	"math"
-	"os"
-	"path"
-	"strconv"
-	"strings"
 	"time"
-
-	"github.com/samber/lo"
-	"gonum.org/v1/gonum/stat/combin"
 )
 
 // TODO: Should use a repository for DB operations
@@ -89,208 +77,164 @@ func (solutionSvc *SolutionService) All() ([]solver.Solution, error) {
 	return solutions, nil
 }
 
-func (solutionSvc *SolutionService) Normalize(encodingPath string) error {
-	instanceFile, err := os.Open(encodingPath)
-	if err != nil {
-		return err
-	}
+// func (solutionSvc *SolutionService) ReconstructAndVerify(solutionPath string, reconstructionFilePath string, ranges []solution.Range) error {
+// 	info, err := solutionSvc.encoderSvc.ProcessInstanceName(solutionPath)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	steps := info.Steps
+// 	variableVariations := make(map[int][]int)
 
-	scanner := bufio.NewScanner(instanceFile)
-	newBody := ""
-	for scanner.Scan() {
-		line := scanner.Text()
-		line = strings.TrimPrefix(line, "v ")
+// 	// * 1. Read the reconstruction stack file and determine the literals that need to be preserved
+// 	reconstStackFile, err := os.OpenFile(reconstructionFilePath, os.O_RDONLY, 0600)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer reconstStackFile.Close()
 
-		if strings.HasPrefix(line, "s SATISFIABLE") {
-			continue
-		}
+// 	scanner := bufio.NewScanner(reconstStackFile)
+// 	for scanner.Scan() {
+// 		line := scanner.Text()
 
-		newBody += line + " "
-	}
-	instanceFile.Close()
+// 		segments := strings.Split(line, " ")
 
-	outputPath, err := os.OpenFile(encodingPath, os.O_TRUNC|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
+// 		// * 2. Skip line if the number of segments is not at least 4
+// 		segmentsCount := len(segments)
+// 		if segmentsCount < 4 {
+// 			continue
+// 		}
 
-	_, err = outputPath.WriteString("SAT" + "\n" + newBody + "\n")
-	if err != nil {
-		return err
-	}
+// 		// * 3. See if the witness literal should be preserved
+// 		var literal, variable int
+// 		{
+// 			literal, _ = strconv.Atoi(segments[segmentsCount-2])
+// 			variable_ := math.Abs(float64(literal))
+// 			variable = int(variable_)
 
-	return nil
-}
+// 			inRange := false
+// 			for _, range_ := range ranges {
+// 				if variable >= range_.Start && variable <= range_.End {
+// 					inRange = true
+// 				}
+// 			}
 
-func (solutionSvc *SolutionService) Verify(solution io.Reader, steps int) (bool, error) {
-	command := fmt.Sprintf("%s %d", solutionSvc.configSvc.Config.Paths.Bin.Verifier, steps)
-	cmd := solutionSvc.commandSvc.Create(command)
-	outPipe, err := cmd.StdoutPipe()
-	if err != nil {
-		return false, err
-	}
-	inPipe, err := cmd.StdinPipe()
-	if err != nil {
-		return false, err
-	}
+// 			if !inRange {
+// 				continue
+// 			}
+// 		}
 
-	if err := cmd.Start(); err != nil {
-		return false, err
-	}
+// 		// * 4. Mark the literal
+// 		if _, exists := variableVariations[variable]; !exists {
+// 			variableVariations[variable] = make([]int, 0)
+// 		}
 
-	_, err = io.Copy(inPipe, solution)
-	if err != nil {
-		return false, err
-	}
-	inPipe.Close()
+// 		if !lo.Contains(variableVariations[variable], literal) {
+// 			variableVariations[variable] = append(variableVariations[variable], literal)
+// 		}
+// 	}
 
-	scanner := bufio.NewScanner(outPipe)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.Contains(line, "Solution's hash matches the target!") {
-			return true, nil
-		} else if strings.Contains(line, "Solution's hash DOES NOT match the target:") || strings.Contains(line, "Result is UNSAT!") {
-			return false, nil
-		}
-	}
+// 	// End if we have no variable to correct
+// 	if len(variableVariations) == 0 {
+// 		return nil
+// 	}
 
-	err = cmd.Wait()
-	if err != nil {
-		return false, err
-	}
+// 	// * 5. Parse the solution of the given instance
+// 	solutionContent_, err := os.ReadFile(solutionPath)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	return false, nil
-}
+// 	solutionContent := string(solutionContent_)
 
-func (solutionSvc *SolutionService) ReconstructCadical(instancePath string, ranges []solution.Range) error {
-	variableVariations := make(map[int][]int)
+// 	solutionLiterals := lo.Filter(lo.Map(strings.Fields(string(solutionContent)), func(literal_ string, _ int) int {
+// 		literal, err := strconv.Atoi(literal_)
+// 		if err != nil {
+// 			return 0
+// 		}
 
-	// * 1. Read the reconstruction stack file and determine the literals that need to be preserved
-	reconstStackFilePath := instancePath + ".rs.txt"
-	reconstStackFile, err := os.OpenFile(reconstStackFilePath, os.O_RDONLY, 0600)
-	if err != nil {
-		return err
-	}
-	defer reconstStackFile.Close()
+// 		return literal
+// 	}), func(value, i2 int) bool {
+// 		return value != 0
+// 	})
 
-	scanner := bufio.NewScanner(reconstStackFile)
-	for scanner.Scan() {
-		line := scanner.Text()
+// 	// * 6. Generate a combination of the variables with varying values
+// 	varyingVariables := []uint{}
+// 	for variable, variation := range variableVariations {
+// 		if len(variation) == 2 {
+// 			varyingVariables = append(varyingVariables, uint(variable))
+// 		}
+// 	}
 
-		segments := strings.Split(line, " ")
+// 	factors := []int{}
+// 	for i := 0; i < len(varyingVariables); i++ {
+// 		factors = append(factors, 2)
+// 	}
 
-		// * 2. Skip line if the number of segments is not at least 4
-		segmentsCount := len(segments)
-		if segmentsCount < 4 {
-			continue
-		}
+// 	list := combin.Cartesian(factors)
+// 	fmt.Println(varyingVariables, len(factors), len(list))
+// 	for _, v := range list {
+// 		literalCombination := []int{}
+// 		for i, value := range v {
+// 			var literal int
+// 			if value == 0 {
+// 				literal = int(varyingVariables[i])
+// 			} else {
+// 				literal = -int(varyingVariables[i])
+// 			}
+// 			literalCombination = append(literalCombination, literal)
+// 		}
 
-		// * 3. See if the witness literal should be preserved
-		var literal, variable int
-		{
-			literal, _ = strconv.Atoi(segments[segmentsCount-2])
-			variable_ := math.Abs(float64(literal))
-			variable = int(variable_)
+// 		// * 7. Generate a new solution with overriden literals
+// 		newSolutionLiterals := lo.Map(solutionLiterals, func(value, _ int) string {
+// 			for _, literal := range literalCombination {
+// 				if literal == value || literal == -value {
+// 					return fmt.Sprintf("%d", literal)
+// 				}
+// 			}
 
-			inRange := false
-			for _, range_ := range ranges {
-				if variable >= range_.Start && variable <= range_.End {
-					inRange = true
-				}
-			}
+// 			absValue := value
+// 			if absValue < 0 {
+// 				absValue = -absValue
+// 			}
 
-			if !inRange {
-				continue
-			}
-		}
+// 			if literal, exists := variableVariations[absValue]; exists {
+// 				return fmt.Sprintf("%d", literal[0])
+// 			}
 
-		// * 4. Mark the literal
-		if _, exists := variableVariations[variable]; !exists {
-			variableVariations[variable] = make([]int, 0)
-		}
+// 			return fmt.Sprintf("%d", value)
+// 		})
 
-		if !lo.Contains(variableVariations[variable], literal) {
-			variableVariations[variable] = append(variableVariations[variable], literal)
-		}
-	}
+// 		newSolution := "SAT\n" + strings.Join(newSolutionLiterals, " ") + " 0"
+// 		newSolution_ := strings.NewReader(newSolution)
+// 		verified, err := solutionSvc.Verify(newSolution_, steps)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		if verified {
+// 			return nil
+// 		}
+// 	}
 
-	// End if we have no variable to correct
-	if len(variableVariations) == 0 {
-		return nil
-	}
+// 	return errors.New("solution: failed to reconstruct and verify")
+// }
 
-	// * 5. Parse the solution of the given instance
-	solutionFilePath := instancePath + ".sol"
-	solutionContent_, err := os.ReadFile(solutionFilePath)
-	if err != nil {
-		return err
-	}
+func (solutionSvc *SolutionService) RemapAndVerify(solutionPath string, varMapPath string) error {
+	// info, err := solutionSvc.encoderSvc.ProcessInstanceName(solutionPath)
+	// if err != nil {
+	// 	return err
+	// }
+	// steps := info.Steps
 
-	solutionContent := string(solutionContent_)
+	// // * 1. Read the reconstruction stack file and determine the literals that need to be preserved
+	// varMapFile, err := os.OpenFile(varMapPath, os.O_RDONLY, 0600)
+	// if err != nil {
+	// 	return err
+	// }
+	// defer varMapFile.Close()
 
-	solutionLiterals := lo.Filter(lo.Map(strings.Fields(string(solutionContent)), func(literal_ string, _ int) int {
-		literal, err := strconv.Atoi(literal_)
-		if err != nil {
-			return 0
-		}
+	// replacements := make(map[int]bool)
+	// scanner := bufio.NewScanner(varMapFile)
 
-		return literal
-	}), func(value, i2 int) bool {
-		return value != 0
-	})
-
-	// * 6. Generate a combination of the variables with varying values
-	varyingVariables := []uint{}
-	for variable, variation := range variableVariations {
-		if len(variation) == 2 {
-			varyingVariables = append(varyingVariables, uint(variable))
-		}
-	}
-
-	factors := []int{}
-	for i := 0; i < len(varyingVariables); i++ {
-		factors = append(factors, 2)
-	}
-
-	list := combin.Cartesian(factors)
-	for _, v := range list {
-		literalCombination := []int{}
-		for i, value := range v {
-			var literal int
-			if value == 0 {
-				literal = int(varyingVariables[i])
-			} else {
-				literal = -int(varyingVariables[i])
-			}
-			literalCombination = append(literalCombination, literal)
-		}
-
-		// * 7. Generate a new solution with overriden literals
-		newSolutionLiterals := lo.Map(solutionLiterals, func(value, _ int) string {
-			for _, literal := range literalCombination {
-				if literal == value || literal == -value {
-					return fmt.Sprintf("%d", literal)
-				}
-			}
-
-			absValue := value
-			if absValue < 0 {
-				absValue = -absValue
-			}
-
-			if literal, exists := variableVariations[absValue]; exists {
-				return fmt.Sprintf("%d", literal[0])
-			}
-
-			return fmt.Sprintf("%d", value)
-		})
-
-		newSolution := "SAT\n" + strings.Join(newSolutionLiterals, " ") + " 0"
-		err := os.WriteFile(solutionFilePath, []byte(newSolution), 0644)
-		if err != nil {
-			return err
-		}
-	}
-
+	// TODO: Implement remapping and verification
 	return nil
 }

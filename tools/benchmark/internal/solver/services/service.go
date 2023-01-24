@@ -62,6 +62,10 @@ func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, t
 	solutionPath := path.Join("./tmp", path.Base(encoding)+"."+string(solver_)+".sol")
 	binPath, solverArgs := solverSvc.GetCmdInfo(encoding, solver_, solutionPath)
 	duration := time.Duration(timeout) * time.Second
+	var (
+		result   solver.Result = consts.Fail
+		exitCode int
+	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
 	defer cancel()
@@ -78,10 +82,6 @@ func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, t
 		solverSvc.errorSvc.Fatal(err, "Solver: failed to write from pipe")
 	}
 
-	var (
-		result   solver.Result = consts.Fail
-		exitCode int
-	)
 	err = cmd.Wait()
 	runtime := time.Since(startTime)
 	errorSvc.Handle(err, func(err error) {
@@ -139,7 +139,7 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 			info.CubeIndex = mo.None[int]()
 			instance := path.Join(path.Dir(encoding), "..", solverSvc.encoderSvc.GetInstanceName(info))
 			reconstructionPath := instance + ".rs.txt"
-			err := solutionSvc.ReconstructAndVerify(solutionPath, reconstructionPath, []solution.Range{{Start: 1, End: 512}, {Start: 641, End: 768}})
+			err := solutionSvc.ReconstructSolution(solutionPath, reconstructionPath, []solution.Range{{Start: 1, End: 512}, {Start: 641, End: 768}})
 			solverSvc.errorSvc.Fatal(err, "Solver: failed to reconstruct solution")
 		} else if needsRemapping {
 			info.Cubing = mo.None[encoder.CubingInfo]()
@@ -148,23 +148,23 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 			varMapPath := instance + ".var_map.txt"
 			err := solutionSvc.RemapAndVerify(solutionPath, varMapPath)
 			solverSvc.errorSvc.Fatal(err, "Solver: failed to remap variables in the solution")
-		} else {
-			info, err := solverSvc.encoderSvc.ProcessInstanceName(encoding)
-			solverSvc.errorSvc.Fatal(err, "Solver: failed to process instance name")
-			solutionFile, err := os.Open(solutionPath)
-			solverSvc.errorSvc.Fatal(err, "Solver: failed to read the solution")
-
-			verified, err = solutionSvc.Verify(solutionFile, info.Steps)
-			solverSvc.errorSvc.Check(err, "Solver: verification failed")
 		}
+
+		solutionFile, err := os.Open(solutionPath)
+		solverSvc.errorSvc.Fatal(err, "Solver: failed to read the solution")
+
+		verified, err = solutionSvc.Verify(solutionFile, info.Steps)
+		solverSvc.errorSvc.Check(err, "Solver: verification failed")
 
 		checksum, err = solverSvc.filesystemSvc.Checksum(solutionPath)
 		solverSvc.errorSvc.Fatal(err, "Solver: failed to calculate checksum of the solution "+solutionPath)
 	}
 
 	message := []any{"Solver:", solver_, resultString, exitCode, runtime, encoding}
-	if verified {
+	if result == consts.Sat && verified {
 		message = append(message, "verified")
+	} else {
+		message = append(message, "verification failed")
 	}
 	logrus.Println(message)
 
