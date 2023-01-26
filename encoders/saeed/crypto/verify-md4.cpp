@@ -62,7 +62,7 @@ int main(int argc, char** argv)
 
     /* Extracting the correct hash output */
     unsigned hash[4];
-    extract(hash, 4, solution, hashTargetOffset); // Extract 641-768 bits
+    extract(hash, 4, solution, hashTargetOffset); // Extract (default: 641-768 bits)
 
     md4_comp(w, cv, rounds);
     bool matched = true;
