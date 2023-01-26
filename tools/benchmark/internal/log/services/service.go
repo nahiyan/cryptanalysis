@@ -193,9 +193,16 @@ func (logSvc *LogService) WriteSummaryLog(basePath string) {
 			summary += fmt.Sprintf(", %.2f%% complete\n", percentageComplete)
 
 			estimate := time.Duration(totalTime.Seconds()/float64(quantity)*float64(cubesCount)) * time.Second
-			summary += fmt.Sprintf("Estimate: %s for %s cubes\n", estimate.Round(time.Millisecond), cubesCount_)
+			summary += fmt.Sprintf("Estimate (1 CPU): %s for %s cubes\n", estimate.Round(time.Millisecond), cubesCount_)
 
-			summary += fmt.Sprintf("Real time: %s for %s cubes\n", totalTime.Round(time.Millisecond), quantity_)
+			estimate12Cpu := time.Duration(totalTime.Seconds()/float64(quantity)*float64(cubesCount)) * time.Second / 12
+			summary += fmt.Sprintf("Estimate (12 CPU): %s for %s cubes\n", estimate12Cpu.Round(time.Millisecond), cubesCount_)
+
+			estimateForNRemaining12Cpu := time.Duration(totalTime.Seconds()/float64(quantity)*float64(cubesCount-1000)) * time.Second / 12
+			summary += fmt.Sprintf("Estimate (12 CPU): %s for %s cubes\n", estimateForNRemaining12Cpu.Round(time.Millisecond), humanize.Comma(int64(cubesCount)-1000))
+
+			summary += fmt.Sprintf("Real time (1 CPU): %s for %s cubes\n", totalTime.Round(time.Millisecond), quantity_)
+			summary += fmt.Sprintf("Real time (12 CPU): %s for %s cubes\n", (totalTime / 12).Round(time.Millisecond), quantity_)
 		} else {
 			summary += "\n"
 		}
