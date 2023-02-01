@@ -111,6 +111,19 @@ func Test43Md4N3(t *testing.T) {
 	}
 }
 
+func Test35MD4(t *testing.T) {
+	md4Svc := Md4Service{}
+	bytes, _ := hex.DecodeString("f082d2e8a57d8668a57d86689c1cdcd8a57d8668a57d8668a57d8668a77dc6e8a57d8668a57d8668a57d8668a3739b2fbd94a012ba83a52659d8d8d948030a00")
+	digest, err := md4Svc.Run(bytes, 35)
+	if err != nil {
+		t.Fatal("failed to compute MD4 hash: ", err)
+	}
+
+	if digest != "ffffffffffffffffffffffffffffffff" {
+		t.Errorf("got hash = %s but expected all-one-bit hash\n", digest)
+	}
+}
+
 func TestBytesToUint32(t *testing.T) {
 	bytes, _ := hex.DecodeString("67452301efcdab89")
 	result := toUint32Slice(bytes)[0]
