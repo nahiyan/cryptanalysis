@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"math"
 )
 
 func leftRotate(x, s uint32) uint32 {
@@ -12,8 +11,7 @@ func leftRotate(x, s uint32) uint32 {
 }
 
 func sum(a, b uint32) uint32 {
-	sum := (int(a) + int(b)) % int(math.Pow(2, 32))
-	return uint32(sum)
+	return uint32(a + b)
 }
 
 func f(x, y, z uint32) uint32 {
