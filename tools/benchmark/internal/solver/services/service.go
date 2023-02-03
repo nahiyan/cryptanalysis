@@ -156,7 +156,7 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 		if verified {
 			message = append(message, "verified")
 		} else {
-			message = append(message, "verification_failed")
+			message = append(message, "!verified")
 		}
 	}
 	logrus.Println(message)
