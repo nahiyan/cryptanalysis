@@ -51,7 +51,7 @@ func toUint32Slice(bytes []byte) []uint32 {
 	return words
 }
 
-func (md4Svc *Md4Service) Run(message_ []byte, steps int) (string, error) {
+func (md4Svc *Md4Service) Run(message_ []byte, steps int, addChainingVars bool) (string, error) {
 	digest := ""
 
 	if len(message_) != 64 {
@@ -94,6 +94,8 @@ func (md4Svc *Md4Service) Run(message_ []byte, steps int) (string, error) {
 				3, 11, 7, 15}
 			h[i] = hh(h[i], h[(i+1)%4], h[(i+2)%4], h[(i+3)%4], message[k[step-1-32]], s[(step-1-32)%4])
 		}
+
+		fmt.Printf("Step %d %d %d %d %d\n", step, h[0], h[1], h[2], h[3])
 	}
 
 	// Final
@@ -101,16 +103,20 @@ func (md4Svc *Md4Service) Run(message_ []byte, steps int) (string, error) {
 	b = h[1]
 	c = h[2]
 	d = h[3]
-	// a += a_
-	// b += b_
-	// c += c_
-	// d += d_
-	// fmt.Println("Final", a, b, c, d)
+
+	// Add chaining variables
+	if addChainingVars {
+		a += a_
+		b += b_
+		c += c_
+		d += d_
+	}
+	fmt.Println("Final", a, b, c, d)
 	digest_ := make([]byte, 16)
-	binary.LittleEndian.PutUint32(digest_, a)
-	binary.LittleEndian.PutUint32(digest_[4:], b)
-	binary.LittleEndian.PutUint32(digest_[8:], c)
-	binary.LittleEndian.PutUint32(digest_[12:], d)
+	binary.BigEndian.PutUint32(digest_, a)
+	binary.BigEndian.PutUint32(digest_[4:], b)
+	binary.BigEndian.PutUint32(digest_[8:], c)
+	binary.BigEndian.PutUint32(digest_[12:], d)
 	digest = fmt.Sprintf("%x", digest_)
 
 	return digest, nil
