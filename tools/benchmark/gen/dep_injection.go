@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	j "github.com/dave/jennifer/jen"
 	"github.com/iancoleman/strcase"
@@ -104,9 +105,12 @@ func GenerateProvider(provider Provider) {
 		f.Func().Id(name).Params(j.Id("injector").Op("*").Qual("github.com/samber/do", "Injector")).Params(j.Op("*").Id(strcase.ToCamel(provider.Name+"Service")), j.Id("error")).Block(statements...)
 	}
 
-	f.Save(fmt.Sprintf(
+	err := f.Save(fmt.Sprintf(
 		"../internal/%s/services/init.gen.go",
-		strcase.ToSnake(provider.Name)))
+		strcase.ToSnakeWithIgnore(provider.Name, "md4")))
+	if err != nil {
+		log.Fatal("Failed to save: ", provider.Name, ". ", err)
+	}
 }
 
 func generateProviders(providers []Provider) {
@@ -262,6 +266,11 @@ func main() {
 			Type:            Service,
 			HasInitFunction: true,
 			HasProperties:   true,
+		},
+		{
+			Name:         "md4",
+			Dependencies: []string{"error", "config"},
+			Type:         Service,
 		},
 	}
 

@@ -14,6 +14,7 @@ import (
 	services3 "benchmark/internal/filesystem/services"
 	services19 "benchmark/internal/log/services"
 	services11 "benchmark/internal/marshalling/services"
+	services22 "benchmark/internal/md4/services"
 	services4 "benchmark/internal/pipeline/services"
 	services10 "benchmark/internal/random/services"
 	services5 "benchmark/internal/schema/services"
@@ -50,5 +51,6 @@ func New() *do.Injector {
 	do.Provide(injector, services19.NewLogService)
 	do.Provide(injector, services20.NewSimplifierService)
 	do.Provide(injector, services21.NewSimplificationService)
+	do.Provide(injector, services22.NewMd4Service)
 	return injector
 }
