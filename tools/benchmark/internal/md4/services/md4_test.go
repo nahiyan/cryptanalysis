@@ -124,10 +124,10 @@ func Test35MD4N1(t *testing.T) {
 	}
 }
 
-func Test35MD4N2(t *testing.T) {
+func Test31MD4(t *testing.T) {
 	md4Svc := Md4Service{}
-	bytes, _ := hex.DecodeString("a57d8668a57d8668a57d8668a750cfd1a57d8668a57d8668a57d86686ba1f7dfa57d8668a57d8668a57d86686e60453f6ea02a372fa79b06aa1ed20f032c2409")
-	digest, err := md4Svc.Run(bytes, 48, true)
+	bytes, _ := hex.DecodeString("a57d8668a57d8668a57d86687894e208a57d8668a57d8668a57d86685c4116c6a57d8668a57d8668a57d86688d764bfb9bcadf0a5fc20ab5930c12bd95c354d5")
+	digest, err := md4Svc.Run(bytes, 31, true)
 	if err != nil {
 		t.Fatal("failed to compute MD4 hash: ", err)
 	}
@@ -136,19 +136,6 @@ func Test35MD4N2(t *testing.T) {
 		t.Errorf("got hash = %s but expected all-one-bit hash\n", digest)
 	}
 }
-
-// func Test31MD4(t *testing.T) {
-// 	md4Svc := Md4Service{}
-// 	bytes, _ := hex.DecodeString("a57d8668a57d8668a57d86687894e208a57d8668a57d8668a57d86685c4116c6a57d8668a57d8668a57d86688d764bfb9bcadf0a5fc20ab5930c12bd95c354d5")
-// 	digest, err := md4Svc.Run(bytes, 31, true)
-// 	if err != nil {
-// 		t.Fatal("failed to compute MD4 hash: ", err)
-// 	}
-
-// 	if digest != "ffffffffffffffffffffffffffffffff" {
-// 		t.Errorf("got hash = %s but expected all-one-bit hash\n", digest)
-// 	}
-// }
 
 func TestBytesToUint32(t *testing.T) {
 	bytes, _ := hex.DecodeString("67452301efcdab89")
