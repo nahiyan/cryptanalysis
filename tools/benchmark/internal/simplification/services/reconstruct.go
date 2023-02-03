@@ -60,7 +60,7 @@ func isLiteralInRanges(literal int, ranges []solution.Range) bool {
 }
 
 func (encodingSvc *SimplificationService) Reconstruct(instancePath, reconstructionPath string, ranges []solution.Range) error {
-	clauses := [][]int{}
+	removedClauses := [][]int{}
 	{
 		reader := script.File(reconstructionPath).Reader
 		scanner := bufio.NewScanner(reader)
@@ -75,7 +75,7 @@ func (encodingSvc *SimplificationService) Reconstruct(instancePath, reconstructi
 				continue
 			}
 
-			clauses = append(clauses, clause)
+			removedClauses = append(removedClauses, clause)
 		}
 	}
 
@@ -90,12 +90,13 @@ func (encodingSvc *SimplificationService) Reconstruct(instancePath, reconstructi
 				continue
 			}
 
+			// Header
 			if strings.HasPrefix(line, "p cnf") {
 				varCount := 0
 				clausesCount := 0
 				fmt.Sscanf(line, "p cnf %d %d", &varCount, &clausesCount)
 
-				newClausesCount := clausesCount + len(clauses)
+				newClausesCount := clausesCount + len(removedClauses)
 				newInstance += fmt.Sprintf("p cnf %d %d\n", varCount, newClausesCount)
 				continue
 			}
@@ -103,7 +104,7 @@ func (encodingSvc *SimplificationService) Reconstruct(instancePath, reconstructi
 			newInstance += line + "\n"
 		}
 
-		for _, clause := range clauses {
+		for _, clause := range removedClauses {
 			clause_ := ""
 			for _, literal := range clause {
 				clause_ += strconv.Itoa(literal) + " "
