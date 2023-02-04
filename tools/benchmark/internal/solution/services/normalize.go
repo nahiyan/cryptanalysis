@@ -18,7 +18,7 @@ func (solutionSvc *SolutionService) Normalize(solutionPath string) error {
 		line := scanner.Text()
 		line = strings.TrimPrefix(line, "v ")
 
-		if strings.HasPrefix(line, "s SATISFIABLE") {
+		if strings.HasPrefix(line, "s SATISFIABLE") || strings.HasPrefix(line, "SAT") {
 			continue
 		}
 
