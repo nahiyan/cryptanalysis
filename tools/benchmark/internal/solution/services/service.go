@@ -77,7 +77,7 @@ func (solutionSvc *SolutionService) All() ([]solver.Solution, error) {
 	return solutions, nil
 }
 
-func (solutionSvc *SolutionService) RemapAndVerify(solutionPath string, varMapPath string) error {
+func (solutionSvc *SolutionService) Remap(solutionPath string, varMapPath string) error {
 	// info, err := solutionSvc.encoderSvc.ProcessInstanceName(solutionPath)
 	// if err != nil {
 	// 	return err
