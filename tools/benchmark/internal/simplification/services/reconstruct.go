@@ -60,24 +60,66 @@ func isLiteralInRanges(literal int, ranges []solution.Range) bool {
 }
 
 func (encodingSvc *SimplificationService) Reconstruct(instancePath, reconstructionPath string, ranges []solution.Range) error {
-	removedClauses := [][]int{}
+	clausesToPreserve := [][]int{}
+	// secondStageVariables := []int{}
 	{
 		reader := script.File(reconstructionPath).Reader
 		scanner := bufio.NewScanner(reader)
 		for scanner.Scan() {
 			line := scanner.Text()
-			clause, witness, err := scanRSLine(line)
+			clause, _, err := scanRSLine(line)
 			if err != nil {
 				return err
 			}
 
-			if !isLiteralInRanges(witness, ranges) {
-				continue
-			}
+			// if !isLiteralInRanges(witness, ranges) {
+			// 	continue
+			// }
 
-			removedClauses = append(removedClauses, clause)
+			clausesToPreserve = append(clausesToPreserve, clause)
+			// newClause := lo.Filter(clause, func(item int, _ int) bool {
+			// 	return item != witness
+			// })
+			// if len(newClause) > 0 {
+			// 	fmt.Println(newClause, witness)
+			// 	for _, literal := range newClause {
+			// 		secondStageVariables = append(secondStageVariables, literalToVariable(literal))
+			// 	}
+			// }
 		}
 	}
+
+	// Add back the clauses of the variables related to the variables in the specified ranges
+	// thirdStageVariables := []int{}
+	// {
+	// 	reader := script.File(reconstructionPath).Reader
+	// 	scanner := bufio.NewScanner(reader)
+	// 	for scanner.Scan() {
+	// 		line := scanner.Text()
+	// 		clause, witness, err := scanRSLine(line)
+	// 		if err != nil {
+	// 			return err
+	// 		}
+
+	// 		if _, exists := lo.Find(secondStageVariables, func(literal int) bool {
+	// 			return witness == literalToVariable(literal)
+	// 		}); !exists {
+	// 			continue
+	// 		}
+
+	// 		fmt.Println("2nd stage", clause)
+	// 		clausesToPreserve = append(clausesToPreserve, clause)
+	// 		newClause := lo.Filter(clause, func(item int, _ int) bool {
+	// 			return item != witness
+	// 		})
+	// 		if len(newClause) > 0 {
+	// 			fmt.Println("2nd stage new clauses", newClause, witness)
+	// 			// for _, literal := range newClause {
+	// 			// 	thirdStageVariables = append(thirdStageVariables, literalToVariable(literal))
+	// 			// }
+	// 		}
+	// 	}
+	// }
 
 	{
 		newInstance := ""
@@ -96,7 +138,7 @@ func (encodingSvc *SimplificationService) Reconstruct(instancePath, reconstructi
 				clausesCount := 0
 				fmt.Sscanf(line, "p cnf %d %d", &varCount, &clausesCount)
 
-				newClausesCount := clausesCount + len(removedClauses)
+				newClausesCount := clausesCount + len(clausesToPreserve)
 				newInstance += fmt.Sprintf("p cnf %d %d\n", varCount, newClausesCount)
 				continue
 			}
@@ -104,7 +146,7 @@ func (encodingSvc *SimplificationService) Reconstruct(instancePath, reconstructi
 			newInstance += line + "\n"
 		}
 
-		for _, clause := range removedClauses {
+		for _, clause := range clausesToPreserve {
 			clause_ := ""
 			for _, literal := range clause {
 				clause_ += strconv.Itoa(literal) + " "
