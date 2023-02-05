@@ -1,14 +1,14 @@
 package services
 
 import (
-	"benchmark/internal/solution"
+	"benchmark/internal/encoder"
 	"bufio"
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 
 	"github.com/bitfield/script"
+	"github.com/samber/mo"
 )
 
 func scanRSLine(line string) ([]int, int, error) {
@@ -43,105 +43,95 @@ func scanRSLine(line string) ([]int, int, error) {
 	return clause, witness, nil
 }
 
-func literalToVariable(literal int) int {
-	variable := int(math.Abs(float64(literal)))
-	return variable
-}
-
-func isLiteralInRanges(literal int, ranges []solution.Range) bool {
-	variable := literalToVariable(literal)
-	for _, range_ := range ranges {
-		if variable >= range_.Start && variable <= range_.End {
-			return true
-		}
+func (solutionSvc *SolutionService) Reconstruct(solutionPath string, reconstructionFilePath string, instancePath string) error {
+	info, err := solutionSvc.encoderSvc.ProcessInstanceName(instancePath)
+	if err != nil {
+		return err
 	}
+	info.Simplification = mo.None[encoder.SimplificationInfo]()
+	originalInstance := solutionSvc.encoderSvc.GetInstanceName(info)
 
-	return false
-}
-
-func countVariables(clauses [][]int) int {
-	count := 0
-	for _, clause := range clauses {
-		for _, literal := range clause {
-			variable := literalToVariable(literal)
-			if variable > count {
-				count = variable
-			}
-		}
-	}
-	return count
-}
-
-func (solutionSvc *SolutionService) Reconstruct(solutionPath string, reconstructionFilePath string, ranges []solution.Range) error {
-	reader := script.File(reconstructionFilePath).Reader
-	scanner := bufio.NewScanner(reader)
-	clauses := [][]int{}
-	for scanner.Scan() {
-		line := scanner.Text()
-		clause, witness, err := scanRSLine(line)
-		if err != nil {
-			return err
-		}
-
-		// Ignore variables that we're not interested in
-		if !isLiteralInRanges(witness, ranges) {
-			continue
-		}
-
-		clauses = append(clauses, clause)
-	}
-
+	// Get the RS literals
+	rsLiterals := make(map[int]interface{}, 0)
 	{
-		reader := script.File(solutionPath).Reader
+		reader := script.File(reconstructionFilePath).Reader
 		scanner := bufio.NewScanner(reader)
 		for scanner.Scan() {
 			line := scanner.Text()
-			if line == "SAT" {
+			_, witness, err := scanRSLine(line)
+			if err != nil {
+				return err
+			}
+			rsLiterals[witness] = nil
+		}
+	}
+
+	// Get the solution literals
+	solutionLiterals := []int{}
+	{
+		reader := script.File(solutionPath).Reader
+		scanner := bufio.NewScanner(reader)
+		scanner.Split(bufio.ScanWords)
+		for scanner.Scan() {
+			word := scanner.Text()
+			if word == "SAT" || word == "0" {
 				continue
 			}
 
-			literals := strings.Fields(line)
-			for _, literal := range literals {
-				literal_, err := strconv.Atoi(literal)
-				if err != nil {
-					return err
-				}
-				if literal_ == 0 {
-					continue
-				}
-
-				if isLiteralInRanges(literal_, ranges) {
-					continue
-				}
-
-				clauses = append(clauses, []int{literal_})
+			literal, err := strconv.Atoi(word)
+			if err != nil {
+				return err
 			}
+			solutionLiterals = append(solutionLiterals, literal)
 		}
 	}
 
-	numClauses := len(clauses)
-	numVariables := countVariables(clauses)
-	instance := fmt.Sprintf("p cnf %d %d\n", numVariables, numClauses)
-	for _, clause := range clauses {
-		for _, literal := range clause {
-			instance += fmt.Sprintf("%d ", literal)
+	// Pick the literals that are to be added to the original instance
+	literalsToAdd := []int{}
+	for _, solutionLiteral := range solutionLiterals {
+		if _, exists := rsLiterals[solutionLiteral]; exists {
+			continue
 		}
-		instance += "0 \n"
+
+		if _, exists := rsLiterals[-solutionLiteral]; exists {
+			continue
+		}
+
+		literalsToAdd = append(literalsToAdd, solutionLiteral)
 	}
 
-	_, err := script.Echo(instance).WriteFile("/tmp/test.cnf")
+	// Add the picked literals
+	reader := script.File(originalInstance).Reader
+	scanner := bufio.NewScanner(reader)
+	header := ""
+	newInstance := ""
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "c") {
+			continue
+		}
+
+		if strings.HasPrefix(line, "p cnf") {
+			header = line
+			continue
+		}
+
+		newInstance += line + "\n"
+	}
+
+	var numVars, numClauses int
+	_, err = fmt.Sscanf(header, "p cnf %d %d", &numVars, &numClauses)
 	if err != nil {
 		return err
 	}
-
-	_, err = script.File("/tmp/test.cnf").Exec("kissat -q").WriteFile(solutionPath)
-	if err != nil {
-		return err
+	newHeader := fmt.Sprintf("p cnf %d %d", numVars, numClauses+len(literalsToAdd))
+	newInstance = newHeader + "\n" + newInstance
+	for _, literal := range literalsToAdd {
+		newInstance += fmt.Sprintf("%d 0\n", literal)
 	}
 
-	if err := solutionSvc.Normalize(solutionPath); err != nil {
-		return err
-	}
-
-	return nil
+	// Use Kissat for solving the new instance
+	kissatCmd := fmt.Sprintf("%s -q", solutionSvc.configSvc.Config.Paths.Bin.Kissat)
+	_, err = script.Echo(newInstance).Exec(kissatCmd).Replace("v ", "").Replace("s SATISFIABLE", "SAT").WriteFile(solutionPath)
+	return err
 }
