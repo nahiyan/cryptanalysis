@@ -12,17 +12,16 @@ require (
 require github.com/iancoleman/strcase v0.2.0
 
 require (
+	github.com/bitfield/script v0.21.4
 	github.com/boltdb/bolt v1.3.1
 	github.com/dave/jennifer v1.6.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/samber/mo v1.7.0
 	github.com/sirupsen/logrus v1.9.0
-	gonum.org/v1/gonum v0.12.0
 )
 
 require (
 	bitbucket.org/creachadair/shell v0.0.7 // indirect
-	github.com/bitfield/script v0.21.4 // indirect
 	github.com/itchyny/gojq v0.12.7 // indirect
 	github.com/itchyny/timefmt-go v0.1.3 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
