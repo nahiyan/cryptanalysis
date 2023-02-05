@@ -4,7 +4,6 @@ import (
 	"benchmark/internal/pipeline"
 	"benchmark/internal/simplification"
 	"benchmark/internal/simplifier"
-	"benchmark/internal/solution"
 	"fmt"
 	"os/exec"
 	"strconv"
@@ -126,10 +125,10 @@ func (simplifierSvc *SimplifierService) TrackedCadicalInvoke(encoding, outputFil
 	clauses := cadicalOutput.Clauses
 	time := fmt.Sprintf("%.3f", processTime.Seconds())
 
-	err = simplifierSvc.simplificationSvc.Reconstruct(outputFilePath, outputFilePath+".rs.txt", []solution.Range{{Start: 1, End: 512}, {Start: 641, End: 768}})
-	if err != nil {
-		return err
-	}
+	// err = simplifierSvc.simplificationSvc.Reconstruct(outputFilePath, outputFilePath+".rs.txt", []solution.Range{{Start: 1, End: 512}, {Start: 641, End: 768}})
+	// if err != nil {
+	// 	return err
+	// }
 
 	logrus.Println("Simplifier:", conflicts, "conflicts", eliminations, "eliminated", freeVariables, "remaining", clauses, "clauses", time, encoding)
 
