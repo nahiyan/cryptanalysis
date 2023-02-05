@@ -1,8 +1,44 @@
 package services
 
 import (
+	"benchmark/internal/encoder"
 	"testing"
 )
+
+func TestGetInstanceName(t *testing.T) {
+	encoderSvc := EncoderService{}
+
+	{
+		info := encoder.InstanceInfo{
+			Encoder:      encoder.Transalg,
+			Steps:        35,
+			Function:     "md4",
+			TargetHash:   "ffffffffffffffffffffffffffffffff",
+			IsXorEnabled: true,
+		}
+		instance := encoderSvc.GetInstanceName(info)
+		expectation := "transalg_md4_35_ffffffffffffffffffffffffffffffff.cnf"
+		if instance != expectation {
+			t.Errorf("Expected %s but got %s instead", expectation, instance)
+		}
+	}
+
+	{
+		info := encoder.InstanceInfo{
+			Encoder:      encoder.SaeedE,
+			Steps:        35,
+			Function:     "md4",
+			TargetHash:   "ffffffffffffffffffffffffffffffff",
+			IsXorEnabled: true,
+			AdderType:    encoder.Espresso,
+		}
+		instance := encoderSvc.GetInstanceName(info)
+		expectation := "saeed_e_md4_35_ffffffffffffffffffffffffffffffff_espresso_xor.cnf"
+		if instance != expectation {
+			t.Errorf("Expected %s but got %s instead", expectation, instance)
+		}
+	}
+}
 
 func TestProcessInstanceName(t *testing.T) {
 	encoderSvc := EncoderService{}
