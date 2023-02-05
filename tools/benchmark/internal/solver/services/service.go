@@ -5,6 +5,7 @@ import (
 	"benchmark/internal/encoder"
 	errorModule "benchmark/internal/error"
 	"benchmark/internal/pipeline"
+	"benchmark/internal/simplifier"
 	"benchmark/internal/slurm"
 	solveslurmtask "benchmark/internal/solve_slurm_task"
 	"benchmark/internal/solver"
@@ -123,21 +124,28 @@ func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.So
 		info, err := solverSvc.encoderSvc.ProcessInstanceName(encoding)
 		solverSvc.errorSvc.Fatal(err, "Solver: failed to process instance name")
 
-		// needsReconstruction := false
+		needsReconstruction := false
 		needsRemapping := false
-		// {
-		// 	if simplificationInfo, exists := info.Simplification.Get(); exists {
-		// 		needsReconstruction = simplificationInfo.Simplifier == simplifier.Cadical
-		// 		needsRemapping = simplificationInfo.Simplifier == simplifier.Satelite
-		// 	}
-		// }
+		{
+			if simplificationInfo, exists := info.Simplification.Get(); exists {
+				needsReconstruction = simplificationInfo.Simplifier == simplifier.Cadical
+				needsRemapping = simplificationInfo.Simplifier == simplifier.Satelite
+			}
+		}
 
-		if needsRemapping {
+		if needsReconstruction {
+			info.Cubing = mo.None[encoder.CubingInfo]()
+			info.CubeIndex = mo.None[int]()
+			instance := path.Join(path.Dir(encoding), solverSvc.encoderSvc.GetInstanceName(info))
+			rsPath := instance + ".rs.txt"
+			solutionSvc.Reconstruct(solutionPath, rsPath, encoding)
+			solverSvc.errorSvc.Fatal(err, "Solver: failed to reconstruct solution")
+		} else if needsRemapping {
 			info.Cubing = mo.None[encoder.CubingInfo]()
 			info.CubeIndex = mo.None[int]()
 			instance := path.Join(path.Dir(encoding), "..", solverSvc.encoderSvc.GetInstanceName(info))
 			varMapPath := instance + ".var_map.txt"
-			err := solutionSvc.RemapAndVerify(solutionPath, varMapPath)
+			err := solutionSvc.Remap(solutionPath, varMapPath)
 			solverSvc.errorSvc.Fatal(err, "Solver: failed to remap variables in the solution")
 		}
 
