@@ -12,7 +12,7 @@ import (
 	services14 "benchmark/internal/encoding/services"
 	services2 "benchmark/internal/error/services"
 	services3 "benchmark/internal/filesystem/services"
-	services19 "benchmark/internal/log/services"
+	services23 "benchmark/internal/log/services"
 	services11 "benchmark/internal/marshalling/services"
 	services22 "benchmark/internal/md4/services"
 	services4 "benchmark/internal/pipeline/services"
@@ -24,6 +24,7 @@ import (
 	services8 "benchmark/internal/solution/services"
 	services15 "benchmark/internal/solve_slurm_task/services"
 	services6 "benchmark/internal/solver/services"
+	services19 "benchmark/internal/summarizer/services"
 	do "github.com/samber/do"
 )
 
@@ -48,9 +49,10 @@ func New() *do.Injector {
 	do.Provide(injector, services16.NewCubeSlurmTaskService)
 	do.Provide(injector, services17.NewCubeSelectorService)
 	do.Provide(injector, services18.NewCommandService)
-	do.Provide(injector, services19.NewLogService)
+	do.Provide(injector, services19.NewSummarizerService)
 	do.Provide(injector, services20.NewSimplifierService)
 	do.Provide(injector, services21.NewSimplificationService)
 	do.Provide(injector, services22.NewMd4Service)
+	do.Provide(injector, services23.NewLogService)
 	return injector
 }

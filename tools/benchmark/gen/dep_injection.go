@@ -157,9 +157,10 @@ func main() {
 			HasProperties:   true,
 			HasInitFunction: true,
 		},
+		// TODO: Rename to encode
 		{
 			Name:         "encoder",
-			Dependencies: []string{"config", "filesystem", "error", "command"},
+			Dependencies: []string{"config", "filesystem", "error", "command", "random"},
 		},
 		{
 			Name: "error",
@@ -177,9 +178,10 @@ func main() {
 			Dependencies:  []string{"pipeline"},
 			HasProperties: true,
 		},
+		// TODO: Rename to solve
 		{
 			Name:         "solver",
-			Dependencies: []string{"config", "filesystem", "error", "solution", "slurm", "solve_slurm_task", "cube_selector", "encoder"},
+			Dependencies: []string{"config", "filesystem", "error", "solution", "slurm", "solve_slurm_task", "cube_selector", "encoder", "log"},
 		},
 		{
 			Name:            "database",
@@ -204,11 +206,13 @@ func main() {
 			Dependencies: []string{"error"},
 			Type:         Service,
 		},
+		// TODO: Rename to marshall
 		{
 			Name:         "marshalling",
 			Dependencies: []string{"error"},
 			Type:         Service,
 		},
+		// TODO: Rename to cube
 		{
 			Name:         "cuber",
 			Dependencies: []string{"error", "database", "filesystem", "config", "cubeset", "encoding", "cube_slurm_task", "slurm", "command", "encoder"},
@@ -226,6 +230,7 @@ func main() {
 			Dependencies: []string{"error", "filesystem"},
 			Type:         Service,
 		},
+		// TODO: Remove
 		{
 			Name:            "solve_slurm_task",
 			Dependencies:    []string{"error", "database", "marshalling", "filesystem"},
@@ -233,6 +238,7 @@ func main() {
 			HasProperties:   true,
 			HasInitFunction: true,
 		},
+		// TODO: Remove
 		{
 			Name:            "cube_slurm_task",
 			Dependencies:    []string{"error", "database", "marshalling"},
@@ -240,6 +246,7 @@ func main() {
 			HasProperties:   true,
 			HasInitFunction: true,
 		},
+		// TODO: Rename to cube_select
 		{
 			Name:         "cube_selector",
 			Dependencies: []string{"error", "filesystem"},
@@ -250,11 +257,13 @@ func main() {
 			Dependencies: []string{},
 			Type:         Service,
 		},
+		// TODO: Rename to summarize
 		{
-			Name:         "log",
+			Name:         "summarizer",
 			Dependencies: []string{"error", "solution", "cubeset", "simplification", "encoder"},
 			Type:         Service,
 		},
+		// TODO: Rename to simplify
 		{
 			Name:         "simplifier",
 			Dependencies: []string{"error", "config", "filesystem", "simplification", "cube_selector"},
@@ -271,6 +280,13 @@ func main() {
 			Name:         "md4",
 			Dependencies: []string{"error", "config"},
 			Type:         Service,
+		},
+		{
+			Name:            "log",
+			Dependencies:    []string{"error", "config", "filesystem"},
+			Type:            Service,
+			HasInitFunction: true,
+			HasProperties:   true,
 		},
 	}
 
