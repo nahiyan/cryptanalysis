@@ -30,7 +30,6 @@ type Encoding struct {
 	Hashes        []string
 	Steps         []int
 	Solvers       []Solver
-	OutputDir     string
 }
 type Solving struct {
 	Solvers   []solver.Solver
