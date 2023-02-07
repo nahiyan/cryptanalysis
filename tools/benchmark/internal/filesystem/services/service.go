@@ -67,6 +67,17 @@ func (filesystemSvc *FilesystemService) FileExists(filePath string) bool {
 	return true
 }
 
+func (filesystemSvc *FilesystemService) FileExistsNonEmpty(filePath string) bool {
+	info, err := os.Stat(filePath)
+	if errors.Is(err, os.ErrNotExist) {
+		return false
+	}
+
+	fmt.Println(info.Size())
+
+	return info.Size() != 0
+}
+
 func (filesystemSvc *FilesystemService) WriteFromPipe(pipe io.Reader, filePath string) error {
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
@@ -82,6 +93,7 @@ func (filesystemSvc *FilesystemService) WriteFromPipe(pipe io.Reader, filePath s
 	return nil
 }
 
+// TODO: Move this to the log module
 func (filesystemSvc *FilesystemService) LogInfo(messages ...string) {
 	filesystemSvc.Log(consts.Info, messages...)
 }
@@ -132,13 +144,26 @@ func (filesystemSvc *FilesystemService) Checksum(filePath string) (string, error
 	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
 
-func (filesystemSvc *FilesystemService) PrepareTempDir() error {
-	if !filesystemSvc.FileExists("tmp") {
-		err := os.Mkdir("tmp", os.ModePerm)
-		if err != nil {
+func (filesystemSvc *FilesystemService) PrepareDir(name string) error {
+	if filesystemSvc.FileExists(name) {
+		return nil
+	}
+
+	err := os.Mkdir(name, os.ModePerm)
+	return err
+}
+
+func (filesystemSvc *FilesystemService) PrepareDirs(names []string) error {
+	for _, name := range names {
+		if err := filesystemSvc.PrepareDir(name); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (filesystemSvc *FilesystemService) PrepareTempDir() error {
+	err := filesystemSvc.PrepareDir("tmp")
+	return err
 }
