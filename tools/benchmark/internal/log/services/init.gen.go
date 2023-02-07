@@ -1,28 +1,24 @@
 package services
 
 import (
-	services2 "benchmark/internal/cubeset/services"
-	services4 "benchmark/internal/encoder/services"
+	services1 "benchmark/internal/config/services"
 	services "benchmark/internal/error/services"
-	services3 "benchmark/internal/simplification/services"
-	services1 "benchmark/internal/solution/services"
+	services2 "benchmark/internal/filesystem/services"
 	do "github.com/samber/do"
 )
 
 type LogService struct {
-	errorSvc          *services.ErrorService
-	solutionSvc       *services1.SolutionService
-	cubesetSvc        *services2.CubesetService
-	simplificationSvc *services3.SimplificationService
-	encoderSvc        *services4.EncoderService
+	errorSvc      *services.ErrorService
+	configSvc     *services1.ConfigService
+	filesystemSvc *services2.FilesystemService
+	Properties
 }
 
 func NewLogService(injector *do.Injector) (*LogService, error) {
 	errorSvc := do.MustInvoke[*services.ErrorService](injector)
-	solutionSvc := do.MustInvoke[*services1.SolutionService](injector)
-	cubesetSvc := do.MustInvoke[*services2.CubesetService](injector)
-	simplificationSvc := do.MustInvoke[*services3.SimplificationService](injector)
-	encoderSvc := do.MustInvoke[*services4.EncoderService](injector)
-	svc := &LogService{errorSvc: errorSvc, solutionSvc: solutionSvc, cubesetSvc: cubesetSvc, simplificationSvc: simplificationSvc, encoderSvc: encoderSvc}
+	configSvc := do.MustInvoke[*services1.ConfigService](injector)
+	filesystemSvc := do.MustInvoke[*services2.FilesystemService](injector)
+	svc := &LogService{errorSvc: errorSvc, configSvc: configSvc, filesystemSvc: filesystemSvc}
+	svc.Init()
 	return svc, nil
 }

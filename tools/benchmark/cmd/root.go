@@ -17,7 +17,7 @@ func init() {
 	// Commands
 	rootCmd.AddCommand(initRunCmd())
 	rootCmd.AddCommand(initSlurmTaskCmd())
-	rootCmd.AddCommand(initlogCmd())
+	rootCmd.AddCommand(initSummarizeCmd())
 	rootCmd.AddCommand(initClearCmd())
 }
 
