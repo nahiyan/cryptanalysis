@@ -6,6 +6,7 @@ import (
 	services7 "benchmark/internal/encoder/services"
 	services2 "benchmark/internal/error/services"
 	services1 "benchmark/internal/filesystem/services"
+	services8 "benchmark/internal/log/services"
 	services4 "benchmark/internal/slurm/services"
 	services3 "benchmark/internal/solution/services"
 	services5 "benchmark/internal/solve_slurm_task/services"
@@ -21,6 +22,7 @@ type SolverService struct {
 	solveSlurmTaskSvc *services5.SolveSlurmTaskService
 	cubeSelectorSvc   *services6.CubeSelectorService
 	encoderSvc        *services7.EncoderService
+	logSvc            *services8.LogService
 }
 
 func NewSolverService(injector *do.Injector) (*SolverService, error) {
@@ -32,6 +34,7 @@ func NewSolverService(injector *do.Injector) (*SolverService, error) {
 	solveSlurmTaskSvc := do.MustInvoke[*services5.SolveSlurmTaskService](injector)
 	cubeSelectorSvc := do.MustInvoke[*services6.CubeSelectorService](injector)
 	encoderSvc := do.MustInvoke[*services7.EncoderService](injector)
-	svc := &SolverService{configSvc: configSvc, filesystemSvc: filesystemSvc, errorSvc: errorSvc, solutionSvc: solutionSvc, slurmSvc: slurmSvc, solveSlurmTaskSvc: solveSlurmTaskSvc, cubeSelectorSvc: cubeSelectorSvc, encoderSvc: encoderSvc}
+	logSvc := do.MustInvoke[*services8.LogService](injector)
+	svc := &SolverService{configSvc: configSvc, filesystemSvc: filesystemSvc, errorSvc: errorSvc, solutionSvc: solutionSvc, slurmSvc: slurmSvc, solveSlurmTaskSvc: solveSlurmTaskSvc, cubeSelectorSvc: cubeSelectorSvc, encoderSvc: encoderSvc, logSvc: logSvc}
 	return svc, nil
 }
