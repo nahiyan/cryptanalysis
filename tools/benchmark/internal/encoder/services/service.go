@@ -1,7 +1,6 @@
 package services
 
 import (
-	"benchmark/internal/consts"
 	"benchmark/internal/encoder"
 	"benchmark/internal/pipeline"
 	"benchmark/internal/simplifier"
@@ -23,23 +22,27 @@ func (encoderSvc *EncoderService) GetInstanceName(info encoder.InstanceInfo) str
 	adderType := info.AdderType
 	targetHash := info.TargetHash
 
-	instanceName := fmt.Sprintf("%s_%s_%d_%s_%s",
+	instanceName := fmt.Sprintf("%s_%s_%d_%s",
 		encoder,
 		function,
 		steps,
-		adderType,
 		targetHash)
 	if dobbertinInfo, enabled := info.Dobbertin.Get(); enabled {
 		instanceName += fmt.Sprintf("_dobbertin%d", dobbertinInfo.Bits)
 	}
-	if info.IsXorEnabled {
-		instanceName += "_xor"
+	// TODO: Use constant for the encoder
+	if encoder == "saeed_e" {
+		instanceName += "_" + string(adderType)
+
+		if info.IsXorEnabled {
+			instanceName += "_xor"
+		}
 	}
 	instanceName += ".cnf"
 
 	if simplificationInfo, exists := info.Simplification.Get(); exists {
 		instanceName += "." + simplificationInfo.Simplifier
-		if simplificationInfo.Simplifier == consts.Cadical {
+		if simplificationInfo.Simplifier == simplifier.Cadical {
 			instanceName += fmt.Sprintf("_c%d.cnf", simplificationInfo.Conflicts)
 		}
 	}
@@ -234,6 +237,9 @@ func (encoderSvc *EncoderService) OutputToFile(cmd *exec.Cmd, filePath string) {
 }
 
 func (encoderSvc *EncoderService) Run(parameters pipeline.Encoding) []pipeline.EncodingPromise {
+	err := encoderSvc.filesystemSvc.PrepareDir(encoderSvc.configSvc.Config.Paths.Encodings)
+	encoderSvc.errorSvc.Fatal(err, "Encoder: failed to prepare directory for storing the encodings")
+
 	switch parameters.Encoder {
 	case encoder.SaeedE:
 		promises := encoderSvc.InvokeSaeedE(parameters)

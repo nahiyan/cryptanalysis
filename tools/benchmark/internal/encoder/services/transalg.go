@@ -133,6 +133,7 @@ func (encoderSvc *EncoderService) GenerateTransalgCode(instanceInfo encoder.Inst
 	return code, nil
 }
 
+// TODO: Reduce shared redundant code with SaeedE invokation
 func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.Encoding) []pipeline.EncodingPromise {
 	err := encoderSvc.filesystemSvc.PrepareTempDir()
 	encoderSvc.errorSvc.Fatal(err, "Encoder: failed to create tmp dir")
@@ -144,10 +145,11 @@ func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.Encoding) [
 		var dobbertinConstant uint32 = math.MaxUint32
 		transalgCode, err := encoderSvc.GenerateTransalgCode(instanceInfo, dobbertinConstant)
 		encoderSvc.errorSvc.Fatal(err, "Encoder: failed to generate Transalg code")
-		os.WriteFile("./tmp/transalg.alg", []byte(transalgCode), 0644)
+		transalgFileName := fmt.Sprintf("%s.alg", encoderSvc.randomSvc.RandString(16))
+		os.WriteFile(transalgFileName, []byte(transalgCode), 0644)
 
 		instanceName := encoderSvc.GetInstanceName(instanceInfo)
-		encodingFilePath := path.Join(parameters.OutputDir, instanceName)
+		encodingFilePath := path.Join(encoderSvc.configSvc.Config.Paths.Encodings, instanceName)
 		encodings = append(encodings, encodingFilePath)
 
 		// Skip if encoding already exists
@@ -157,7 +159,7 @@ func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.Encoding) [
 		}
 
 		// * Drive the encoder
-		command := fmt.Sprintf("%s -i ./tmp/transalg.alg -o %s", encoderSvc.configSvc.Config.Paths.Bin.Transalg, encodingFilePath)
+		command := fmt.Sprintf("%s -i %s -o %s", transalgFileName, encoderSvc.configSvc.Config.Paths.Bin.Transalg, encodingFilePath)
 		err = encoderSvc.commandSvc.Create(command).Run()
 		encoderSvc.errorSvc.Fatal(err, "Encoder: failed to run Transalg for "+instanceName)
 

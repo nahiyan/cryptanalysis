@@ -25,7 +25,7 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []p
 	// * Loop through the variations
 	encoderSvc.LoopThroughVariation(parameters, func(instanceInfo encoder.InstanceInfo) {
 		instanceName := encoderSvc.GetInstanceName(instanceInfo)
-		encodingFilePath := path.Join(parameters.OutputDir, instanceName)
+		encodingFilePath := path.Join(config.Paths.Encodings, instanceName)
 		encodings = append(encodings, encodingFilePath)
 
 		// Skip if encoding already exists
