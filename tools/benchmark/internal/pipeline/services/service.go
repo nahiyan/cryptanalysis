@@ -1,7 +1,6 @@
 package services
 
 import (
-	"benchmark/internal/consts"
 	"benchmark/internal/encoder"
 	"benchmark/internal/pipeline"
 	"benchmark/internal/solver"
@@ -108,7 +107,7 @@ func (pipelineSvc *PipelineService) TestRun(pipes []pipeline.Pipe) {
 	}
 
 	solveParameters := pipeline.Solving{
-		Solvers: []solver.Solver{consts.Kissat, consts.MapleSat},
+		Solvers: []solver.Solver{solver.Kissat, solver.MapleSat},
 		Timeout: 5,
 		Workers: 16,
 	}
