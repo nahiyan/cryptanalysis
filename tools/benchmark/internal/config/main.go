@@ -18,7 +18,11 @@ type Config struct {
 			Transalg         string
 		}
 
-		Database string
+		Database  string
+		Encodings string
+		Logs      string
+		Solutions string
+		Cubesets  string
 	}
 
 	Slurm struct {

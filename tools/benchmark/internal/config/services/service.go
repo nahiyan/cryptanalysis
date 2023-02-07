@@ -36,6 +36,12 @@ func (configSvc *ConfigService) Process() {
 	// Database
 	viper.SetDefault("Paths.Database", "database.db")
 
+	// Output
+	viper.SetDefault("Paths.Logs", "logs")
+	viper.SetDefault("Paths.Solutions", "solutions")
+	viper.SetDefault("Paths.Encodings", "encodings")
+	viper.SetDefault("Paths.Cubesets", "cubesets")
+
 	// Slurm
 	viper.SetDefault("Slurm.MaxJobs", 1000)
 	viper.SetDefault("Slurm.ExtraTime", 1.1)
