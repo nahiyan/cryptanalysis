@@ -4,7 +4,6 @@ import (
 	"benchmark/internal/command"
 	cubeslurmtask "benchmark/internal/cube_slurm_task"
 	"benchmark/internal/cuber"
-	"benchmark/internal/cubeset"
 	"benchmark/internal/encoder"
 	"benchmark/internal/pipeline"
 	"benchmark/internal/slurm"
@@ -16,7 +15,6 @@ import (
 	"os/exec"
 	"path"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/alitto/pond"
@@ -38,91 +36,99 @@ type InvokeControl struct {
 	ShouldStop   map[string]bool
 }
 
+func (cuberSvc *CuberService) getLogFilePath(cubeFilePath string) string {
+	logFileName := path.Base(cubeFilePath[:len(cubeFilePath)-5] + "log")
+	logFilePath := path.Join(cuberSvc.configSvc.Config.Paths.Logs, logFileName)
+	return logFilePath
+}
+
 func (cuberSvc *CuberService) CubesFilePath(encoding string, threshold int) string {
-	encodingDir, instanceName := path.Split(encoding)
-	info, err := cuberSvc.encoderSvc.ProcessInstanceName(instanceName)
+	info, err := cuberSvc.encoderSvc.ProcessInstanceName(path.Base(encoding))
 	cuberSvc.errorSvc.Fatal(err, "Cuber: failed to process encoding")
 	info.Cubing = mo.Some(encoder.CubingInfo{
 		Threshold: threshold,
 	})
 	newInstanceName := cuberSvc.encoderSvc.GetInstanceName(info)
-
-	cubesFilePath := path.Join(encodingDir, newInstanceName)
+	cubesFilePath := path.Join(cuberSvc.configSvc.Config.Paths.Cubesets, newInstanceName)
 	return cubesFilePath
 }
 
 func (cuberSvc *CuberService) ShouldSkip(encoding string, threshold int) bool {
-	filesystemSvc := cuberSvc.filesystemSvc
 	cubesFilePath := cuberSvc.CubesFilePath(encoding, threshold)
+	logFilePath := cuberSvc.getLogFilePath(cubesFilePath)
 
-	return filesystemSvc.FileExists(cubesFilePath)
-}
-
-func (cuberSvc *CuberService) ReadMarchOutput(output string) (int, int, error) {
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		if !strings.HasPrefix(line, "c number of cubes") {
-			continue
-		}
-
-		var cubes, refutedLeaves int
-		_, err := fmt.Sscanf(line, "c number of cubes %d, including %d refuted leaves", &cubes, &refutedLeaves)
-		if err != nil {
-			return 0, 0, err
-		}
-
-		return cubes, refutedLeaves, nil
+	if exists := cuberSvc.filesystemSvc.FileExistsNonEmpty(cubesFilePath); !exists {
+		return false
 	}
 
-	return 0, 0, nil
+	_, _, _, err := cuberSvc.ParseOutput(logFilePath)
+	return err == nil
 }
+
+// func (cuberSvc *CuberService) ReadMarchOutput(output string) (int, int, error) {
+// 	lines := strings.Split(output, "\n")
+// 	for _, line := range lines {
+// 		if !strings.HasPrefix(line, "c number of cubes") {
+// 			continue
+// 		}
+
+// 		var cubes, refutedLeaves int
+// 		_, err := fmt.Sscanf(line, "c number of cubes %d, including %d refuted leaves", &cubes, &refutedLeaves)
+// 		if err != nil {
+// 			return 0, 0, err
+// 		}
+
+// 		return cubes, refutedLeaves, nil
+// 	}
+
+// 	return 0, 0, nil
+// }
 
 func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control InvokeControl) error {
 	if shouldStop_, exists := control.ShouldStop[parameters.Encoding]; exists && shouldStop_ {
-		// logrus.Println("Cuber: read stop signal", parameters.Threshold, parameters.Encoding)
 		return nil
 	}
 
-	cubesetSvc := cuberSvc.cubesetSvc
-	output, runtime, err := cuberSvc.Invoke(parameters, control)
+	cubesFilePath, logFilePath, err := cuberSvc.Invoke(parameters, control)
 	if err != nil {
 		return err
 	}
 
-	cubes, refutedLeaves, err := cuberSvc.ReadMarchOutput(output)
+	processTime, numCubes, numRefutedLeaves, err := cuberSvc.ParseOutput(logFilePath)
 	if err != nil {
 		return err
 	}
 
-	logrus.Println("Cuber:", parameters.Threshold, cubes, "cubes", refutedLeaves, "refuted leaves", runtime, parameters.Encoding)
+	// instanceName := strings.TrimSuffix(parameters.Encoding, ".cnf")
+	// cubesFilePath := cuberSvc.CubesFilePath(parameters.Encoding, parameters.Threshold)
+	// err = cubesetSvc.Register(cubesFilePath, cubeset.CubeSet{
+	// 	Threshold:     parameters.Threshold,
+	// 	InstanceName:  instanceName,
+	// 	Cubes:         cubes,
+	// 	RefutedLeaves: refutedLeaves,
+	// 	Runtime:       runtime,
+	// })
+	// if err != nil {
+	// 	return err
+	// }
 
-	instanceName := strings.TrimSuffix(parameters.Encoding, ".cnf")
-	cubesFilePath := cuberSvc.CubesFilePath(parameters.Encoding, parameters.Threshold)
-	err = cubesetSvc.Register(cubesFilePath, cubeset.CubeSet{
-		Threshold:     parameters.Threshold,
-		InstanceName:  instanceName,
-		Cubes:         cubes,
-		RefutedLeaves: refutedLeaves,
-		Runtime:       runtime,
-	})
-	if err != nil {
-		return err
-	}
+	maxCubesExceeded := parameters.MaxCubes > 0 && numCubes > parameters.MaxCubes
+	minRefutedLeavesViolated := parameters.MinRefutedLeaves > 0 && numRefutedLeaves < parameters.MinRefutedLeaves
+	hasViolated := maxCubesExceeded || minRefutedLeavesViolated
 
-	maxCubesExceeded := parameters.MaxCubes > 0 && cubes > parameters.MaxCubes
-	minRefutedLeavesViolated := parameters.MinRefutedLeaves > 0 && refutedLeaves < parameters.MinRefutedLeaves
+	cuberSvc.logSvc.CubeResult(cubesFilePath, processTime, numCubes, numRefutedLeaves, hasViolated)
 
 	if maxCubesExceeded {
 		control.ShouldStop[parameters.Encoding] = true
 		cuberSvc.commandSvc.StopGroup(control.CommandGroup)
-		logrus.Println("Cuber: Written stop signal", parameters.Threshold, parameters.Encoding)
+		// logrus.Println("Cuber: Written stop signal", parameters.Threshold, parameters.Encoding)
 	}
 
-	if maxCubesExceeded || minRefutedLeavesViolated {
+	if hasViolated {
 		if err := os.Remove(cubesFilePath); err != nil {
 			return err
 		}
-		logrus.Println("Cuber: removed", cubesFilePath)
+		// logrus.Println("Cuber: removed", cubesFilePath)
 		return cuber.ErrCubesetViolatedConstraints
 	}
 
@@ -131,7 +137,7 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 	return nil
 }
 
-func (cuberSvc *CuberService) Invoke(parameters InvokeParameters, control InvokeControl) (string, time.Duration, error) {
+func (cuberSvc *CuberService) Invoke(parameters InvokeParameters, control InvokeControl) (string, string, error) {
 	config := cuberSvc.configSvc.Config
 
 	ctx, cancel := context.WithTimeout(context.Background(), parameters.Timeout)
@@ -141,15 +147,20 @@ func (cuberSvc *CuberService) Invoke(parameters InvokeParameters, control Invoke
 	cmd := exec.CommandContext(ctx, config.Paths.Bin.March, parameters.Encoding, "-o", cubesFilePath, "-n", strconv.Itoa(parameters.Threshold))
 	cuberSvc.commandSvc.AddToGroup(control.CommandGroup, cmd)
 
-	startTime := time.Now()
-	output_, err := cmd.Output()
+	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		return "", time.Duration(0), err
+		return "", "", err
 	}
-	runtime := time.Since(startTime)
+	if err := cmd.Start(); err != nil {
+		return "", "", err
+	}
+	logFilePath := cuberSvc.getLogFilePath(cubesFilePath)
+	cuberSvc.filesystemSvc.WriteFromPipe(stdoutPipe, logFilePath)
+	if err := cmd.Wait(); err != nil {
+		return "", "", err
+	}
 
-	output := string(output_)
-	return output, runtime, err
+	return cubesFilePath, logFilePath, err
 }
 
 func (cuberSvc *CuberService) Loop(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Cubing, handler func(encoding string, threshold int, timeout int)) {
@@ -182,6 +193,9 @@ func (cuberSvc *CuberService) Loop(encodingPromises []pipeline.EncodingPromise, 
 }
 
 func (cuberSvc *CuberService) RunRegular(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Cubing) []string {
+	err := cuberSvc.filesystemSvc.PrepareDirs([]string{"cubesets", "encodings", "logs"})
+	cuberSvc.errorSvc.Fatal(err, "Cuber: failed to prepare the required dirs")
+
 	cubesFilePaths := []string{}
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 	shouldStop := map[string]bool{}
@@ -228,6 +242,7 @@ func (cuberSvc *CuberService) RunRegular(encodingPromises []pipeline.EncodingPro
 	return cubesFilePaths
 }
 
+// TODO: Remove this
 func (cuberSvc *CuberService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutput, parameters pipeline.Cubing) pipeline.SlurmPipeOutput {
 	errorSvc := cuberSvc.errorSvc
 	slurmSvc := cuberSvc.slurmSvc
