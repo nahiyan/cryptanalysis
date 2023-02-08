@@ -215,7 +215,7 @@ func main() {
 		// TODO: Rename to cube
 		{
 			Name:         "cuber",
-			Dependencies: []string{"error", "database", "filesystem", "config", "cubeset", "encoding", "cube_slurm_task", "slurm", "command", "encoder"},
+			Dependencies: []string{"error", "database", "filesystem", "config", "cubeset", "encoding", "cube_slurm_task", "slurm", "command", "encoder", "log"},
 			Type:         Service,
 		},
 		{
@@ -266,7 +266,7 @@ func main() {
 		// TODO: Rename to simplify
 		{
 			Name:         "simplifier",
-			Dependencies: []string{"error", "config", "filesystem", "simplification", "cube_selector"},
+			Dependencies: []string{"error", "config", "filesystem", "simplification", "cube_selector", "log"},
 			Type:         Service,
 		},
 		{
