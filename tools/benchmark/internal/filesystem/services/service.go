@@ -73,8 +73,6 @@ func (filesystemSvc *FilesystemService) FileExistsNonEmpty(filePath string) bool
 		return false
 	}
 
-	fmt.Println(info.Size())
-
 	return info.Size() != 0
 }
 
