@@ -2,33 +2,17 @@ package services
 
 import (
 	"benchmark/internal/pipeline"
-	"benchmark/internal/simplification"
 	"benchmark/internal/simplifier"
 	"fmt"
+	"os"
 	"os/exec"
+	"path"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/alitto/pond"
 	"github.com/samber/lo"
-	"github.com/sirupsen/logrus"
 )
-
-type CadicalOutput struct {
-	FreeVariables int
-	Clauses       int
-	Eliminations  int
-	ProcessTime   time.Duration
-}
-
-type SateliteOutput struct {
-	FreeVariables int
-	Clauses       int
-	ProcessTime   time.Duration
-}
-
-type Simplifier string
 
 type EncodingPromise struct {
 	Encoding string
@@ -42,216 +26,92 @@ func (promise EncodingPromise) Get(dependencies map[string]interface{}) string {
 	return promise.Encoding
 }
 
-func (simplifierSvc *SimplifierService) ReadCadicalOutput(output string) CadicalOutput {
-	summaryIndex := strings.Index(output, "c ?")
-	if summaryIndex == -1 {
-		return CadicalOutput{}
-	}
-	summary := output[summaryIndex:]
+func (simplifierSvc *SimplifierService) getLogPath(instancePath string) string {
+	logFileName := path.Base(instancePath[:len(instancePath)-3] + "log")
+	logFilePath := path.Join(simplifierSvc.configSvc.Config.Paths.Logs, logFileName)
 
-	eliminations := 0
-	eliminatedIndex := strings.Index(summary, "c eliminated")
-	if eliminatedIndex == -1 {
-		return CadicalOutput{}
-	}
-	fmt.Sscanf(summary[eliminatedIndex:], "c eliminated: %d", &eliminations)
-
-	freeVariables := 0
-	if index := strings.Index(summary, "c ?"); index != -1 {
-		segments := strings.Fields(summary[index:])
-		freeVariables, _ = strconv.Atoi(segments[12])
-	}
-
-	var processTime time.Duration
-	if index := strings.Index(summary, "c total process time since initialization:"); index != -1 {
-		seconds := 0.0
-		fmt.Sscanf(summary[index:], "c total process time since initialization: %f", &seconds)
-		processTime = time.Duration(seconds*1000) * time.Millisecond
-	}
-
-	clauses := 0
-	variables := 0
-	if index := strings.Index(summary, "c writing 'p cnf"); index != -1 {
-		fmt.Sscanf(summary[index:], "c writing 'p cnf %d %d' header", &variables, &clauses)
-	}
-
-	return CadicalOutput{
-		FreeVariables: freeVariables,
-		Eliminations:  eliminations,
-		ProcessTime:   processTime,
-		Clauses:       clauses,
-	}
+	return logFilePath
 }
 
-func (simplifierSvc *SimplifierService) ReadSateliteOutput(output string) SateliteOutput {
-	result := SateliteOutput{}
-
-	cpuTimeIndex := strings.Index(output, "CPU time:")
-	if cpuTimeIndex != -1 {
-		processTime := 0.0
-		x := ""
-		fmt.Sscanf(output[cpuTimeIndex:], "CPU time%s%f s", &x, &processTime)
-		processTime *= 1000
-		result.ProcessTime = time.Duration(processTime) * time.Millisecond
-	}
-
-	resultIndex := strings.Index(output, "Result")
-	if resultIndex != -1 {
-		x := ""
-		fmt.Sscanf(output[resultIndex:], "Result%s#vars: %d #clauses: %d", &x, &result.FreeVariables, &result.Clauses)
-	}
-
-	return result
-}
-
-func (simplifierSvc *SimplifierService) TrackedCadicalInvoke(encoding, outputFilePath string, conflicts int, parameters pipeline.Simplifying) error {
+// TODO: Finalize the code
+func (simplifierSvc *SimplifierService) TrackedInvoke(simplifier_ simplifier.Simplifier, encoding, outputFilePath string, conflicts int, parameters pipeline.Simplifying) error {
 	config := simplifierSvc.configSvc.Config
-	args := []string{encoding, "-o", outputFilePath, "-e", outputFilePath + ".rs.txt"}
-	args = append(args, "-c", fmt.Sprintf("%d", conflicts))
-	if parameters.Timeout > 0 {
-		args = append(args, "-t", fmt.Sprintf("%d", parameters.Timeout))
+
+	var simplifierBinPath string
+	args := []string{encoding}
+	if simplifier_ == simplifier.Cadical {
+		simplifierBinPath = config.Paths.Bin.Cadical
+		args = append(args, "-o", outputFilePath, "-e", outputFilePath+".rs.txt", "-c", strconv.Itoa(conflicts))
+	} else {
+		simplifierBinPath = config.Paths.Bin.Satelite
+		args = append(args, outputFilePath, outputFilePath+".var_map.txt", "+pre")
 	}
 
-	cmd := exec.Command(config.Paths.Bin.Cadical, args...)
-	output_, err := cmd.Output()
+	cmd := exec.Command(simplifierBinPath, args...)
+	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
 	}
-
-	cadicalOutput := simplifierSvc.ReadCadicalOutput(string(output_))
-	eliminations := cadicalOutput.Eliminations
-	freeVariables := cadicalOutput.FreeVariables
-	processTime := cadicalOutput.ProcessTime
-	clauses := cadicalOutput.Clauses
-	time := fmt.Sprintf("%.3f", processTime.Seconds())
-
-	// err = simplifierSvc.simplificationSvc.Reconstruct(outputFilePath, outputFilePath+".rs.txt", []solution.Range{{Start: 1, End: 512}, {Start: 641, End: 768}})
-	// if err != nil {
-	// 	return err
-	// }
-
-	logrus.Println("Simplifier:", conflicts, "conflicts", eliminations, "eliminated", freeVariables, "remaining", clauses, "clauses", time, encoding)
-
-	err = simplifierSvc.simplificationSvc.Register(outputFilePath, simplification.Simplification{
-		FreeVariables: freeVariables,
-		Simplifier:    simplifier.Cadical,
-		ProcessTime:   processTime,
-		Eliminaton:    eliminations,
-		Conflicts:     conflicts,
-		Clauses:       clauses,
-		InstanceName:  encoding,
-	})
-	if err != nil {
+	if err := cmd.Start(); err != nil {
 		return err
 	}
+	logFilePath := simplifierSvc.getLogPath(outputFilePath)
+	simplifierSvc.filesystemSvc.WriteFromPipe(stdoutPipe, logFilePath)
+	cmd.Wait()
+
+	// TODO: Add more details
+	simplifierSvc.logSvc.Info("Simplifier: " + encoding)
 
 	return nil
 }
 
-func (simplifierSvc *SimplifierService) TrackedSateliteInvoke(encoding, outputFilePath string, parameters pipeline.Simplifying) error {
-	config := simplifierSvc.configSvc.Config
-	args := []string{encoding, outputFilePath, outputFilePath + ".var_map.txt", "+pre"}
-
-	cmd := exec.Command(config.Paths.Bin.Satelite, args...)
-	output_, err := cmd.Output()
-	if err != nil {
-		return err
-	}
-
-	output := simplifierSvc.ReadSateliteOutput(string(output_))
-
-	freeVariables := output.FreeVariables
-	processTime := output.ProcessTime
-	clauses := output.Clauses
-	time := fmt.Sprintf("%.3f", processTime.Seconds())
-
-	logrus.Println("Simplifier:", freeVariables, "remaining", clauses, "clauses", time, encoding)
-
-	err = simplifierSvc.simplificationSvc.Register(outputFilePath, simplification.Simplification{
-		FreeVariables: freeVariables,
-		Simplifier:    simplifier.Satelite,
-		ProcessTime:   processTime,
-		Clauses:       clauses,
-		InstanceName:  encoding,
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (simplifierSvc *SimplifierService) ShouldSkip(instancePath string, simplifier_ simplifier.Simplifier) bool {
+	logFilePath := simplifierSvc.getLogPath(instancePath)
+	_, err := simplifierSvc.ParseOutput(logFilePath, simplifier_)
+	return err == nil
 }
 
-func (simplifierSvc *SimplifierService) RunCadical(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Simplifying) []pipeline.EncodingPromise {
-	logrus.Println("Simplifier: started with CaDiCaL")
-	simplifiedEncodings := []string{}
-	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
-	dependencies := map[string]interface{}{
-		"CubeSelectorService": simplifierSvc.cubeSelectorSvc,
-	}
-
-	for _, encodingPromise := range encodingPromises {
-
-		encoding := encodingPromise.Get(dependencies)
-
-		for _, conflicts := range parameters.Conflicts {
-			// TODO: Use the instance name parser
-			outputFilePath := fmt.Sprintf("%s.cadical_c%d.cnf", encoding, conflicts)
-
-			if simplifierSvc.filesystemSvc.FileExists(outputFilePath) {
-				logrus.Println("Simplifier: skipped", encoding)
-				simplifiedEncodings = append(simplifiedEncodings, outputFilePath)
-
-				continue
-			}
-
-			pool.Submit(func(encoding, outputFilePath string, conflicts int, parameters pipeline.Simplifying) func() {
-				return func() {
-					err := simplifierSvc.TrackedCadicalInvoke(encoding, outputFilePath, conflicts, parameters)
-					simplifierSvc.errorSvc.Fatal(err, "Simplifier: failed to simplify "+encoding)
-				}
-			}(encoding, outputFilePath, conflicts, parameters))
-			simplifiedEncodings = append(simplifiedEncodings, outputFilePath)
-		}
-	}
-
-	pool.StopAndWait()
-	logrus.Println("Simplifier: stopped with CaDiCaL")
-
-	simplifiedEncodingPromises := lo.Map(simplifiedEncodings, func(simplifiedEncoding string, _ int) pipeline.EncodingPromise {
-		return EncodingPromise{Encoding: simplifiedEncoding}
-	})
-
-	return simplifiedEncodingPromises
-}
-
-func (simplifierSvc *SimplifierService) RunSatelite(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Simplifying) []pipeline.EncodingPromise {
-	logrus.Println("Simplifier: started with SatELite")
+func (simplifierSvc *SimplifierService) RunWith(simplifier_ simplifier.Simplifier, encodingPromises []pipeline.EncodingPromise, parameters pipeline.Simplifying) []pipeline.EncodingPromise {
+	simplifierSvc.logSvc.Info("Simplifier: started with " + string(simplifier_))
 	simplifiedEncodings := []string{}
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 
 	for _, encodingPromise := range encodingPromises {
 		encoding := encodingPromise.Get(map[string]interface{}{})
-
-		outputFilePath := fmt.Sprintf("%s.satelite.cnf", encoding)
-
-		if simplifierSvc.filesystemSvc.FileExists(outputFilePath) {
-			logrus.Println("Simplifier: skipped", encoding)
-			simplifiedEncodings = append(simplifiedEncodings, outputFilePath)
-
-			continue
+		conflictsList := parameters.Conflicts
+		if simplifier_ == simplifier.Satelite {
+			conflictsList = []int{0}
 		}
 
-		pool.Submit(func(encoding, outputFilePath string, parameters pipeline.Simplifying) func() {
-			return func() {
-				err := simplifierSvc.TrackedSateliteInvoke(encoding, outputFilePath, parameters)
-				simplifierSvc.errorSvc.Fatal(err, "Simplifier: failed to simplify "+encoding)
+		for _, conflicts := range conflictsList {
+			var outputFilePath string
+			switch simplifier_ {
+			case simplifier.Cadical:
+				outputFilePath = fmt.Sprintf("%s.cadical_c%d.cnf", encoding, conflicts)
+			case simplifier.Satelite:
+				outputFilePath = fmt.Sprintf("%s.satelite.cnf", encoding)
 			}
-		}(encoding, outputFilePath, parameters))
-		simplifiedEncodings = append(simplifiedEncodings, outputFilePath)
+			simplifiedEncodings = append(simplifiedEncodings, outputFilePath)
+
+			// Check if it should be skipped
+			if simplifierSvc.ShouldSkip(outputFilePath, simplifier_) {
+				// TODO: Add more details
+				simplifierSvc.logSvc.Info("Simplifier: skipped " + encoding)
+				continue
+			}
+			os.Remove(outputFilePath)
+
+			pool.Submit(func(simplifier_ simplifier.Simplifier, encoding, outputFilePath string, conflicts int, parameters pipeline.Simplifying) func() {
+				return func() {
+					err := simplifierSvc.TrackedInvoke(simplifier_, encoding, outputFilePath, conflicts, parameters)
+					simplifierSvc.errorSvc.Fatal(err, "Simplifier: failed to simplify "+encoding)
+				}
+			}(simplifier_, encoding, outputFilePath, conflicts, parameters))
+		}
 	}
 
 	pool.StopAndWait()
-	logrus.Println("Simplifier: stopped with SatELite")
+	simplifierSvc.logSvc.Info("Simplifier: stopped with " + string(simplifier_))
 
 	simplifiedEncodingPromises := lo.Map(simplifiedEncodings, func(simplifiedEncoding string, _ int) pipeline.EncodingPromise {
 		return EncodingPromise{Encoding: simplifiedEncoding}
@@ -261,11 +121,14 @@ func (simplifierSvc *SimplifierService) RunSatelite(encodingPromises []pipeline.
 }
 
 func (simplifierSvc *SimplifierService) Run(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Simplifying) []pipeline.EncodingPromise {
+	err := simplifierSvc.filesystemSvc.PrepareDirs([]string{"encodings", "logs"})
+	simplifierSvc.errorSvc.Fatal(err, "Simplifier: failed to prepare directories")
+
 	switch parameters.Name {
 	case simplifier.Cadical:
-		return simplifierSvc.RunCadical(encodingPromises, parameters)
+		return simplifierSvc.RunWith(simplifier.Cadical, encodingPromises, parameters)
 	case simplifier.Satelite:
-		return simplifierSvc.RunSatelite(encodingPromises, parameters)
+		return simplifierSvc.RunWith(simplifier.Satelite, encodingPromises, parameters)
 	}
 
 	return []pipeline.EncodingPromise{}
