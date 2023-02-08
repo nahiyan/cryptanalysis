@@ -12,7 +12,7 @@ import (
 	"github.com/bitfield/script"
 )
 
-func (solverSvc *SolverService) ParseOutput(logPath string, solver_ solver.Solver, extractSolution bool) (solver.Result, time.Duration, error) {
+func (solverSvc *SolverService) ParseLog(logPath string, solver_ solver.Solver, extractSolution bool) (solver.Result, time.Duration, error) {
 	// fmt.Println(solver_)
 
 	switch solver_ {
@@ -35,10 +35,7 @@ func parseOutputWith(logPath, satText, unsatText, processTimeText string, proces
 	processTime := time.Duration(0)
 	result := solver.Result(solver.Fail)
 
-	regexp, err := regexp.Compile(fmt.Sprintf("(%s)|(%s)|(%s)", processTimeText, satText, unsatText))
-	if err != nil {
-		return result, processTime, err
-	}
+	regexp := regexp.MustCompile(fmt.Sprintf("(%s)|(%s)|(%s)", processTimeText, satText, unsatText))
 
 	output, err := script.File(logPath).MatchRegexp(regexp).Slice()
 	if err != nil {

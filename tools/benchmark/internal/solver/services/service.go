@@ -101,80 +101,9 @@ func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, t
 }
 
 func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.Solver, timeout int) {
-	// solutionSvc := solverSvc.solutionSvc
-
-	// Invoke
 	runtime, result, exitCode := solverSvc.Invoke(encoding, solver_, timeout)
 	runtime = runtime.Round(time.Millisecond)
-
-	// verified := false
-	// checksum := ""
-	// if result == solver.Sat {
-	// 	err := solutionSvc.FromLog(logFilePath, solver_)
-	// 	solverSvc.errorSvc.Fatal(err, "Solver: failed to extract solution from log")
-
-	// 	err = solutionSvc.Normalize(solutionPath)
-	// 	solverSvc.errorSvc.Fatal(err, "Solver: failed to normalize solution")
-	// 	info, err := solverSvc.encoderSvc.ProcessInstanceName(encoding)
-	// 	solverSvc.errorSvc.Fatal(err, "Solver: failed to process instance name")
-
-	// 	needsReconstruction := false
-	// 	needsRemapping := false
-	// 	{
-	// 		if simplificationInfo, exists := info.Simplification.Get(); exists {
-	// 			needsReconstruction = simplificationInfo.Simplifier == simplifier.Cadical
-	// 			needsRemapping = simplificationInfo.Simplifier == simplifier.Satelite
-	// 		}
-	// 	}
-
-	// 	if needsReconstruction {
-	// 		// TODO: Fix the issue when the instance is a cube
-	// 		info.Cubing = mo.None[encoder.CubingInfo]()
-	// 		info.CubeIndex = mo.None[int]()
-	// 		instance := path.Join(path.Dir(encoding), solverSvc.encoderSvc.GetInstanceName(info))
-	// 		rsPath := instance + ".rs.txt"
-	// 		solutionSvc.Reconstruct(solutionPath, rsPath, encoding)
-	// 		solverSvc.errorSvc.Fatal(err, "Solver: failed to reconstruct solution")
-	// 	} else if needsRemapping {
-	// 		info.Cubing = mo.None[encoder.CubingInfo]()
-	// 		info.CubeIndex = mo.None[int]()
-	// 		instance := path.Join(path.Dir(encoding), "..", solverSvc.encoderSvc.GetInstanceName(info))
-	// 		varMapPath := instance + ".var_map.txt"
-	// 		err := solutionSvc.Remap(solutionPath, varMapPath)
-	// 		solverSvc.errorSvc.Fatal(err, "Solver: failed to remap variables in the solution")
-	// 	}
-
-	// 	solutionFile, err := os.Open(solutionPath)
-	// 	solverSvc.errorSvc.Fatal(err, "Solver: failed to read the solution")
-
-	// 	verified, err = solutionSvc.Verify(solutionFile, info.Steps)
-	// 	solverSvc.errorSvc.Check(err, "Solver: verification failed")
-
-	// 	checksum, err = solverSvc.filesystemSvc.Checksum(solutionPath)
-	// 	solverSvc.errorSvc.Fatal(err, "Solver: failed to calculate checksum of the solution "+solutionPath)
-	// }
-
-	// message := []any{"Solver:", solver_, resultString, exitCode, runtime, encoding}
-	// if result == solver.Sat {
-	// 	if verified {
-	// 		message = append(message, "verified")
-	// 	} else {
-	// 		message = append(message, "!verified")
-	// 	}
-	// }
-	solverSvc.logSvc.SolverResult(encoding, solver_, exitCode, result, runtime)
-
-	// Store in the database
-	// instanceName := strings.TrimSuffix(path.Base(encoding), ".cnf")
-	// solutionSvc.Register(encoding, solver_, solver.Solution{
-	// 	Runtime:      runtime,
-	// 	Result:       result,
-	// 	Solver:       solver_,
-	// 	ExitCode:     exitCode,
-	// 	InstanceName: instanceName,
-	// 	Verified:     verified,
-	// 	Checksum:     checksum,
-	// })
+	solverSvc.logSvc.SolveResult(encoding, solver_, exitCode, result, runtime)
 }
 
 func (solverSvc *SolverService) Loop(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Solving, handler func(encodingPromise pipeline.EncodingPromise, solver solver.Solver)) {
@@ -191,7 +120,7 @@ func (solverSvc *SolverService) ShouldSkip(instancePath string, solver_ solver.S
 	fileName := path.Base(instancePath) + "." + string(solver_) + ".log"
 	logPath := path.Join(logsDir, fileName)
 
-	result, _, err := solverSvc.ParseOutput(logPath, solver_, false)
+	result, _, err := solverSvc.ParseLog(logPath, solver_, false)
 	if err != nil {
 		return false
 	}
@@ -201,30 +130,6 @@ func (solverSvc *SolverService) ShouldSkip(instancePath string, solver_ solver.S
 	}
 
 	return false
-
-	// solutionSvc := solverSvc.solutionSvc
-	// errorSvc := solverSvc.errorSvc
-
-	// solution, err := solutionSvc.Find(encoding, solver_)
-	// // Don't skip if there is no solution
-	// if err == errorModule.ErrKeyNotFound || err == os.ErrNotExist {
-	// 	return false
-	// }
-
-	// // Handle errors
-	// errorSvc.Fatal(err, "Solver: failed to search the solution")
-
-	// // Skip solved solutions
-	// if err == nil && (solution.Result == solver.Sat || solution.Result == solver.Unsat) {
-	// 	return true
-	// }
-
-	// // Skip failed solutions: 10 seconds is the threshold
-	// if err == nil && solution.Result == solver.Fail && (timeout-int(solution.Runtime.Seconds())) < 10 {
-	// 	return true
-	// }
-
-	// return false
 }
 
 func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutput, parameters pipeline.Solving) pipeline.SlurmPipeOutput {
