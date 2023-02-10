@@ -1,6 +1,7 @@
 package services
 
 import (
+	"benchmark/internal/encoder"
 	"benchmark/internal/solver"
 	"time"
 
@@ -25,13 +26,13 @@ func (logSvc *LogService) Debug(message string) {
 	logSvc.logger.Sync()
 }
 
-func (logSvc *LogService) SolveResult(encoding string, solver_ solver.Solver, exitCode int, result solver.Result, runtime time.Duration) {
+// TODO: Add details such as runtime
+func (logSvc *LogService) SolveResult(encoding encoder.Encoding, solver_ solver.Solver, exitCode int, result solver.Result) {
 	logSvc.logger.Info(
 		"Solve",
 		zap.String("result", string(result)),
-		zap.String("runtime", runtime.String()),
 		zap.String("solver", string(solver_)),
-		zap.String("encoding", encoding),
+		zap.String("encoding", encoding.GetName()),
 		zap.Int("exit code", exitCode))
 	logSvc.logger.Sync()
 }
