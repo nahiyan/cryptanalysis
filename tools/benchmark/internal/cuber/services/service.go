@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/alitto/pond"
-	"github.com/samber/mo"
 	"github.com/sirupsen/logrus"
 )
 
@@ -43,13 +42,8 @@ func (cuberSvc *CuberService) getLogFilePath(cubeFilePath string) string {
 }
 
 func (cuberSvc *CuberService) CubesFilePath(encoding string, threshold int) string {
-	info, err := cuberSvc.encoderSvc.ProcessInstanceName(path.Base(encoding))
-	cuberSvc.errorSvc.Fatal(err, "Cuber: failed to process encoding")
-	info.Cubing = mo.Some(encoder.CubingInfo{
-		Threshold: threshold,
-	})
-	newInstanceName := cuberSvc.encoderSvc.GetInstanceName(info)
-	cubesFilePath := path.Join(cuberSvc.configSvc.Config.Paths.Cubesets, newInstanceName)
+	cubesetFileName := path.Base(encoding) + fmt.Sprintf(".march_n%d.cubes", threshold)
+	cubesFilePath := path.Join(cuberSvc.configSvc.Config.Paths.Cubesets, cubesetFileName)
 	return cubesFilePath
 }
 
@@ -163,12 +157,11 @@ func (cuberSvc *CuberService) Invoke(parameters InvokeParameters, control Invoke
 	return cubesFilePath, logFilePath, err
 }
 
-func (cuberSvc *CuberService) Loop(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Cubing, handler func(encoding string, threshold int, timeout int)) {
-	for _, promise := range encodingPromises {
-		encoding := promise.Get(map[string]interface{}{})
+func (cuberSvc *CuberService) Loop(encodings []encoder.Encoding, parameters pipeline.CubeParams, handler func(encoding string, threshold int, timeout int)) {
+	for _, encoding := range encodings {
 		thresholds := parameters.Thresholds
 		if len(thresholds) == 0 {
-			encodingInfo, err := cuberSvc.encodingSvc.GetInfo(encoding)
+			encodingInfo, err := cuberSvc.encodingSvc.GetInfo(encoding.BasePath)
 			freeVariables := encodingInfo.FreeVariables
 			cuberSvc.errorSvc.Fatal(err, "Cuber: failed to process the encoding")
 
@@ -187,12 +180,12 @@ func (cuberSvc *CuberService) Loop(encodingPromises []pipeline.EncodingPromise, 
 		}
 
 		for _, threshold := range thresholds {
-			handler(encoding, threshold, parameters.Timeout)
+			handler(encoding.BasePath, threshold, parameters.Timeout)
 		}
 	}
 }
 
-func (cuberSvc *CuberService) RunRegular(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Cubing) []string {
+func (cuberSvc *CuberService) RunRegular(encodings []encoder.Encoding, parameters pipeline.CubeParams) []string {
 	err := cuberSvc.filesystemSvc.PrepareDirs([]string{"cubesets", "encodings", "logs"})
 	cuberSvc.errorSvc.Fatal(err, "Cuber: failed to prepare the required dirs")
 
@@ -202,7 +195,7 @@ func (cuberSvc *CuberService) RunRegular(encodingPromises []pipeline.EncodingPro
 	commandGrps := map[string]*command.Group{}
 	logrus.Println("Cuber: started")
 
-	cuberSvc.Loop(encodingPromises, parameters, func(encoding string, threshold, timeout int) {
+	cuberSvc.Loop(encodings, parameters, func(encoding string, threshold, timeout int) {
 		if cuberSvc.ShouldSkip(encoding, threshold) {
 			logrus.Println("Cuber: skipped", threshold, encoding)
 			cubesFilePaths = append(cubesFilePaths, cuberSvc.CubesFilePath(encoding, threshold))
@@ -243,11 +236,11 @@ func (cuberSvc *CuberService) RunRegular(encodingPromises []pipeline.EncodingPro
 }
 
 // TODO: Remove this
-func (cuberSvc *CuberService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutput, parameters pipeline.Cubing) pipeline.SlurmPipeOutput {
+func (cuberSvc *CuberService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutput, parameters pipeline.CubeParams) pipeline.SlurmPipeOutput {
 	errorSvc := cuberSvc.errorSvc
 	slurmSvc := cuberSvc.slurmSvc
 	config := cuberSvc.configSvc.Config
-	encodingPromises, ok := previousPipeOutput.Values.([]pipeline.EncodingPromise)
+	encodings, ok := previousPipeOutput.Values.([]encoder.Encoding)
 	if !ok {
 		log.Fatal("Cuber: invalid input")
 	}
@@ -257,7 +250,7 @@ func (cuberSvc *CuberService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutp
 	errorSvc.Fatal(err, "Cuber: failed to clear slurm tasks")
 
 	counter := 1
-	cuberSvc.Loop(encodingPromises, parameters, func(encoding string, threshold int, timeout int) {
+	cuberSvc.Loop(encodings, parameters, func(encoding string, threshold int, timeout int) {
 		if cuberSvc.ShouldSkip(encoding, threshold) {
 			logrus.Println("Cuber: skipped", threshold, encoding)
 			return

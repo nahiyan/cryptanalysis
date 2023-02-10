@@ -134,11 +134,11 @@ func (encoderSvc *EncoderService) GenerateTransalgCode(instanceInfo encoder.Inst
 }
 
 // TODO: Reduce shared redundant code with SaeedE invokation
-func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.Encoding) []pipeline.EncodingPromise {
+func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.EncodeParams) []encoder.Encoding {
 	err := encoderSvc.filesystemSvc.PrepareTempDir()
 	encoderSvc.errorSvc.Fatal(err, "Encoder: failed to create tmp dir")
 
-	encodings := []string{}
+	encodings := []encoder.Encoding{}
 
 	// * Loop through the variations
 	encoderSvc.LoopThroughVariation(parameters, func(instanceInfo encoder.InstanceInfo) {
@@ -149,25 +149,22 @@ func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.Encoding) [
 		os.WriteFile(transalgFileName, []byte(transalgCode), 0644)
 
 		instanceName := encoderSvc.GetInstanceName(instanceInfo)
-		encodingFilePath := path.Join(encoderSvc.configSvc.Config.Paths.Encodings, instanceName)
-		encodings = append(encodings, encodingFilePath)
+		encodingPath := path.Join(encoderSvc.configSvc.Config.Paths.Encodings, instanceName)
+		encodings = append(encodings, encoder.Encoding{BasePath: encodingPath})
 
 		// Skip if encoding already exists
-		if encoderSvc.filesystemSvc.FileExists(encodingFilePath) {
-			logrus.Println("Encoder: skipped", encodingFilePath)
+		if encoderSvc.filesystemSvc.FileExists(encodingPath) {
+			logrus.Println("Encoder: skipped", encodingPath)
 			return
 		}
 
 		// * Drive the encoder
-		command := fmt.Sprintf("%s -i %s -o %s", transalgFileName, encoderSvc.configSvc.Config.Paths.Bin.Transalg, encodingFilePath)
+		command := fmt.Sprintf("%s -i %s -o %s", transalgFileName, encoderSvc.configSvc.Config.Paths.Bin.Transalg, encodingPath)
 		err = encoderSvc.commandSvc.Create(command).Run()
 		encoderSvc.errorSvc.Fatal(err, "Encoder: failed to run Transalg for "+instanceName)
 
-		logrus.Println("Encoder:", encodingFilePath)
+		logrus.Println("Encoder:", encodingPath)
 	})
 
-	encodingPromises := lo.Map(encodings, func(encoding string, _ int) pipeline.EncodingPromise {
-		return EncodingPromise{Encoding: encoding}
-	})
-	return encodingPromises
+	return encodings
 }

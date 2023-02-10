@@ -7,11 +7,10 @@ import (
 	"log"
 	"path"
 
-	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 )
 
-func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []pipeline.EncodingPromise {
+func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.EncodeParams) []encoder.Encoding {
 	config := &encoderSvc.configSvc.Config
 	filesystemSvc := encoderSvc.filesystemSvc
 
@@ -20,17 +19,16 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []p
 		log.Fatal("Failed to find the encoder in the path '" + config.Paths.Bin.SaeedE + "'. Can you ensure that you compiled it?")
 	}
 
-	encodings := []string{}
-
 	// * Loop through the variations
+	encodings := []encoder.Encoding{}
 	encoderSvc.LoopThroughVariation(parameters, func(instanceInfo encoder.InstanceInfo) {
 		instanceName := encoderSvc.GetInstanceName(instanceInfo)
-		encodingFilePath := path.Join(config.Paths.Encodings, instanceName)
-		encodings = append(encodings, encodingFilePath)
+		encodingPath := path.Join(config.Paths.Encodings, instanceName)
+		encodings = append(encodings, encoder.Encoding{BasePath: encodingPath})
 
 		// Skip if encoding already exists
-		if encoderSvc.filesystemSvc.FileExists(encodingFilePath) {
-			logrus.Println("Encoder: skipped", encodingFilePath)
+		if encoderSvc.filesystemSvc.FileExists(encodingPath) {
+			logrus.Println("Encoder: skipped", encodingPath)
 			return
 		}
 
@@ -58,13 +56,9 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.Encoding) []p
 			dobbertinBits,
 			xorFlag)
 		cmd := encoderSvc.commandSvc.Create(command)
-		encoderSvc.OutputToFile(cmd, encodingFilePath)
+		encoderSvc.OutputToFile(cmd, encodingPath)
 
-		logrus.Println("Encoder:", encodingFilePath)
+		logrus.Println("Encoder:", encodingPath)
 	})
-
-	encodingPromises := lo.Map(encodings, func(encoding string, _ int) pipeline.EncodingPromise {
-		return EncodingPromise{Encoding: encoding}
-	})
-	return encodingPromises
+	return encodings
 }

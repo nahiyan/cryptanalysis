@@ -176,7 +176,7 @@ func (encoderSvc *EncoderService) ProcessInstanceName(instanceName string) (enco
 	return info, nil
 }
 
-func (encoderSvc *EncoderService) LoopThroughVariation(params pipeline.Encoding, cb func(instanceInfo encoder.InstanceInfo)) {
+func (encoderSvc *EncoderService) LoopThroughVariation(params pipeline.EncodeParams, cb func(instanceInfo encoder.InstanceInfo)) {
 	for _, steps := range params.Steps {
 		for _, hash := range params.Hashes {
 			for _, xorOption := range params.Xor {
@@ -236,15 +236,15 @@ func (encoderSvc *EncoderService) OutputToFile(cmd *exec.Cmd, filePath string) {
 	errorSvc.Fatal(err, failureMsg)
 }
 
-func (encoderSvc *EncoderService) Run(parameters pipeline.Encoding) []pipeline.EncodingPromise {
+func (encoderSvc *EncoderService) Run(parameters pipeline.EncodeParams) []encoder.Encoding {
 	err := encoderSvc.filesystemSvc.PrepareDir(encoderSvc.configSvc.Config.Paths.Encodings)
 	encoderSvc.errorSvc.Fatal(err, "Encoder: failed to prepare directory for storing the encodings")
 
 	switch parameters.Encoder {
 	case encoder.SaeedE:
-		promises := encoderSvc.InvokeSaeedE(parameters)
-		logrus.Println("Encoder: saeed_e", promises)
-		return promises
+		encodings := encoderSvc.InvokeSaeedE(parameters)
+		logrus.Println("Encoder: saeed_e", encodings)
+		return encodings
 	case encoder.Transalg:
 		promises := encoderSvc.InvokeTransalg(parameters)
 		logrus.Println("Encoder: transalg", promises)

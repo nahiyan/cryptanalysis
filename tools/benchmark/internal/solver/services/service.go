@@ -1,6 +1,7 @@
 package services
 
 import (
+	"benchmark/internal/encoder"
 	errorModule "benchmark/internal/error"
 	"benchmark/internal/pipeline"
 	"benchmark/internal/slurm"
@@ -8,8 +9,10 @@ import (
 	"benchmark/internal/solver"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"math"
+	"os"
 	"os/exec"
 	"path"
 	"strings"
@@ -20,11 +23,11 @@ import (
 )
 
 // TODO: Refactor
-func (solverSvc *SolverService) GetCmdInfo(encoding string, solver_ solver.Solver, solutionPath string) (string, []string) {
+func (solverSvc *SolverService) GetCmdInfo(solver_ solver.Solver, solutionPath string) (string, []string) {
 	config := solverSvc.configSvc.Config
 
 	var binPath string
-	args := encoding
+	args := ""
 	switch solver_ {
 	case solver.Kissat:
 		binPath = config.Paths.Bin.Kissat
@@ -52,11 +55,11 @@ func (solverSvc *SolverService) GetCmdInfo(encoding string, solver_ solver.Solve
 	return binPath, args_
 }
 
-func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, timeout int) (time.Duration, solver.Result, int) {
+func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver.Solver, timeout int) (solver.Result, int) {
 	errorSvc := solverSvc.errorSvc
 	solutionsDir := solverSvc.configSvc.Config.Paths.Solutions
-	solutionPath := path.Join(solutionsDir, path.Base(encoding)+"."+string(solver_)+".sol")
-	binPath, solverArgs := solverSvc.GetCmdInfo(encoding, solver_, solutionPath)
+	solutionPath := path.Join(solutionsDir, path.Base(encoding.GetName())+"."+string(solver_)+".sol")
+	binPath, solverArgs := solverSvc.GetCmdInfo(solver_, solutionPath)
 	duration := time.Duration(timeout) * time.Second
 
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
@@ -64,19 +67,37 @@ func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, t
 
 	// Run and handle the result
 	cmd := exec.CommandContext(ctx, binPath, solverArgs...)
-	pipe, err := cmd.StdoutPipe()
-	solverSvc.errorSvc.Fatal(err, "Solver: failed to open pipe")
-	startTime := time.Now()
+
+	// Output pipe
+	stdoutPipe, err := cmd.StdoutPipe()
+	solverSvc.errorSvc.Fatal(err, "Solver: failed to open stdout pipe")
+
+	// Input pipe
+	stdinPipe, err := cmd.StdinPipe()
+	solverSvc.errorSvc.Fatal(err, "Solver: failed to open stdin pipe")
+
 	cmd.Start()
 
+	if cube, exists := encoding.Cube.Get(); exists {
+		cubesetPath, err := encoding.GetCubesetPath(solverSvc.configSvc.Config.Paths.Cubesets)
+		solverSvc.errorSvc.Fatal(err, "Solver: can't get cubeset path of an encoding that isn't cubed")
+
+		err = solverSvc.cubeSelectorSvc.EncodingFromCube(encoding.BasePath, cubesetPath, cube.Index, stdinPipe)
+		solverSvc.errorSvc.Fatal(err, "Solver: failed to construct instance from cube")
+	} else {
+		reader, err := os.OpenFile(encoding.BasePath, os.O_RDONLY, 0644)
+		solverSvc.errorSvc.Fatal(err, "Solver: failed to read the instance file")
+		_, err = io.Copy(stdinPipe, reader)
+		solverSvc.errorSvc.Fatal(err, "Solver: failed to provide the instance to the solver")
+	}
+	stdinPipe.Close()
+
 	// Write from stdout pipe to log file
-	logsDir := solverSvc.configSvc.Config.Paths.Logs
-	logFilePath := path.Join(logsDir, path.Base(encoding)+"."+string(solver_)+".log")
-	err = solverSvc.filesystemSvc.WriteFromPipe(pipe, logFilePath)
+	logFilePath := encoding.GetLogPath(solverSvc.configSvc.Config.Paths.Logs)
+	err = solverSvc.filesystemSvc.WriteFromPipe(stdoutPipe, logFilePath)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to write from pipe")
 
 	err = cmd.Wait()
-	runtime := time.Since(startTime)
 	var (
 		result   solver.Result = solver.Fail
 		exitCode int
@@ -97,17 +118,16 @@ func (solverSvc *SolverService) Invoke(encoding string, solver_ solver.Solver, t
 		}
 	})
 
-	return runtime, result, exitCode
+	return result, exitCode
 }
 
-func (solverSvc *SolverService) TrackedInvoke(encoding string, solver_ solver.Solver, timeout int) {
-	runtime, result, exitCode := solverSvc.Invoke(encoding, solver_, timeout)
-	runtime = runtime.Round(time.Millisecond)
-	solverSvc.logSvc.SolveResult(encoding, solver_, exitCode, result, runtime)
+func (solverSvc *SolverService) TrackedInvoke(encoding encoder.Encoding, solver_ solver.Solver, timeout int) {
+	result, exitCode := solverSvc.Invoke(encoding, solver_, timeout)
+	solverSvc.logSvc.SolveResult(encoding, solver_, exitCode, result)
 }
 
-func (solverSvc *SolverService) Loop(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Solving, handler func(encodingPromise pipeline.EncodingPromise, solver solver.Solver)) {
-	for _, promise := range encodingPromises {
+func (solverSvc *SolverService) Loop(encodings []encoder.Encoding, parameters pipeline.SolveParams, handler func(encoding encoder.Encoding, solver solver.Solver)) {
+	for _, promise := range encodings {
 		for _, solver := range parameters.Solvers {
 			handler(promise, solver)
 		}
@@ -115,12 +135,9 @@ func (solverSvc *SolverService) Loop(encodingPromises []pipeline.EncodingPromise
 }
 
 // TODO: Read the log file and see if it actually finished writing
-func (solverSvc *SolverService) ShouldSkip(instancePath string, solver_ solver.Solver, timeout int) bool {
-	logsDir := solverSvc.configSvc.Config.Paths.Logs
-	fileName := path.Base(instancePath) + "." + string(solver_) + ".log"
-	logPath := path.Join(logsDir, fileName)
-
-	result, _, err := solverSvc.ParseLog(logPath, solver_, false)
+func (solverSvc *SolverService) ShouldSkip(encoding encoder.Encoding, solver_ solver.Solver, timeout int) bool {
+	logFilePath := encoding.GetLogPath(solverSvc.configSvc.Config.Paths.Logs)
+	result, _, err := solverSvc.ParseLog(logFilePath, solver_, false)
 	if err != nil {
 		return false
 	}
@@ -132,7 +149,7 @@ func (solverSvc *SolverService) ShouldSkip(instancePath string, solver_ solver.S
 	return false
 }
 
-func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutput, parameters pipeline.Solving) pipeline.SlurmPipeOutput {
+func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutput, parameters pipeline.SolveParams) pipeline.SlurmPipeOutput {
 	dirs := []string{solverSvc.configSvc.Config.Paths.Solutions, solverSvc.configSvc.Config.Paths.Logs}
 	err := solverSvc.filesystemSvc.PrepareDirs(dirs)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to prepare directory for storing the solutions and logs")
@@ -140,7 +157,7 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 	slurmSvc := solverSvc.slurmSvc
 	errorSvc := solverSvc.errorSvc
 	config := solverSvc.configSvc.Config
-	encodingPromises, ok := previousPipeOutput.Values.([]pipeline.EncodingPromise)
+	encodings, ok := previousPipeOutput.Values.([]encoder.Encoding)
 	if !ok {
 		log.Fatal("Solver: invalid input")
 	}
@@ -148,21 +165,21 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 
 	tasks := []solveslurmtask.Task{}
 	i := 0
-	numOfPromises := len(encodingPromises)
-	solverSvc.Loop(encodingPromises, parameters, func(encodingPromise pipeline.EncodingPromise, solver_ solver.Solver) {
+	numOfPromises := len(encodings)
+	solverSvc.Loop(encodings, parameters, func(encoding encoder.Encoding, solver_ solver.Solver) {
 		// Note: We aren't checking if this task is already solved, since we'd have to retrieve the promised encoding, triggering the generation of cube encodings that are expensive on the FS to produce
 		timeout := time.Duration(parameters.Timeout) * time.Second
 		task := solveslurmtask.Task{
-			EncodingPromise: encodingPromise,
-			Solver:          solver_,
-			Timeout:         timeout,
+			Encoding: encoding,
+			Solver:   solver_,
+			Timeout:  timeout,
 		}
 
 		i += 1
 		logrus.Printf("Solver: [%d/%d] tasks processed", i, numOfPromises)
 
 		// Check if a task should be skipped
-		if !parameters.Redundant && solverSvc.ShouldSkip(encodingPromise.GetPath(), solver_, parameters.Timeout) {
+		if !parameters.Redundant && solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
 			return
 		}
 
@@ -203,19 +220,15 @@ func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOu
 	}
 }
 
-func (solverSvc *SolverService) RunRegular(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Solving) {
+func (solverSvc *SolverService) RunRegular(encodings []encoder.Encoding, parameters pipeline.SolveParams) {
 	dirs := []string{solverSvc.configSvc.Config.Paths.Solutions, solverSvc.configSvc.Config.Paths.Logs}
 	err := solverSvc.filesystemSvc.PrepareDirs(dirs)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to prepare directory for storing the solutions and logs")
 
 	logrus.Println("Solver: started")
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
-	dependencies := map[string]interface{}{
-		"CubeSelectorService": solverSvc.cubeSelectorSvc,
-	}
 
-	solverSvc.Loop(encodingPromises, parameters, func(encodingPromise pipeline.EncodingPromise, solver_ solver.Solver) {
-		encoding := encodingPromise.Get(dependencies)
+	solverSvc.Loop(encodings, parameters, func(encoding encoder.Encoding, solver_ solver.Solver) {
 		if !parameters.Redundant && solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
 			logrus.Println("Solver: skipped", encoding, "with "+string(solver_))
 			return

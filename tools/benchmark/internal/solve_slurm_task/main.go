@@ -1,13 +1,13 @@
 package solveslurmtask
 
 import (
-	"benchmark/internal/pipeline"
+	"benchmark/internal/encoder"
 	"benchmark/internal/solver"
 	"time"
 )
 
 type Task struct {
-	EncodingPromise pipeline.EncodingPromise
-	Solver          solver.Solver
-	Timeout         time.Duration
+	Encoding encoder.Encoding
+	Solver   solver.Solver
+	Timeout  time.Duration
 }

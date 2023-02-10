@@ -1,6 +1,7 @@
 package services
 
 import (
+	"benchmark/internal/encoder"
 	"benchmark/internal/pipeline"
 	"benchmark/internal/simplifier"
 	"fmt"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/alitto/pond"
-	"github.com/samber/lo"
 )
 
 type EncodingPromise struct {
@@ -34,7 +34,7 @@ func (simplifierSvc *SimplifierService) getLogPath(instancePath string) string {
 }
 
 // TODO: Finalize the code
-func (simplifierSvc *SimplifierService) TrackedInvoke(simplifier_ simplifier.Simplifier, encoding, outputFilePath string, conflicts int, parameters pipeline.Simplifying) error {
+func (simplifierSvc *SimplifierService) TrackedInvoke(simplifier_ simplifier.Simplifier, encoding, outputFilePath string, conflicts int, parameters pipeline.SimplifyParams) error {
 	config := simplifierSvc.configSvc.Config
 
 	var simplifierBinPath string
@@ -71,13 +71,12 @@ func (simplifierSvc *SimplifierService) ShouldSkip(instancePath string, simplifi
 	return err == nil
 }
 
-func (simplifierSvc *SimplifierService) RunWith(simplifier_ simplifier.Simplifier, encodingPromises []pipeline.EncodingPromise, parameters pipeline.Simplifying) []pipeline.EncodingPromise {
+func (simplifierSvc *SimplifierService) RunWith(simplifier_ simplifier.Simplifier, encodings []encoder.Encoding, parameters pipeline.SimplifyParams) []encoder.Encoding {
 	simplifierSvc.logSvc.Info("Simplifier: started with " + string(simplifier_))
-	simplifiedEncodings := []string{}
+	simplifiedEncodings := []encoder.Encoding{}
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 
-	for _, encodingPromise := range encodingPromises {
-		encoding := encodingPromise.Get(map[string]interface{}{})
+	for _, encoding := range encodings {
 		conflictsList := parameters.Conflicts
 		if simplifier_ == simplifier.Satelite {
 			conflictsList = []int{0}
@@ -87,49 +86,45 @@ func (simplifierSvc *SimplifierService) RunWith(simplifier_ simplifier.Simplifie
 			var outputFilePath string
 			switch simplifier_ {
 			case simplifier.Cadical:
-				outputFilePath = fmt.Sprintf("%s.cadical_c%d.cnf", encoding, conflicts)
+				outputFilePath = fmt.Sprintf("%s.cadical_c%d.cnf", encoding.BasePath, conflicts)
 			case simplifier.Satelite:
-				outputFilePath = fmt.Sprintf("%s.satelite.cnf", encoding)
+				outputFilePath = fmt.Sprintf("%s.satelite.cnf", encoding.BasePath)
 			}
-			simplifiedEncodings = append(simplifiedEncodings, outputFilePath)
+			simplifiedEncodings = append(simplifiedEncodings, encoder.Encoding{BasePath: outputFilePath})
 
 			// Check if it should be skipped
 			if simplifierSvc.ShouldSkip(outputFilePath, simplifier_) {
 				// TODO: Add more details
-				simplifierSvc.logSvc.Info("Simplifier: skipped " + encoding)
+				simplifierSvc.logSvc.Info("Simplifier: skipped " + encoding.BasePath)
 				continue
 			}
 			os.Remove(outputFilePath)
 
-			pool.Submit(func(simplifier_ simplifier.Simplifier, encoding, outputFilePath string, conflicts int, parameters pipeline.Simplifying) func() {
+			pool.Submit(func(simplifier_ simplifier.Simplifier, encoding, outputFilePath string, conflicts int, parameters pipeline.SimplifyParams) func() {
 				return func() {
 					err := simplifierSvc.TrackedInvoke(simplifier_, encoding, outputFilePath, conflicts, parameters)
 					simplifierSvc.errorSvc.Fatal(err, "Simplifier: failed to simplify "+encoding)
 				}
-			}(simplifier_, encoding, outputFilePath, conflicts, parameters))
+			}(simplifier_, encoding.BasePath, outputFilePath, conflicts, parameters))
 		}
 	}
 
 	pool.StopAndWait()
 	simplifierSvc.logSvc.Info("Simplifier: stopped with " + string(simplifier_))
 
-	simplifiedEncodingPromises := lo.Map(simplifiedEncodings, func(simplifiedEncoding string, _ int) pipeline.EncodingPromise {
-		return EncodingPromise{Encoding: simplifiedEncoding}
-	})
-
-	return simplifiedEncodingPromises
+	return simplifiedEncodings
 }
 
-func (simplifierSvc *SimplifierService) Run(encodingPromises []pipeline.EncodingPromise, parameters pipeline.Simplifying) []pipeline.EncodingPromise {
+func (simplifierSvc *SimplifierService) Run(encodings []encoder.Encoding, parameters pipeline.SimplifyParams) []encoder.Encoding {
 	err := simplifierSvc.filesystemSvc.PrepareDirs([]string{"encodings", "logs"})
 	simplifierSvc.errorSvc.Fatal(err, "Simplifier: failed to prepare directories")
 
 	switch parameters.Name {
 	case simplifier.Cadical:
-		return simplifierSvc.RunWith(simplifier.Cadical, encodingPromises, parameters)
+		return simplifierSvc.RunWith(simplifier.Cadical, encodings, parameters)
 	case simplifier.Satelite:
-		return simplifierSvc.RunWith(simplifier.Satelite, encodingPromises, parameters)
+		return simplifierSvc.RunWith(simplifier.Satelite, encodings, parameters)
 	}
 
-	return []pipeline.EncodingPromise{}
+	return []encoder.Encoding{}
 }
