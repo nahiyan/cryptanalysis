@@ -249,7 +249,7 @@ func main() {
 		// TODO: Rename to cube_select
 		{
 			Name:         "cube_selector",
-			Dependencies: []string{"error", "filesystem"},
+			Dependencies: []string{"error", "filesystem", "config"},
 			Type:         Service,
 		},
 		{
