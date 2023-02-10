@@ -1,18 +1,20 @@
 package services
 
 import (
+	"benchmark/internal/encoder"
 	"benchmark/internal/pipeline"
-	"errors"
+	"bufio"
 	"fmt"
-	"log"
+	"io"
 	"math"
 	"math/rand"
 	"os"
 	"path"
+	"strconv"
 	"strings"
-	"time"
 
 	"github.com/samber/lo"
+	"github.com/samber/mo"
 	"github.com/sirupsen/logrus"
 )
 
@@ -20,41 +22,6 @@ const (
 	Random   = "random"
 	Specific = "specific"
 )
-
-type EncodingPromise struct {
-	BaseEncodingPath string
-	CubeIndex        int
-	CubesetPath      string
-	SubProblemPath   string
-}
-
-func (encodingPromise EncodingPromise) GetPath() string {
-	return encodingPromise.SubProblemPath
-}
-
-func (encodingPromise EncodingPromise) Get(dependencies map[string]interface{}) string {
-	startTime := time.Now()
-	svc, ok := dependencies["CubeSelectorService"].(*CubeSelectorService)
-	if !ok {
-		log.Fatal("Encoding promise: failed to get cube selector service")
-	}
-	defer svc.filesystemSvc.LogInfo("Cube selector: took", time.Since(startTime).String())
-
-	targetPath := encodingPromise.SubProblemPath
-	encoding := encodingPromise.BaseEncodingPath
-	cubeset := encodingPromise.CubesetPath
-	cubeIndex := encodingPromise.CubeIndex
-
-	if svc.filesystemSvc.FileExists(targetPath) {
-		logrus.Println("Cube selector: skipped", cubeIndex, targetPath)
-		return targetPath
-	}
-
-	err := svc.EncodingFromCube(targetPath, encoding, cubeset, cubeIndex)
-	svc.errorSvc.Fatal(err, "Cube selector: failed to generate the encoding from a cube")
-
-	return targetPath
-}
 
 func (cubeSelectorSvc *CubeSelectorService) RandomCubes(cubesCount, selectionSize, offset int, seed int64) []int {
 	rand.Seed(seed)
@@ -73,16 +40,14 @@ func (cubeSelectorSvc *CubeSelectorService) RandomCubes(cubesCount, selectionSiz
 	return cubes[:randomCubeSelectionCount]
 }
 
-func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(subProblemFilePath, encodingFilePath, cubesetFilePath string, cubeIndex int) error {
+func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(encodingFilePath, cubesetFilePath string, cubeIndex int, output io.Writer) error {
 	// * 1. Read the instance
-	var instance string
-	{
-		instance_, err := os.ReadFile(encodingFilePath)
-		if err != nil {
-			return err
-		}
-		instance = string(instance_)
+	instanceReader, err := os.OpenFile(encodingFilePath, os.O_RDONLY, 0644)
+	if err != nil {
+		return err
 	}
+	defer instanceReader.Close()
+	instanceScanner := bufio.NewScanner(instanceReader)
 
 	// * 2. Open the cubes file
 	cubesFile, err := os.Open(cubesetFilePath)
@@ -91,6 +56,7 @@ func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(subProblemFilePath,
 	}
 	defer cubesFile.Close()
 
+	// TODO: See if reading lines can be made more efficient
 	// * 3. Get the cube
 	cube, _, err := cubeSelectorSvc.filesystemSvc.ReadLine(cubesFile, cubeIndex)
 	if err != nil {
@@ -98,121 +64,87 @@ func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(subProblemFilePath,
 	}
 
 	// * 4. Generate unit clauses from the literals in the cube
-	cubeClauses_ := strings.Split(strings.TrimPrefix(cube, "a "), " ")
-	cubeClauses := lo.Map(cubeClauses_[:len(cubeClauses_)-1], func(s string, _ int) string {
-		return s + " 0"
-	})
+	cubeClauses := strings.Fields(cube[2:])
+	cubeClauses = cubeClauses[:len(cubeClauses)-1]
 
 	// * 5. Get the num. of variables and clauses along with the body
 	var numVars, numClauses int
-	fmt.Sscanf(instance, "p cnf %d %d\n", &numVars, &numClauses)
-	n := len(fmt.Sprintf("p cnf %d %d\n", numVars, numClauses))
-	body := instance[n:]
+	for instanceScanner.Scan() {
+		line := instanceScanner.Text()
+		if strings.HasPrefix(line, "p cnf") {
+			fmt.Sscanf(line, "p cnf %d %d\n", &numVars, &numClauses)
 
-	// * 6. Generate a new header with an increased number of clauses
-	newHeader := fmt.Sprintf("p cnf %d %d", numVars, numClauses+len(cubeClauses))
+			// * 6. Generate a new header with an increased number of clauses
+			newHeader := fmt.Sprintf("p cnf %d %d", numVars, numClauses+len(cubeClauses))
+			output.Write([]byte(newHeader + "\n"))
+
+			continue
+		}
+
+		output.Write([]byte(line + "\n"))
+	}
+	// n := len(fmt.Sprintf("p cnf %d %d\n", numVars, numClauses))
+	// body := instance[n:]
 
 	// * 7. Assemble the new encoding
-	newEncoding := fmt.Sprintf("%s\n%s%s\n",
-		newHeader,
-		body,
-		strings.Join(cubeClauses, "\n"))
-
-	// * 8. Write the file
-	if err := os.WriteFile(subProblemFilePath, []byte(newEncoding), 0644); err != nil {
-		return err
+	for _, cubeClause := range cubeClauses {
+		output.Write([]byte(cubeClause + " 0\n"))
 	}
 
 	return nil
 }
 
-func (cubeSelectorSvc *CubeSelectorService) GetInfo(cubeset string) (string, error) {
-	index := strings.LastIndex(cubeset, ".cnf")
-	if index == -1 {
-		return "", errors.New("invalid cubeset filename")
-	}
-	encoding := cubeset[:index+4]
-	return encoding, nil
-}
-
-func (cubeSelectorSvc *CubeSelectorService) RunRandom(cubesets []string, parameters pipeline.CubeSelecting) []pipeline.EncodingPromise {
-	encodings := []pipeline.EncodingPromise{}
-
-	// temporary directory for holding the cubes
-	err := cubeSelectorSvc.filesystemSvc.PrepareTempDir()
-	cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to create tmp dir")
-
+func (cubeSelectorSvc *CubeSelectorService) Select(cubesets []string, parameters pipeline.CubeSelectParams, isRandom bool) []encoder.Encoding {
+	encodings := []encoder.Encoding{}
 	for _, cubeset := range cubesets {
-		encoding, err := cubeSelectorSvc.GetInfo(cubeset)
-		cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to get cubeset details "+cubeset)
+		segments := strings.Split(cubeset, ".")
+		encodingPath := path.Join(cubeSelectorSvc.configSvc.Config.Paths.Encodings, path.Base(strings.Join(segments[:len(segments)-2], ".")))
 
 		cubesCount, err := cubeSelectorSvc.filesystemSvc.CountLines(cubeset)
 		cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to count lines "+cubeset)
 
-		cubeIndices := cubeSelectorSvc.RandomCubes(cubesCount, parameters.Quantity, parameters.Offset, parameters.Seed)
+		var cubeIndices []int
+		if isRandom {
+			cubeIndices = cubeSelectorSvc.RandomCubes(cubesCount, parameters.Quantity, parameters.Offset, parameters.Seed)
+		} else {
+			cubeIndices = parameters.Indices
+		}
+
+		threshold := 0
+		{
+			segments := strings.Split(cubeset, ".")
+			segment := segments[len(segments)-2][7:]
+			threshold, err = strconv.Atoi(segment)
+			cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to get the threshold of "+cubeset)
+		}
 
 		for _, cubeIndex := range cubeIndices {
-			subProblemFilePath := path.Join("./tmp", fmt.Sprintf("%s.cube%d.cnf", cubeset, cubeIndex))
-
-			encodingPromise := EncodingPromise{
-				BaseEncodingPath: encoding,
-				CubeIndex:        cubeIndex,
-				CubesetPath:      cubeset,
-				SubProblemPath:   subProblemFilePath,
+			encoding := encoder.Encoding{
+				BasePath: encodingPath,
+				Cube: mo.Some(
+					encoder.Cube{
+						Index:     cubeIndex,
+						Threshold: threshold,
+					},
+				),
 			}
-			encodings = append(encodings, encodingPromise)
+			encodings = append(encodings, encoding)
 		}
 	}
 
 	logrus.Println("Cube selector: randomly selected", len(encodings), "cubes")
+
 	return encodings
 }
 
-func (cubeSelectorSvc *CubeSelectorService) RunSpecific(cubesets []string, parameters pipeline.CubeSelecting) []pipeline.EncodingPromise {
-	encodings := []pipeline.EncodingPromise{}
-
-	// temporary directory for holding the cubes
-	err := cubeSelectorSvc.filesystemSvc.PrepareTempDir()
-	cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to create tmp dir")
-
-	for _, cubeset := range cubesets {
-		encoding, err := cubeSelectorSvc.GetInfo(cubeset)
-		cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to get cubeset details "+cubeset)
-
-		cubesCount, err := cubeSelectorSvc.filesystemSvc.CountLines(cubeset)
-		cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to count lines "+cubeset)
-
-		cubeIndices := parameters.Indices
-		for _, cubeIndex := range cubeIndices {
-			if cubeIndex > cubesCount {
-				logrus.Fatalf("Cube selector: index %d is out of range of the cubeset of size %d", cubeIndex, cubesCount)
-			}
-
-			subProblemFilePath := path.Join("./tmp", fmt.Sprintf("%s.cube%d.cnf", cubeset, cubeIndex))
-
-			encodingPromise := EncodingPromise{
-				BaseEncodingPath: encoding,
-				CubeIndex:        cubeIndex,
-				CubesetPath:      cubeset,
-				SubProblemPath:   subProblemFilePath,
-			}
-			encodings = append(encodings, encodingPromise)
-		}
-	}
-
-	logrus.Println("Cube selector: specifically selected", len(encodings), "cubes")
-	return encodings
-}
-
-func (cubeSelectorSvc *CubeSelectorService) Run(cubesets []string, parameters pipeline.CubeSelecting) []pipeline.EncodingPromise {
+func (cubeSelectorSvc *CubeSelectorService) Run(cubesets []string, parameters pipeline.CubeSelectParams) []encoder.Encoding {
+	encodings := []encoder.Encoding{}
 	switch parameters.Type {
 	case Random:
-		encodings := cubeSelectorSvc.RunRandom(cubesets, parameters)
-		return encodings
+		encodings = cubeSelectorSvc.Select(cubesets, parameters, true)
 	case Specific:
-		encodings := cubeSelectorSvc.RunSpecific(cubesets, parameters)
-		return encodings
+		encodings = cubeSelectorSvc.Select(cubesets, parameters, false)
 	}
 
-	return []pipeline.EncodingPromise{}
+	return encodings
 }
