@@ -21,7 +21,7 @@ const (
 type Type string
 type Solver string
 
-type Encoding struct {
+type EncodeParams struct {
 	Encoder       encoder.Encoder
 	Xor           []int
 	Dobbertin     []int
@@ -31,14 +31,14 @@ type Encoding struct {
 	Steps         []int
 	Solvers       []Solver
 }
-type Solving struct {
+type SolveParams struct {
 	Solvers   []solver.Solver
 	Timeout   int
 	Workers   int
 	Redundant bool
 }
 
-type Cubing struct {
+type CubeParams struct {
 	MaxCubes         int
 	MinRefutedLeaves int
 	MinThreshold     int
@@ -47,7 +47,7 @@ type Cubing struct {
 	Timeout          int
 }
 
-type CubeSelecting struct {
+type CubeSelectParams struct {
 	Type     string
 	Quantity int
 	Seed     int64
@@ -55,7 +55,7 @@ type CubeSelecting struct {
 	Indices  []int
 }
 
-type Simplifying struct {
+type SimplifyParams struct {
 	Name      string
 	Conflicts []int
 	Timeout   int
@@ -66,19 +66,19 @@ type Pipe struct {
 	Type Type
 
 	// Type: encode
-	Encoding
+	EncodeParams
 
 	// Type: simplifying
-	Simplifying
+	SimplifyParams
 
 	// Type: cube
-	Cubing
+	CubeParams
 
 	// Type: cube_select
-	CubeSelecting
+	CubeSelectParams
 
 	// Type: solve
-	Solving
+	SolveParams
 }
 
 type Value interface {
@@ -88,9 +88,4 @@ type Value interface {
 type SlurmPipeOutput struct {
 	Jobs   []slurm.Job
 	Values interface{}
-}
-
-type EncodingPromise interface {
-	Get(dependencies map[string]interface{}) string
-	GetPath() string
 }
