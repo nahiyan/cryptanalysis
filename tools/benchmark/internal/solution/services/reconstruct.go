@@ -1,14 +1,14 @@
 package services
 
 import (
-	"benchmark/internal/encoder"
 	"bufio"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/bitfield/script"
-	"github.com/samber/mo"
+	"github.com/samber/lo"
 )
 
 func scanRSLine(line string) ([]int, int, error) {
@@ -43,14 +43,7 @@ func scanRSLine(line string) ([]int, int, error) {
 	return clause, witness, nil
 }
 
-func (solutionSvc *SolutionService) Reconstruct(solutionPath string, reconstructionFilePath string, instancePath string) error {
-	info, err := solutionSvc.encoderSvc.ProcessInstanceName(instancePath)
-	if err != nil {
-		return err
-	}
-	info.Simplification = mo.None[encoder.SimplificationInfo]()
-	originalInstance := solutionSvc.encoderSvc.GetInstanceName(info)
-
+func (solutionSvc *SolutionService) Reconstruct(solutionLiterals []int, reconstructionFilePath string, originalInstancePath string) ([]int, error) {
 	// Get the RS literals
 	rsLiterals := make(map[int]interface{}, 0)
 	{
@@ -60,29 +53,9 @@ func (solutionSvc *SolutionService) Reconstruct(solutionPath string, reconstruct
 			line := scanner.Text()
 			_, witness, err := scanRSLine(line)
 			if err != nil {
-				return err
+				return []int{}, err
 			}
 			rsLiterals[witness] = nil
-		}
-	}
-
-	// Get the solution literals
-	solutionLiterals := []int{}
-	{
-		reader := script.File(solutionPath).Reader
-		scanner := bufio.NewScanner(reader)
-		scanner.Split(bufio.ScanWords)
-		for scanner.Scan() {
-			word := scanner.Text()
-			if word == "SAT" || word == "0" {
-				continue
-			}
-
-			literal, err := strconv.Atoi(word)
-			if err != nil {
-				return err
-			}
-			solutionLiterals = append(solutionLiterals, literal)
 		}
 	}
 
@@ -101,37 +74,49 @@ func (solutionSvc *SolutionService) Reconstruct(solutionPath string, reconstruct
 	}
 
 	// Add the picked literals
-	reader := script.File(originalInstance).Reader
+	reader := script.File(originalInstancePath).Reader
 	scanner := bufio.NewScanner(reader)
 	header := ""
-	newInstance := ""
+	var newInstance strings.Builder
 	for scanner.Scan() {
 		line := scanner.Text()
+
 		if strings.HasPrefix(line, "c") {
 			continue
 		}
 
 		if strings.HasPrefix(line, "p cnf") {
 			header = line
+			var numVars, numClauses int
+			_, err := fmt.Sscanf(header, "p cnf %d %d", &numVars, &numClauses)
+			if err != nil {
+				return []int{}, err
+			}
+			newHeader := fmt.Sprintf("p cnf %d %d", numVars, numClauses+len(literalsToAdd))
+			newInstance.WriteString(newHeader + "\n")
 			continue
 		}
 
-		newInstance += line + "\n"
+		newInstance.WriteString(line + "\n")
 	}
 
-	var numVars, numClauses int
-	_, err = fmt.Sscanf(header, "p cnf %d %d", &numVars, &numClauses)
-	if err != nil {
-		return err
-	}
-	newHeader := fmt.Sprintf("p cnf %d %d", numVars, numClauses+len(literalsToAdd))
-	newInstance = newHeader + "\n" + newInstance
 	for _, literal := range literalsToAdd {
-		newInstance += fmt.Sprintf("%d 0\n", literal)
+		newInstance.WriteString(fmt.Sprintf("%d 0\n", literal))
 	}
+
+	script.Echo(newInstance.String()).WriteFile("/tmp/test.cnf")
 
 	// Use Kissat for solving the new instance
 	kissatCmd := fmt.Sprintf("%s -q", solutionSvc.configSvc.Config.Paths.Bin.Kissat)
-	_, err = script.Echo(newInstance).Exec(kissatCmd).Replace("v ", "").Replace("s SATISFIABLE", "SAT").WriteFile(solutionPath)
-	return err
+	solution_, err := script.Echo(newInstance.String()).Exec(kissatCmd).ReplaceRegexp(regexp.MustCompile("(s SATISFIABLE)|(v)"), "").String()
+	if err != nil && err.Error() != "exit status 10" {
+		return []int{}, err
+	}
+
+	reconstructedSolutionLiterals := lo.Map(strings.Fields(solution_), func(item string, _ int) int {
+		literal, _ := strconv.Atoi(item)
+		return literal
+	})
+
+	return reconstructedSolutionLiterals, nil
 }
