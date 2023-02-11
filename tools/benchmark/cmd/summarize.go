@@ -8,8 +8,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// TODO: Decide whether to keep the output argument
 func initSummarizeCmd() *cobra.Command {
-	var output string
+	// var output string
 
 	cmd := &cobra.Command{
 		Use:   "summarize",
@@ -17,11 +18,11 @@ func initSummarizeCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			injector := injector.New()
 			summarizerSvc := do.MustInvoke[*summarizerServices.SummarizerService](injector)
-			summarizerSvc.Run(output)
+			summarizerSvc.Run()
 		},
 	}
 
-	cmd.Flags().StringVarP(&output, "output", "o", "summary", "Base path of the output file. E.g. './results/summary'")
+	// cmd.Flags().StringVarP(&output, "output", "o", "summary", "Base path of the output file. E.g. './results/summary'")
 
 	return cmd
 }
