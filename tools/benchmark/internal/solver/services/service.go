@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/alitto/pond"
+	"github.com/samber/mo"
 	"github.com/sirupsen/logrus"
 )
 
@@ -93,7 +94,7 @@ func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver
 	stdinPipe.Close()
 
 	// Write from stdout pipe to log file
-	logFilePath := encoding.GetLogPath(solverSvc.configSvc.Config.Paths.Logs)
+	logFilePath := encoding.GetLogPath(solverSvc.configSvc.Config.Paths.Logs, mo.Some(solver_))
 	err = solverSvc.filesystemSvc.WriteFromPipe(stdoutPipe, logFilePath)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to write from pipe")
 
@@ -136,17 +137,14 @@ func (solverSvc *SolverService) Loop(encodings []encoder.Encoding, parameters pi
 
 // TODO: Read the log file and see if it actually finished writing
 func (solverSvc *SolverService) ShouldSkip(encoding encoder.Encoding, solver_ solver.Solver, timeout int) bool {
-	logFilePath := encoding.GetLogPath(solverSvc.configSvc.Config.Paths.Logs)
-	result, _, err := solverSvc.ParseLog(logFilePath, solver_, false)
+	logFilePath := encoding.GetLogPath(solverSvc.configSvc.Config.Paths.Logs, mo.Some(solver_))
+	result, _, err := solverSvc.ParseLog(logFilePath, solver_, nil)
 	if err != nil {
 		return false
 	}
 
-	if result == solver.Unsat || result == solver.Sat {
-		return true
-	}
-
-	return false
+	isSolved := result == solver.Unsat || result == solver.Sat
+	return isSolved
 }
 
 func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutput, parameters pipeline.SolveParams) pipeline.SlurmPipeOutput {
