@@ -142,12 +142,6 @@ func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.EncodeParam
 
 	// * Loop through the variations
 	encoderSvc.LoopThroughVariation(parameters, func(instanceInfo encoder.InstanceInfo) {
-		var dobbertinConstant uint32 = math.MaxUint32
-		transalgCode, err := encoderSvc.GenerateTransalgCode(instanceInfo, dobbertinConstant)
-		encoderSvc.errorSvc.Fatal(err, "Encoder: failed to generate Transalg code")
-		transalgFileName := fmt.Sprintf("%s.alg", encoderSvc.randomSvc.RandString(16))
-		os.WriteFile(transalgFileName, []byte(transalgCode), 0644)
-
 		instanceName := encoderSvc.GetInstanceName(instanceInfo)
 		encodingPath := path.Join(encoderSvc.configSvc.Config.Paths.Encodings, instanceName)
 		encodings = append(encodings, encoder.Encoding{BasePath: encodingPath})
@@ -158,8 +152,15 @@ func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.EncodeParam
 			return
 		}
 
+		var dobbertinConstant uint32 = math.MaxUint32
+		transalgCode, err := encoderSvc.GenerateTransalgCode(instanceInfo, dobbertinConstant)
+		encoderSvc.errorSvc.Fatal(err, "Encoder: failed to generate Transalg code")
+		transalgFileName := fmt.Sprintf("%s.alg", encoderSvc.randomSvc.RandString(16))
+		transalgFilePath := path.Join(encoderSvc.configSvc.Config.Paths.Tmp, transalgFileName)
+		os.WriteFile(transalgFilePath, []byte(transalgCode), 0644)
+
 		// * Drive the encoder
-		command := fmt.Sprintf("%s -i %s -o %s", transalgFileName, encoderSvc.configSvc.Config.Paths.Bin.Transalg, encodingPath)
+		command := fmt.Sprintf("%s -i %s -o %s", encoderSvc.configSvc.Config.Paths.Bin.Transalg, transalgFilePath, encodingPath)
 		err = encoderSvc.commandSvc.Create(command).Run()
 		encoderSvc.errorSvc.Fatal(err, "Encoder: failed to run Transalg for "+instanceName)
 
