@@ -127,10 +127,11 @@ func (solverSvc *SimplifierService) ParseOutput(logFilePath string, simplifier_ 
 	}
 
 	result.ProcessTime = time.Duration(seconds*1000) * time.Millisecond
+	// TODO: Calculate the free variables after simplification
 	result.NumVars = numVarsAfter
 	result.NumClauses = numClausesAfter
-	result.EliminatedVars = numVarsAfter - numVarsBefore
-	result.EliminatedClauses = numClausesAfter - numClausesBefore
+	result.NumEliminatedVars = numVarsBefore - numVarsAfter
+	result.NumEliminatedClauses = numClausesBefore - numClausesAfter
 
 	return result, nil
 }

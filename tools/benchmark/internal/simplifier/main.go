@@ -23,9 +23,9 @@ type SateliteOutput struct {
 type Simplifier string
 
 type Result struct {
-	ProcessTime       time.Duration
-	NumVars           int
-	NumClauses        int
-	EliminatedVars    int
-	EliminatedClauses int
+	ProcessTime          time.Duration
+	NumVars              int
+	NumClauses           int
+	NumEliminatedVars    int
+	NumEliminatedClauses int
 }
