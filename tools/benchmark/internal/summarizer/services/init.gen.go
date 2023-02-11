@@ -1,28 +1,37 @@
 package services
 
 import (
-	services2 "benchmark/internal/cubeset/services"
-	services4 "benchmark/internal/encoder/services"
+	services2 "benchmark/internal/config/services"
+	services3 "benchmark/internal/cuber/services"
+	services1 "benchmark/internal/encoder/services"
 	services "benchmark/internal/error/services"
-	services3 "benchmark/internal/simplification/services"
-	services1 "benchmark/internal/solution/services"
+	services7 "benchmark/internal/md4/services"
+	services5 "benchmark/internal/simplifier/services"
+	services6 "benchmark/internal/solution/services"
+	services4 "benchmark/internal/solver/services"
 	do "github.com/samber/do"
 )
 
 type SummarizerService struct {
-	errorSvc          *services.ErrorService
-	solutionSvc       *services1.SolutionService
-	cubesetSvc        *services2.CubesetService
-	simplificationSvc *services3.SimplificationService
-	encoderSvc        *services4.EncoderService
+	errorSvc      *services.ErrorService
+	encoderSvc    *services1.EncoderService
+	configSvc     *services2.ConfigService
+	cuberSvc      *services3.CuberService
+	solverSvc     *services4.SolverService
+	simplifierSvc *services5.SimplifierService
+	solutionSvc   *services6.SolutionService
+	md4Svc        *services7.Md4Service
 }
 
 func NewSummarizerService(injector *do.Injector) (*SummarizerService, error) {
 	errorSvc := do.MustInvoke[*services.ErrorService](injector)
-	solutionSvc := do.MustInvoke[*services1.SolutionService](injector)
-	cubesetSvc := do.MustInvoke[*services2.CubesetService](injector)
-	simplificationSvc := do.MustInvoke[*services3.SimplificationService](injector)
-	encoderSvc := do.MustInvoke[*services4.EncoderService](injector)
-	svc := &SummarizerService{errorSvc: errorSvc, solutionSvc: solutionSvc, cubesetSvc: cubesetSvc, simplificationSvc: simplificationSvc, encoderSvc: encoderSvc}
+	encoderSvc := do.MustInvoke[*services1.EncoderService](injector)
+	configSvc := do.MustInvoke[*services2.ConfigService](injector)
+	cuberSvc := do.MustInvoke[*services3.CuberService](injector)
+	solverSvc := do.MustInvoke[*services4.SolverService](injector)
+	simplifierSvc := do.MustInvoke[*services5.SimplifierService](injector)
+	solutionSvc := do.MustInvoke[*services6.SolutionService](injector)
+	md4Svc := do.MustInvoke[*services7.Md4Service](injector)
+	svc := &SummarizerService{errorSvc: errorSvc, encoderSvc: encoderSvc, configSvc: configSvc, cuberSvc: cuberSvc, solverSvc: solverSvc, simplifierSvc: simplifierSvc, solutionSvc: solutionSvc, md4Svc: md4Svc}
 	return svc, nil
 }

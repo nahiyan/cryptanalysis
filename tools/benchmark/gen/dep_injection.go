@@ -260,7 +260,7 @@ func main() {
 		// TODO: Rename to summarize
 		{
 			Name:         "summarizer",
-			Dependencies: []string{"error", "solution", "cubeset", "simplification", "encoder"},
+			Dependencies: []string{"error", "encoder", "config", "cuber", "solver", "simplifier", "solution", "md4"},
 			Type:         Service,
 		},
 		// TODO: Rename to simplify
