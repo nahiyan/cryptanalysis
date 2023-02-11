@@ -23,6 +23,7 @@ type Config struct {
 		Logs      string
 		Solutions string
 		Cubesets  string
+		Tmp       string
 	}
 
 	Slurm struct {

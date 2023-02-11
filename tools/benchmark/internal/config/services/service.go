@@ -41,6 +41,7 @@ func (configSvc *ConfigService) Process() {
 	viper.SetDefault("Paths.Solutions", "solutions")
 	viper.SetDefault("Paths.Encodings", "encodings")
 	viper.SetDefault("Paths.Cubesets", "cubesets")
+	viper.SetDefault("Paths.Tmp", "tmp")
 
 	// Slurm
 	viper.SetDefault("Slurm.MaxJobs", 1000)
