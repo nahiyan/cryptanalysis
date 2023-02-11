@@ -1,6 +1,7 @@
 package encoder
 
 import (
+	"benchmark/internal/solver"
 	"errors"
 	"fmt"
 	"path"
@@ -65,16 +66,21 @@ type Encoding struct {
 	Cube     mo.Option[Cube]
 }
 
-func (encoding Encoding) GetLogPath(logsDir string) string {
+func (encoding Encoding) GetLogPath(logsDir string, solver_ mo.Option[solver.Solver]) string {
 	basePathInLogsDir := path.Join(logsDir, path.Base(encoding.BasePath))
-	basePathWithoutExt := basePathInLogsDir[:len(basePathInLogsDir)-3]
+	basePathWithoutExt := basePathInLogsDir[:len(basePathInLogsDir)-4]
+
+	solver__ := ""
+	if solver___, exists := solver_.Get(); exists {
+		solver__ = "." + string(solver___)
+	}
 
 	if cube, exists := encoding.Cube.Get(); exists {
-		logFilePath := basePathWithoutExt + fmt.Sprintf(".march_n%d.cube%d.log", cube.Threshold, cube.Index)
+		logFilePath := basePathWithoutExt + fmt.Sprintf(".march_n%d.cube%d%s.log", cube.Threshold, cube.Index, solver__)
 		return logFilePath
 	}
 
-	return basePathWithoutExt + ".log"
+	return basePathWithoutExt + solver__ + ".log"
 }
 
 func (encoding Encoding) GetName() string {
