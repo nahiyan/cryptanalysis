@@ -95,7 +95,7 @@ func (md4Svc *Md4Service) Run(message_ []byte, steps int, addChainingVars bool) 
 			h[i] = hh(h[i], h[(i+1)%4], h[(i+2)%4], h[(i+3)%4], message[k[step-1-32]], s[(step-1-32)%4])
 		}
 
-		fmt.Printf("Step %d %d %d %d %d\n", step, h[0], h[1], h[2], h[3])
+		// fmt.Printf("Step %d %d %d %d %d\n", step, h[0], h[1], h[2], h[3])
 	}
 
 	// Final
@@ -111,7 +111,7 @@ func (md4Svc *Md4Service) Run(message_ []byte, steps int, addChainingVars bool) 
 		c += c_
 		d += d_
 	}
-	fmt.Println("Final", a, b, c, d)
+	// fmt.Println("Final", a, b, c, d)
 	digest_ := make([]byte, 16)
 	binary.BigEndian.PutUint32(digest_, a)
 	binary.BigEndian.PutUint32(digest_[4:], b)
