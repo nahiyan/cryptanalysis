@@ -219,11 +219,9 @@ func main() {
 			Type:         Service,
 		},
 		{
-			Name:            "cubeset",
-			Dependencies:    []string{"error", "database", "filesystem", "marshalling"},
-			Type:            Service,
-			HasProperties:   true,
-			HasInitFunction: true,
+			Name:         "cubeset",
+			Dependencies: []string{"error", "filesystem", "marshalling"},
+			Type:         Service,
 		},
 		{
 			Name:         "encoding",
@@ -249,7 +247,7 @@ func main() {
 		// TODO: Rename to cube_select
 		{
 			Name:         "cube_selector",
-			Dependencies: []string{"error", "filesystem", "config"},
+			Dependencies: []string{"error", "filesystem", "config", "cubeset"},
 			Type:         Service,
 		},
 		{
