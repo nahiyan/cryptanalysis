@@ -13,10 +13,10 @@ type Properties struct {
 }
 
 func (schemaSvc *SchemaService) Process(filePath string) {
-	// Set config file
+	// Set schema file
 	viper.SetConfigFile(filePath)
 	if err := viper.ReadInConfig(); err != nil {
-		log.Println("Failed to read the config file")
+		log.Println("Failed to read the schema file")
 	}
 
 	// Unwrap the structure
