@@ -5,6 +5,7 @@ import (
 	"benchmark/internal/simplifier"
 	"benchmark/internal/solver"
 	"encoding/csv"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"os"
@@ -13,9 +14,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/alitto/pond"
 	"github.com/dustin/go-humanize"
+	"github.com/samber/lo"
 )
 
 type solution struct {
@@ -24,6 +28,7 @@ type solution struct {
 	result      solver.Result
 	solver      solver.Solver
 	verified    bool
+	message     string
 }
 
 type cubeset struct {
@@ -75,74 +80,96 @@ func (summarizerSvc *SummarizerService) GetCubesets(logFiles []string) []cubeset
 	return cubesets
 }
 
+func parseSolutionLogName(name string) (encoder.Encoder, int, string, error) {
+	match := regexp.MustCompile("[a-z_]+_md4_[0-9]+_[a-z0-9]+_").FindString(name)
+	encoder_ := encoder.Encoder(strings.Split(match, "_md4")[0])
+	segments := strings.Split(match[len(encoder_):], "_")
+	step, err := strconv.Atoi(segments[2])
+	if err != nil {
+		return encoder.Encoder(""), 0, "", err
+	}
+	targetHash := segments[3]
+
+	return encoder_, step, targetHash, nil
+}
+
 func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string) []solution {
 	config := summarizerSvc.configSvc.Config
 	solutions := []solution{}
-	for _, logFile := range logFiles {
-		name := path.Base(logFile)[:len(logFile)-4]
-		var solver_ solver.Solver
-		{
-			segments := strings.Split(name, ".")
-			solver_ = solver.Solver(segments[len(segments)-1])
-		}
-		solutionLiterals := make([]int, 0)
-		result, processTime, err := summarizerSvc.solverSvc.ParseLog(path.Join(config.Paths.Logs, logFile), solver_, &solutionLiterals)
-		if err != nil {
-			continue
-		}
+	logFilesCount := len(logFiles)
+	lock := sync.Mutex{}
+	pool := pond.New(100, 1000, pond.IdleTimeout(100*time.Millisecond))
+	for i, logFile := range logFiles {
+		pool.Submit(func(i int, logFile string) func() {
+			return func() {
+				defer log.Printf("Solution: Read [%d/%d] file\n", i+1, logFilesCount)
 
-		solution := solution{
-			name:        name,
-			processTime: processTime,
-			result:      result,
-			solver:      solver_,
-		}
+				name := path.Base(logFile)[:len(logFile)-4]
+				var solver_ solver.Solver
+				{
+					segments := strings.Split(name, ".")
+					solver_ = solver.Solver(segments[len(segments)-1])
+				}
+				solutionLiterals := make([]int, 0)
+				result, processTime, err := summarizerSvc.solverSvc.ParseLog(path.Join(config.Paths.Logs, logFile), solver_, &solutionLiterals)
+				if err != nil {
+					return
+				}
 
-		if result != solver.Sat {
-			solutions = append(solutions, solution)
-			continue
-		}
+				solution := solution{
+					name:        name,
+					processTime: processTime,
+					result:      result,
+					solver:      solver_,
+				}
 
-		fileName := path.Base(logFile)
+				if result != solver.Sat {
+					lock.Lock()
+					solutions = append(solutions, solution)
+					lock.Unlock()
+					return
+				}
 
-		// TODO: Remap SatELite simplifications
-		// Reconstruct CaDiCaL simplifications
-		if strings.Contains(name, simplifier.Cadical+"_c") {
-			segments := strings.Split(fileName, ".")
-			instanceFilePath := path.Join(config.Paths.Encodings, strings.Join(segments[:3], ".")+".cnf")
-			originalFilePath := path.Join(config.Paths.Encodings, strings.Join(segments[:2], "."))
-			rsFilePath := instanceFilePath + ".rs.txt"
+				fileName := path.Base(logFile)
 
-			solutionLiterals, err = summarizerSvc.solutionSvc.Reconstruct(solutionLiterals, rsFilePath, originalFilePath)
-			summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to reconstruct solution")
-		}
+				// TODO: Remap SatELite simplifications
+				// Reconstruct CaDiCaL simplifications
+				if strings.Contains(name, simplifier.Cadical+"_c") {
+					segments := strings.Split(fileName, ".")
+					instanceFilePath := path.Join(config.Paths.Encodings, strings.Join(segments[:3], ".")+".cnf")
+					originalFilePath := path.Join(config.Paths.Encodings, strings.Join(segments[:2], "."))
+					rsFilePath := instanceFilePath + ".rs.txt"
 
-		// Extract the message from the solution
-		message, err := summarizerSvc.solutionSvc.ExtractMessage(solutionLiterals)
-		summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed extract message from the solution literal")
+					solutionLiterals, err = summarizerSvc.solutionSvc.Reconstruct(solutionLiterals, rsFilePath, originalFilePath)
+					summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to reconstruct solution")
+				}
 
-		// Take the steps derived from the instance name
-		var (
-			encoder_   encoder.Encoder
-			step       int
-			targetHash string
-		)
-		{
-			match := regexp.MustCompile("[a-z_]+_md4_[0-9]+_[a-z]+_").FindString(fileName)
-			encoder_ = encoder.Encoder(strings.Split(match, "_md4")[0])
-			segments := strings.Split(match[len(encoder_):], "_")
-			step, _ = strconv.Atoi(segments[2])
-			targetHash = segments[3]
-		}
+				// Extract the message from the solution
+				message, err := summarizerSvc.solutionSvc.ExtractMessage(solutionLiterals)
+				summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed extract message from the solution literal")
 
-		// Verify the solution
-		addChainingVars := encoder_ == encoder.SaeedE
-		hash, err := summarizerSvc.md4Svc.Run(message, step, addChainingVars)
-		summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the hash")
-		solution.verified = hash == targetHash
+				// Take the steps derived from the instance name
+				encoder_, step, targetHash, err := parseSolutionLogName(fileName)
+				summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to extract information from the log file name")
 
-		solutions = append(solutions, solution)
+				// Verify the solution
+				addChainingVars := encoder_ == encoder.SaeedE
+				hash, err := summarizerSvc.md4Svc.Run(message, step, addChainingVars)
+				summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the hash")
+				solution.verified = hash == targetHash
+				if solution.verified {
+					solution.message = hex.EncodeToString(message)
+				}
+
+				lock.Lock()
+				solutions = append(solutions, solution)
+				lock.Unlock()
+			}
+		}(i, logFile))
 	}
+
+	pool.StopAndWait()
+
 	return solutions
 }
 
@@ -314,6 +341,91 @@ func (summarizerSvc *SummarizerService) WriteSimplificationsLog(simplifications 
 	})
 }
 
+func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, file *os.File) {
+	// file.WriteString("### Solutions\n\n")
+
+	satCount := 0
+	satVerifiedCount := 0
+	unsatCount := 0
+	failsCount := 0
+	solvedCount := 0
+	totalTime := time.Duration(0)
+	messages := []string{}
+
+	sort.Slice(solutions, func(i, j int) bool {
+		return solutions[i].name > solutions[j].name
+	})
+	for _, solution := range solutions {
+		switch solution.result {
+		case solver.Sat:
+			satCount++
+		case solver.Unsat:
+			unsatCount++
+		case solver.Fail:
+			failsCount++
+		}
+
+		if solution.verified {
+			satVerifiedCount++
+			messages = append(messages, solution.message)
+		}
+
+		if solution.result == solver.Sat || solution.result == solver.Unsat {
+			totalTime += solution.processTime
+			solvedCount++
+		}
+	}
+	satCount_ := humanize.Comma(int64(satCount))
+	satVerifiedComment := ""
+	if satCount > 0 {
+		if satCount == satVerifiedCount {
+			satVerifiedComment = " (✔)"
+		} else {
+			satVerifiedComment = fmt.Sprintf(" (✖%d)", satCount-satVerifiedCount)
+		}
+	}
+	unsatCount_ := humanize.Comma(int64(unsatCount))
+	failCount_ := humanize.Comma(int64(failsCount))
+	solvedCount_ := humanize.Comma(int64(solvedCount))
+
+	file.WriteString(fmt.Sprintf("%s SAT%s, %s UNSAT, %s Fails\n", satCount_, satVerifiedComment, unsatCount_, failCount_))
+	file.WriteString(fmt.Sprintf("Process time (1 CPU, %s instances): %s\n", solvedCount_, totalTime))
+
+	if len(messages) > 0 {
+		file.WriteString("\nMessages:\n")
+		for i, message := range messages {
+			file.WriteString(fmt.Sprintf("%d. %s\n", i+1, message))
+		}
+	}
+
+	if len(cubesets) > 0 {
+		cubeset := cubesets[0]
+		cubesCount := humanize.Comma(int64(cubeset.cubesCount))
+		estimatedTime := time.Duration((int(totalTime) / solvedCount) * cubeset.cubesCount)
+		estimatedTime12Cpu := time.Duration((int(totalTime) / (solvedCount * 12)) * cubeset.cubesCount)
+		file.WriteString(fmt.Sprintf("Estimated time (1 CPU, %s instances): %s\n", cubesCount, estimatedTime))
+		file.WriteString(fmt.Sprintf("Estimated time (12 CPU, %s instances): %s\n", cubesCount, estimatedTime12Cpu))
+	}
+
+	file.WriteString("\n")
+}
+
+func printCubesetsStat(cubesets []cubeset, file *os.File) {
+	file.WriteString("## Cubesets\n\n")
+
+	sort.Slice(cubesets, func(i, j int) bool {
+		return cubesets[i].threshold < cubesets[j].threshold
+	})
+	for i, cubeset := range cubesets {
+		cubesCount := humanize.Comma(int64(cubeset.cubesCount))
+		refutedLeavesCount := humanize.Comma(int64(cubeset.refutedLeavesCount))
+		file.WriteString(fmt.Sprintf("%d. n%d: %s cubes, %s refuted leaves, %s process time, %s\n", i+1, cubeset.threshold, cubesCount, refutedLeavesCount, cubeset.processTime, cubeset.name))
+	}
+	if len(cubesets) > 0 {
+		file.WriteString("\n")
+	}
+}
+
 func (summarizerSvc *SummarizerService) WriteCombinationsLog(combinations map[string]combination) {
 	filePath := "summary.combined.md"
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
@@ -327,192 +439,42 @@ func (summarizerSvc *SummarizerService) WriteCombinationsLog(combinations map[st
 		return baseEncodingNames[i] > baseEncodingNames[j]
 	})
 
-	for _, baseEncodingName := range baseEncodingNames {
-		file.WriteString("# " + baseEncodingName + "\n")
+	for i, baseEncodingName := range baseEncodingNames {
+		file.WriteString(fmt.Sprintf("# %d. %s\n\n", i+1, baseEncodingName))
 		combination := combinations[baseEncodingName]
 
 		solutions := *combination.solutions
-		file.WriteString("\n## Solutions\n\n")
-		satCount := 0
-		satVerifiedCount := 0
-		unsatCount := 0
-		failsCount := 0
-		totalTime := time.Duration(0)
-
-		sort.Slice(solutions, func(i, j int) bool {
-			return solutions[i].name > solutions[j].name
+		solutionGroups := lo.GroupBy(solutions, func(s solution) string {
+			name := regexp.MustCompile("(.cube[0-9]+)|(.log)").ReplaceAllString(s.name, "")
+			return name
 		})
-
-		for _, solution := range solutions {
-			switch solution.result {
-			case solver.Sat:
-				satCount++
-			case solver.Unsat:
-				unsatCount++
-			case solver.Fail:
-				failsCount++
-			}
-			if solution.verified {
-				satVerifiedCount++
-			}
-			totalTime += solution.processTime
-		}
-		satCount_ := humanize.Comma(int64(satCount))
-		satVerifiedComment := ""
-		if satCount > 0 {
-			if satCount == satVerifiedCount {
-				satVerifiedComment = " (✔)"
-			} else {
-				satVerifiedComment = fmt.Sprintf(" (✖%d)", satCount-satVerifiedCount)
-			}
-		}
-		unsatCount_ := humanize.Comma(int64(unsatCount))
-		failCount_ := humanize.Comma(int64(failsCount))
-
-		file.WriteString(fmt.Sprintf("%s SAT%s, %s UNSAT, %s Fails\n", satCount_, satVerifiedComment, unsatCount_, failCount_))
-		file.WriteString(fmt.Sprintf("Process time: %s\n\n", totalTime))
 
 		cubesets := *combination.cubesets
-		sort.Slice(cubesets, func(i, j int) bool {
-			return cubesets[i].name > cubesets[j].name
+		cubesetGroups := lo.GroupBy(cubesets, func(c cubeset) string {
+			return c.name
 		})
-		file.WriteString("## Cubesets\n\n")
-		for _, cubeset := range cubesets {
-			file.WriteString(cubeset.name + "\n")
+
+		solutionNames := make([]string, 0, len(solutionGroups))
+		for k := range solutionGroups {
+			solutionNames = append(solutionNames, k)
 		}
+		sort.Slice(solutionNames, func(i, j int) bool {
+			return solutionNames[i] > solutionNames[j]
+		})
+		for j, name := range solutionNames {
+			solutions_ := solutionGroups[name]
+			romanNumeral := integerToRoman(j + 1)
+			file.WriteString(fmt.Sprintf("## %s. %s\n\n", romanNumeral, name))
+			searchName_ := strings.Split(name, ".")
+			searchName := strings.Join(searchName_[:len(searchName_)-2], ".")
+			printSolutionsStat(name, solutions_, cubesetGroups[searchName], file)
+		}
+
 		if len(cubesets) > 0 {
-			file.WriteString("\n")
+			printCubesetsStat(cubesets, file)
 		}
 	}
 }
-
-// func (summarizerSvc *SummarizerService) WriteSummaryLog(basePath string) {
-// 	filePath := basePath + ".summary.md"
-// 	summary := ""
-// 	solutions, err := summarizerSvc.solutionSvc.All()
-// 	summarizerSvc.errorSvc.Fatal(err, "Logger: failed to fetch solutions")
-// 	cubesets, err := summarizerSvc.cubesetSvc.All()
-// 	summarizerSvc.errorSvc.Fatal(err, "Logger: failed to fetch cubesets")
-
-// 	summary += "# Solutions\n\n"
-// 	groupedSolutions := lo.GroupBy(solutions, func(s solver.Solution) string {
-// 		instanceName := s.InstanceName
-// 		lastCnfIndex := strings.LastIndex(instanceName, ".cnf")
-// 		lastCubesIndex := strings.LastIndex(instanceName, ".cubes")
-
-// 		if lastCubesIndex != -1 {
-// 			return instanceName[:lastCubesIndex]
-// 		}
-
-// 		if lastCnfIndex != -1 {
-// 			return instanceName[:lastCnfIndex]
-// 		}
-
-// 		return instanceName
-// 	})
-
-// 	encodings := lo.Keys(groupedSolutions)
-// 	sort.Strings(encodings)
-// 	for _, encoding := range encodings {
-// 		sat := 0
-// 		unsat := 0
-// 		others := 0
-// 		totalTime := time.Duration(0)
-// 		quantity := 0
-// 		cubesCount := 0
-// 		encodingInfo, err := summarizerSvc.encoderSvc.ProcessInstanceName(encoding)
-// 		summarizerSvc.errorSvc.Fatal(err, "Logger: failed to process instance name")
-
-// 		for _, cubeset := range cubesets {
-// 			info, err := summarizerSvc.encoderSvc.ProcessInstanceName(cubeset.InstanceName)
-// 			summarizerSvc.errorSvc.Fatal(err, "Logger: failed to process instance name")
-// 			info.Cubing = mo.Some(encoder.CubingInfo{
-// 				Threshold: cubeset.Threshold,
-// 			})
-// 			if encoding == strings.TrimSuffix(summarizerSvc.encoderSvc.GetInstanceName(info), ".cubes") {
-// 				cubesCount = cubeset.Cubes
-// 			}
-// 		}
-
-// 		solutions := groupedSolutions[encoding]
-// 		for _, solution := range solutions {
-// 			switch solution.ExitCode {
-// 			case 10:
-// 				sat += 1
-// 			case 20:
-// 				unsat += 1
-// 			default:
-// 				others += 1
-// 			}
-
-// 			if solution.ExitCode == 20 || solution.ExitCode == 10 {
-// 				totalTime += solution.Runtime
-// 				quantity += 1
-// 			}
-// 		}
-
-// 		sat_ := humanize.Comma(int64(sat))
-// 		unsat_ := humanize.Comma(int64(unsat))
-// 		others_ := humanize.Comma(int64(others))
-// 		quantity_ := humanize.Comma(int64(quantity))
-// 		cubesCount_ := humanize.Comma(int64(cubesCount))
-
-// 		summary += fmt.Sprintf("## %s\n\n%s SAT, %s UNSAT, %s Others", encoding, sat_, unsat_, others_)
-// 		if _, exists := encodingInfo.Cubing.Get(); exists {
-// 			percentageComplete := float64(quantity) / float64(cubesCount) * 100
-// 			summary += fmt.Sprintf(", %.2f%% complete\n", percentageComplete)
-
-// 			estimate := time.Duration(totalTime.Seconds()/float64(quantity)*float64(cubesCount)) * time.Second
-// 			summary += fmt.Sprintf("Estimate (1 CPU): %s for %s cubes\n", estimate.Round(time.Millisecond), cubesCount_)
-
-// 			estimate12Cpu := time.Duration(totalTime.Seconds()/float64(quantity)*float64(cubesCount)) * time.Second / 12
-// 			summary += fmt.Sprintf("Estimate (12 CPU): %s for %s cubes\n", estimate12Cpu.Round(time.Millisecond), cubesCount_)
-
-// 			estimateForNRemaining12Cpu := time.Duration(totalTime.Seconds()/float64(quantity)*float64(cubesCount-1000)) * time.Second / 12
-// 			summary += fmt.Sprintf("Estimate (12 CPU): %s for %s cubes\n", estimateForNRemaining12Cpu.Round(time.Millisecond), humanize.Comma(int64(cubesCount)-1000))
-
-// 			summary += fmt.Sprintf("Real time (1 CPU): %s for %s cubes\n", totalTime.Round(time.Millisecond), quantity_)
-// 			summary += fmt.Sprintf("Real time (12 CPU): %s for %s cubes\n", (totalTime / 12).Round(time.Millisecond), quantity_)
-// 		} else {
-// 			summary += "\n"
-// 		}
-
-// 		summary += "\n"
-// 	}
-
-// 	summary += "# Cubesets\n"
-// 	groupedCubesets := lo.GroupBy(cubesets, func(cubeset cubeset.CubeSet) string {
-// 		instanceName := cubeset.InstanceName
-// 		return instanceName
-// 	})
-
-// 	encodings = lo.Keys(groupedCubesets)
-// 	sort.Strings(encodings)
-// 	for _, encoding := range encodings {
-// 		cubesets := groupedCubesets[encoding]
-// 		summary += "\n## " + encoding + "\n\n"
-
-// 		sort.Slice(cubesets, func(i, j int) bool {
-// 			return cubesets[i].Threshold < cubesets[j].Threshold
-// 		})
-
-// 		for i, cubeset := range cubesets {
-// 			threshold := cubeset.Threshold
-// 			cubes := cubeset.Cubes
-// 			refutedLeaves := cubeset.RefutedLeaves
-// 			processTime := cubeset.Runtime
-
-// 			cubes_ := humanize.Comma(int64(cubes))
-// 			refutedLeaves_ := humanize.Comma(int64(refutedLeaves))
-
-// 			summary += fmt.Sprintf("%d. n%d: %s cubes, %s refuted leaves, %s process time\n", i+1, threshold, cubes_, refutedLeaves_, processTime.Round(time.Millisecond))
-// 		}
-// 	}
-
-// 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
-// 	summarizerSvc.errorSvc.Fatal(err, "Logger: failed to write summary")
-// 	file.WriteString(summary)
-// }
 
 func (summarizerSvc *SummarizerService) Run() {
 	startTime := time.Now()
@@ -536,18 +498,23 @@ func (summarizerSvc *SummarizerService) Run() {
 			simplificationLogFiles = append(simplificationLogFiles, fileName)
 		}
 	}
+	log.Printf("Processed %d items\n", len(files))
 
 	cubesets := summarizerSvc.GetCubesets(cubesetLogFiles)
 	summarizerSvc.WriteCubesetsLog(cubesets)
-
-	solutions := summarizerSvc.GetSolutions(solutionLogFiles)
-	summarizerSvc.WriteSolutionsLog(solutions)
+	log.Printf("Written summary for %d cubesets\n", len(cubesets))
 
 	simplifications := summarizerSvc.GetSimplifications(simplificationLogFiles)
 	summarizerSvc.WriteSimplificationsLog(simplifications)
+	log.Printf("Written summary for %d simplifications\n", len(simplifications))
+
+	solutions := summarizerSvc.GetSolutions(solutionLogFiles)
+	summarizerSvc.WriteSolutionsLog(solutions)
+	log.Printf("Written summary for %d solutions\n", len(solutions))
 
 	combinations := summarizerSvc.GetCombinations(solutions, cubesets)
 	summarizerSvc.WriteCombinationsLog(combinations)
+	log.Printf("Written summary for %d combinations\n", len(combinations))
 
 	log.Println("Time taken:", time.Since(startTime))
 }
