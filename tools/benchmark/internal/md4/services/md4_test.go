@@ -5,47 +5,6 @@ import (
 	"testing"
 )
 
-// func TestBruteForce(t *testing.T) {
-// 	wordTemplate := "%s9%s9%s1%se%sd%se%v3%s"
-// 	fills := make([]any, 8)
-// 	words := []string{}
-// 	runePossibilities := []string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f"}
-// 	for position := 0; position < 8; position++ {
-// 		for i := 0; i < len(runePossibilities); i++ {
-// 			for i := range fills {
-// 				fills[i] = ""
-// 			}
-// 			fills[position] = string(runePossibilities[i])
-// 			word := fmt.Sprintf(wordTemplate, fills...)
-// 			words = append(words, word)
-// 		}
-// 	}
-
-// 	success := false
-// 	for _, word := range words {
-// 		// fmt.Println(word)
-// 		md4Svc := Md4Service{}
-// 		bytes, _ := hex.DecodeString(fmt.Sprintf("e57d8668a57d8668a57d86681d236482a57d8668a57d8668a57d866897a13204a57d8668a57d8668a57d8668%s301e2ac35bed2a3de167a833890d22f0", word))
-// 		digest, err := md4Svc.Run(bytes, 40)
-// 		if err != nil {
-// 			t.Fatal("failed to compute MD4 hash: ", err)
-// 		}
-
-// 		if digest == "ffffffffffffffffffffffffffffffff" {
-// 			success = true
-// 			t.Log(word)
-// 			t.Fail()
-// 		}
-
-// 		// if digest != "ffffffffffffffffffffffffffffffff" {
-// 		// 	t.Errorf("got hash = %s but expected all-one-bit hash\n", digest)
-// 		// }
-// 	}
-// 	if !success {
-// 		t.Fail()
-// 	}
-// }
-
 func Test40Md4N1(t *testing.T) {
 	md4Svc := Md4Service{}
 	bytes, _ := hex.DecodeString("e57d8668a57d8668a57d8668bc8c857ba57d8668a57d8668a57d8668cb0a1178a57d8668a57d8668a57d8668307bc4e7ad02e703e1516b23981c2a75c08ea9f7")
