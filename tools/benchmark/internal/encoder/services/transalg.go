@@ -162,6 +162,7 @@ func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.EncodeParam
 		// * Drive the encoder
 		command := fmt.Sprintf("%s -i %s -o %s", encoderSvc.configSvc.Config.Paths.Bin.Transalg, transalgFilePath, encodingPath)
 		err = encoderSvc.commandSvc.Create(command).Run()
+		defer os.Remove(transalgFilePath)
 		encoderSvc.errorSvc.Fatal(err, "Encoder: failed to run Transalg for "+instanceName)
 
 		logrus.Println("Encoder:", encodingPath)
