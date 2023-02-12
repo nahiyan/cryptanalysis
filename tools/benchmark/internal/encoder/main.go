@@ -68,7 +68,7 @@ type Encoding struct {
 
 func (encoding Encoding) GetLogPath(logsDir string, solver_ mo.Option[solver.Solver]) string {
 	basePathInLogsDir := path.Join(logsDir, path.Base(encoding.BasePath))
-	basePathWithoutExt := basePathInLogsDir[:len(basePathInLogsDir)-4]
+	// basePathWithoutExt := basePathInLogsDir[:len(basePathInLogsDir)-4]
 
 	solver__ := ""
 	if solver___, exists := solver_.Get(); exists {
@@ -76,11 +76,11 @@ func (encoding Encoding) GetLogPath(logsDir string, solver_ mo.Option[solver.Sol
 	}
 
 	if cube, exists := encoding.Cube.Get(); exists {
-		logFilePath := basePathWithoutExt + fmt.Sprintf(".march_n%d.cube%d%s.log", cube.Threshold, cube.Index, solver__)
+		logFilePath := basePathInLogsDir + fmt.Sprintf(".march_n%d.cubes.cube%d%s.log", cube.Threshold, cube.Index, solver__)
 		return logFilePath
 	}
 
-	return basePathWithoutExt + solver__ + ".log"
+	return basePathInLogsDir + solver__ + ".log"
 }
 
 func (encoding Encoding) GetName() string {
