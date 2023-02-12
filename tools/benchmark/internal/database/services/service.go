@@ -76,21 +76,22 @@ func (databaseSvc *DatabaseService) UseReadWrite(handler func(db *bolt.DB) error
 }
 
 func (databaseSvc *DatabaseService) Init() {
-	startTime := time.Now()
-	defer databaseSvc.filesystemSvc.LogInfo("Database: init took", time.Since(startTime).String())
+	// TODO: Get rid of the database
+	// startTime := time.Now()
+	// defer databaseSvc.filesystemSvc.LogInfo("Database: init took", time.Since(startTime).String())
 
-	errorSvc := databaseSvc.errorSvc
+	// errorSvc := databaseSvc.errorSvc
 
-	// Open the database
-	err := databaseSvc.Open(false)
-	errorSvc.Fatal(err, "Database: failed to open")
+	// // Open the database
+	// err := databaseSvc.Open(false)
+	// errorSvc.Fatal(err, "Database: failed to open")
 
-	// Buckets
-	err = databaseSvc.CreateBuckets()
-	errorSvc.Fatal(err, "Database: failed to create buckets")
+	// // Buckets
+	// err = databaseSvc.CreateBuckets()
+	// errorSvc.Fatal(err, "Database: failed to create buckets")
 
-	err = databaseSvc.Close()
-	errorSvc.Fatal(err, "Database: failed to close")
+	// err = databaseSvc.Close()
+	// errorSvc.Fatal(err, "Database: failed to close")
 }
 
 func (databaseSvc *DatabaseService) Get(bucket string, key []byte) ([]byte, error) {
