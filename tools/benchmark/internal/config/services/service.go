@@ -49,9 +49,7 @@ func (configSvc *ConfigService) Process() {
 
 	// Set config file
 	viper.SetConfigFile(configFilePath)
-	if err := viper.ReadInConfig(); err != nil {
-		log.Println("Failed to read the config file")
-	}
+	viper.ReadInConfig()
 
 	// Unwrap the structure
 	if err := viper.Unmarshal(&configSvc.Config); err != nil {
