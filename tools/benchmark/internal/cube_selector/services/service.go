@@ -49,25 +49,13 @@ func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(encodingFilePath, c
 	defer instanceReader.Close()
 	instanceScanner := bufio.NewScanner(instanceReader)
 
-	// * 2. Open the cubes file
-	cubesFile, err := os.Open(cubesetFilePath)
-	if err != nil {
-		return err
-	}
-	defer cubesFile.Close()
-
-	// TODO: See if reading lines can be made more efficient
-	// * 3. Get the cube
-	cube, _, err := cubeSelectorSvc.filesystemSvc.ReadLine(cubesFile, cubeIndex)
+	// * 2. Get the cube from the binary
+	cubeLiterals, err := cubeSelectorSvc.cubesetSvc.GetCube(cubesetFilePath, cubeIndex)
 	if err != nil {
 		return err
 	}
 
-	// * 4. Generate unit clauses from the literals in the cube
-	cubeClauses := strings.Fields(cube[2:])
-	cubeClauses = cubeClauses[:len(cubeClauses)-1]
-
-	// * 5. Get the num. of variables and clauses along with the body
+	// * 3. Get the num. of variables and clauses along with the body
 	var numVars, numClauses int
 	for instanceScanner.Scan() {
 		line := instanceScanner.Text()
@@ -75,7 +63,7 @@ func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(encodingFilePath, c
 			fmt.Sscanf(line, "p cnf %d %d\n", &numVars, &numClauses)
 
 			// * 6. Generate a new header with an increased number of clauses
-			newHeader := fmt.Sprintf("p cnf %d %d", numVars, numClauses+len(cubeClauses))
+			newHeader := fmt.Sprintf("p cnf %d %d", numVars, numClauses+len(cubeLiterals))
 			output.Write([]byte(newHeader + "\n"))
 
 			continue
@@ -83,12 +71,11 @@ func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(encodingFilePath, c
 
 		output.Write([]byte(line + "\n"))
 	}
-	// n := len(fmt.Sprintf("p cnf %d %d\n", numVars, numClauses))
-	// body := instance[n:]
 
-	// * 7. Assemble the new encoding
-	for _, cubeClause := range cubeClauses {
-		output.Write([]byte(cubeClause + " 0\n"))
+	// * 4. Assemble the new encoding by adding the cube literals as unit clauses
+	for _, cubeLiteral := range cubeLiterals {
+		clause := fmt.Sprintf("%d 0\n", cubeLiteral)
+		output.Write([]byte(clause))
 	}
 
 	return nil
@@ -97,8 +84,15 @@ func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(encodingFilePath, c
 func (cubeSelectorSvc *CubeSelectorService) Select(cubesets []string, parameters pipeline.CubeSelectParams, isRandom bool) []encoder.Encoding {
 	encodings := []encoder.Encoding{}
 	for _, cubeset := range cubesets {
-		segments := strings.Split(cubeset, ".")
-		encodingPath := path.Join(cubeSelectorSvc.configSvc.Config.Paths.Encodings, path.Base(strings.Join(segments[:len(segments)-2], ".")))
+		// Generate the binary cubeset file
+		err := cubeSelectorSvc.cubesetSvc.BinEncode(cubeset)
+		cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to binary encode "+cubeset)
+
+		var encodingPath string
+		{
+			segments := strings.Split(cubeset, ".")
+			encodingPath = path.Join(cubeSelectorSvc.configSvc.Config.Paths.Encodings, path.Base(strings.Join(segments[:len(segments)-2], ".")))
+		}
 
 		cubesCount, err := cubeSelectorSvc.filesystemSvc.CountLines(cubeset)
 		cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to count lines "+cubeset)
