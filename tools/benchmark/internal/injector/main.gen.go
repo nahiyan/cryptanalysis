@@ -1,30 +1,27 @@
 package injector
 
 import (
-	services18 "benchmark/internal/command/services"
+	services15 "benchmark/internal/command/services"
 	services "benchmark/internal/config/services"
-	services17 "benchmark/internal/cube_selector/services"
-	services16 "benchmark/internal/cube_slurm_task/services"
-	services12 "benchmark/internal/cuber/services"
-	services13 "benchmark/internal/cubeset/services"
-	services7 "benchmark/internal/database/services"
+	services14 "benchmark/internal/cube_selector/services"
+	services11 "benchmark/internal/cuber/services"
+	services12 "benchmark/internal/cubeset/services"
 	services1 "benchmark/internal/encoder/services"
-	services14 "benchmark/internal/encoding/services"
+	services13 "benchmark/internal/encoding/services"
 	services2 "benchmark/internal/error/services"
 	services3 "benchmark/internal/filesystem/services"
-	services23 "benchmark/internal/log/services"
-	services11 "benchmark/internal/marshalling/services"
-	services22 "benchmark/internal/md4/services"
+	services20 "benchmark/internal/log/services"
+	services10 "benchmark/internal/marshalling/services"
+	services19 "benchmark/internal/md4/services"
 	services4 "benchmark/internal/pipeline/services"
-	services10 "benchmark/internal/random/services"
+	services9 "benchmark/internal/random/services"
 	services5 "benchmark/internal/schema/services"
-	services21 "benchmark/internal/simplification/services"
-	services20 "benchmark/internal/simplifier/services"
-	services9 "benchmark/internal/slurm/services"
-	services8 "benchmark/internal/solution/services"
-	services15 "benchmark/internal/solve_slurm_task/services"
+	services18 "benchmark/internal/simplification/services"
+	services17 "benchmark/internal/simplifier/services"
+	services8 "benchmark/internal/slurm/services"
+	services7 "benchmark/internal/solution/services"
 	services6 "benchmark/internal/solver/services"
-	services19 "benchmark/internal/summarizer/services"
+	services16 "benchmark/internal/summarizer/services"
 	do "github.com/samber/do"
 )
 
@@ -37,22 +34,19 @@ func New() *do.Injector {
 	do.Provide(injector, services4.NewPipelineService)
 	do.Provide(injector, services5.NewSchemaService)
 	do.Provide(injector, services6.NewSolverService)
-	do.Provide(injector, services7.NewDatabaseService)
-	do.Provide(injector, services8.NewSolutionService)
-	do.Provide(injector, services9.NewSlurmService)
-	do.Provide(injector, services10.NewRandomService)
-	do.Provide(injector, services11.NewMarshallingService)
-	do.Provide(injector, services12.NewCuberService)
-	do.Provide(injector, services13.NewCubesetService)
-	do.Provide(injector, services14.NewEncodingService)
-	do.Provide(injector, services15.NewSolveSlurmTaskService)
-	do.Provide(injector, services16.NewCubeSlurmTaskService)
-	do.Provide(injector, services17.NewCubeSelectorService)
-	do.Provide(injector, services18.NewCommandService)
-	do.Provide(injector, services19.NewSummarizerService)
-	do.Provide(injector, services20.NewSimplifierService)
-	do.Provide(injector, services21.NewSimplificationService)
-	do.Provide(injector, services22.NewMd4Service)
-	do.Provide(injector, services23.NewLogService)
+	do.Provide(injector, services7.NewSolutionService)
+	do.Provide(injector, services8.NewSlurmService)
+	do.Provide(injector, services9.NewRandomService)
+	do.Provide(injector, services10.NewMarshallingService)
+	do.Provide(injector, services11.NewCuberService)
+	do.Provide(injector, services12.NewCubesetService)
+	do.Provide(injector, services13.NewEncodingService)
+	do.Provide(injector, services14.NewCubeSelectorService)
+	do.Provide(injector, services15.NewCommandService)
+	do.Provide(injector, services16.NewSummarizerService)
+	do.Provide(injector, services17.NewSimplifierService)
+	do.Provide(injector, services18.NewSimplificationService)
+	do.Provide(injector, services19.NewMd4Service)
+	do.Provide(injector, services20.NewLogService)
 	return injector
 }

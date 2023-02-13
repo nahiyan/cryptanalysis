@@ -30,11 +30,11 @@ func getInputType(pipe *pipeline.Pipe) InputOutputType {
 		return ListOfSlurmJobEncodings
 	case pipeline.Cube:
 		return ListOfEncodings
-	case pipeline.SlurmCube:
-		return ListOfSlurmJobEncodings
+	// case pipeline.SlurmCube:
+	// 	return ListOfSlurmJobEncodings
 	case pipeline.CubeSelect:
-		return ListOfCubesets
-	case pipeline.SlurmCubeSelect:
+		// 	return ListOfCubesets
+		// case pipeline.SlurmCubeSelect:
 		return ListOfSlurmJobCubesets
 	case pipeline.Simplify:
 		return ListOfEncodings
@@ -55,12 +55,8 @@ func getOutputType(pipe *pipeline.Pipe) InputOutputType {
 		return ListOfSlurmJobSolutions
 	case pipeline.Cube:
 		return ListOfCubesets
-	case pipeline.SlurmCube:
-		return ListOfSlurmJobCubesets
 	case pipeline.CubeSelect:
 		return ListOfEncodings
-	case pipeline.SlurmCubeSelect:
-		return ListOfSlurmJobEncodings
 	case pipeline.Simplify:
 		return ListOfEncodings
 	case pipeline.EncodingSlurmify:
@@ -136,11 +132,7 @@ func (pipelineSvc *PipelineService) TestRun(pipes []pipeline.Pipe) {
 			newPipe.SolveParams = solveParameters
 		case pipeline.Cube:
 			newPipe.CubeParams = cubeParameters
-		case pipeline.SlurmCube:
-			newPipe.CubeParams = cubeParameters
 		case pipeline.CubeSelect:
-			newPipe.CubeSelectParams = cubeSelectParameters
-		case pipeline.SlurmCubeSelect:
 			newPipe.CubeSelectParams = cubeSelectParameters
 		}
 
@@ -180,9 +172,6 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 
 			lastValue = pipelineSvc.cuberSvc.RunRegular(input, pipe.CubeParams)
 
-		case pipeline.SlurmCube:
-			lastValue = pipelineSvc.cuberSvc.RunSlurm(lastValue.(pipeline.SlurmPipeOutput), pipe.CubeParams)
-
 		case pipeline.CubeSelect:
 			input, ok := lastValue.([]string)
 			if !ok {
@@ -194,20 +183,12 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 			pipelineSvc.solverSvc.RunRegular(lastValue.([]encoder.Encoding), pipe.SolveParams)
 
 		case pipeline.SlurmSolve:
-			input, ok := lastValue.(pipeline.SlurmPipeOutput)
+			input, ok := lastValue.([]encoder.Encoding)
 			if !ok {
 				log.Fatal("Slurm-based solver expects a slurm-based input")
 			}
 
-			lastValue = pipelineSvc.solverSvc.RunSlurm(input, pipe.SolveParams)
-
-		case pipeline.EncodingSlurmify:
-			input, ok := lastValue.([]encoder.Encoding)
-			if !ok {
-				log.Fatal("Encoding slurmifier takes a list of encoding promises")
-			}
-
-			lastValue = pipelineSvc.slurmSvc.SlurmifyFromEncoding(input)
+			pipelineSvc.solverSvc.RunSlurm(input, pipe.SolveParams)
 		}
 	})
 }

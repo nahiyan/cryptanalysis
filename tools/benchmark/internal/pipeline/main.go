@@ -2,7 +2,6 @@ package pipeline
 
 import (
 	"benchmark/internal/encoder"
-	"benchmark/internal/slurm"
 	"benchmark/internal/solver"
 )
 
@@ -10,9 +9,7 @@ const (
 	Encode           = "encode"
 	Simplify         = "simplify"
 	Cube             = "cube"
-	SlurmCube        = "slurm_cube"
 	CubeSelect       = "cube_select"
-	SlurmCubeSelect  = "slurm_cube_select"
 	Solve            = "solve"
 	SlurmSolve       = "slurm_solve"
 	EncodingSlurmify = "encoding_slurmify"
@@ -79,13 +76,4 @@ type Pipe struct {
 
 	// Type: solve
 	SolveParams
-}
-
-type Value interface {
-	string
-}
-
-type SlurmPipeOutput struct {
-	Jobs   []slurm.Job
-	Values interface{}
 }

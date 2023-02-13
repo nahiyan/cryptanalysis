@@ -2,16 +2,10 @@ package services
 
 import (
 	"benchmark/internal/encoder"
-	errorModule "benchmark/internal/error"
 	"benchmark/internal/pipeline"
-	"benchmark/internal/slurm"
-	solveslurmtask "benchmark/internal/solve_slurm_task"
 	"benchmark/internal/solver"
 	"context"
-	"fmt"
 	"io"
-	"log"
-	"math"
 	"os"
 	"os/exec"
 	"path"
@@ -147,75 +141,70 @@ func (solverSvc *SolverService) ShouldSkip(encoding encoder.Encoding, solver_ so
 	return isSolved
 }
 
-func (solverSvc *SolverService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutput, parameters pipeline.SolveParams) pipeline.SlurmPipeOutput {
-	dirs := []string{solverSvc.configSvc.Config.Paths.Solutions, solverSvc.configSvc.Config.Paths.Logs}
-	err := solverSvc.filesystemSvc.PrepareDirs(dirs)
-	solverSvc.errorSvc.Fatal(err, "Solver: failed to prepare directory for storing the solutions and logs")
+func (solverSvc *SolverService) RunSlurm(encodings []encoder.Encoding, parameters pipeline.SolveParams) {
+	// dirs := []string{solverSvc.configSvc.Config.Paths.Solutions, solverSvc.configSvc.Config.Paths.Logs}
+	// err := solverSvc.filesystemSvc.PrepareDirs(dirs)
+	// solverSvc.errorSvc.Fatal(err, "Solver: failed to prepare directory for storing the solutions and logs")
 
-	slurmSvc := solverSvc.slurmSvc
-	errorSvc := solverSvc.errorSvc
-	config := solverSvc.configSvc.Config
-	encodings, ok := previousPipeOutput.Values.([]encoder.Encoding)
-	if !ok {
-		log.Fatal("Solver: invalid input")
-	}
-	dependencies := previousPipeOutput.Jobs
+	// slurmSvc := solverSvc.slurmSvc
+	// errorSvc := solverSvc.errorSvc
+	// config := solverSvc.configSvc.Config
+	// encodings, ok := previousPipeOutput.Values.([]encoder.Encoding)
+	// if !ok {
+	// 	log.Fatal("Solver: invalid input")
+	// }
+	// dependencies := previousPipeOutput.Jobs
 
-	tasks := []solveslurmtask.Task{}
-	i := 0
-	numOfPromises := len(encodings)
-	solverSvc.Loop(encodings, parameters, func(encoding encoder.Encoding, solver_ solver.Solver) {
-		// Note: We aren't checking if this task is already solved, since we'd have to retrieve the promised encoding, triggering the generation of cube encodings that are expensive on the FS to produce
-		timeout := time.Duration(parameters.Timeout) * time.Second
-		task := solveslurmtask.Task{
-			Encoding: encoding,
-			Solver:   solver_,
-			Timeout:  timeout,
-		}
+	// tasks := []solveslurmtask.Task{}
+	// i := 0
+	// numOfPromises := len(encodings)
+	// solverSvc.Loop(encodings, parameters, func(encoding encoder.Encoding, solver_ solver.Solver) {
+	// 	// Note: We aren't checking if this task is already solved, since we'd have to retrieve the promised encoding, triggering the generation of cube encodings that are expensive on the FS to produce
+	// 	timeout := time.Duration(parameters.Timeout) * time.Second
+	// 	task := solveslurmtask.Task{
+	// 		Encoding: encoding,
+	// 		Solver:   solver_,
+	// 		Timeout:  timeout,
+	// 	}
 
-		i += 1
-		logrus.Printf("Solver: [%d/%d] tasks processed", i, numOfPromises)
+	// 	i += 1
+	// 	logrus.Printf("Solver: [%d/%d] tasks processed", i, numOfPromises)
 
-		// Check if a task should be skipped
-		if !parameters.Redundant && solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
-			return
-		}
+	// 	// Check if a task should be skipped
+	// 	if !parameters.Redundant && solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
+	// 		return
+	// 	}
 
-		// Prevent overwriting of any existing task
-		taskId := solverSvc.solveSlurmTaskSvc.GenerateId(task)
-		if _, err := solverSvc.solveSlurmTaskSvc.Get(taskId); err == nil || (err != nil && err != errorModule.ErrKeyNotFound) {
-			return
-		}
+	// 	// Prevent overwriting of any existing task
+	// 	taskId := solverSvc.solveSlurmTaskSvc.GenerateId(task)
+	// 	if _, err := solverSvc.solveSlurmTaskSvc.Get(taskId); err == nil || (err != nil && err != errorModule.ErrKeyNotFound) {
+	// 		return
+	// 	}
 
-		tasks = append(tasks, task)
-	})
+	// 	tasks = append(tasks, task)
+	// })
 
-	err = solverSvc.solveSlurmTaskSvc.AddMultiple(tasks)
-	errorSvc.Fatal(err, "Solver: failed to add slurm task")
-	logrus.Println("Solver: added", len(tasks), "slurm tasks")
+	// err = solverSvc.solveSlurmTaskSvc.AddMultiple(tasks)
+	// errorSvc.Fatal(err, "Solver: failed to add slurm task")
+	// logrus.Println("Solver: added", len(tasks), "slurm tasks")
 
-	slurmMaxJobs := config.Slurm.MaxJobs
-	numTasks := int(math.Min(float64(parameters.Workers), float64(slurmMaxJobs)))
-	timeout := parameters.Timeout
-	jobFilePath, err := slurmSvc.GenerateJob(
-		numTasks,
-		1,
-		1,
-		300,
-		timeout,
-		fmt.Sprintf(
-			"%s slurm-task -t solve",
-			config.Paths.Bin.Benchmark))
-	errorSvc.Fatal(err, "Solver: failed to create slurm job file")
+	// slurmMaxJobs := config.Slurm.MaxJobs
+	// numTasks := int(math.Min(float64(parameters.Workers), float64(slurmMaxJobs)))
+	// timeout := parameters.Timeout
+	// jobFilePath, err := slurmSvc.GenerateJob(
+	// 	numTasks,
+	// 	1,
+	// 	1,
+	// 	300,
+	// 	timeout,
+	// 	fmt.Sprintf(
+	// 		"%s slurm-task -t solve",
+	// 		config.Paths.Bin.Benchmark))
+	// errorSvc.Fatal(err, "Solver: failed to create slurm job file")
 
-	jobId, err := slurmSvc.ScheduleJob(jobFilePath, dependencies)
-	solverSvc.errorSvc.Fatal(err, "Solver: failed to schedule the job")
-	logrus.Println("Solver: scheduled job with ID", jobId)
-
-	return pipeline.SlurmPipeOutput{
-		Jobs:   []slurm.Job{{Id: jobId}},
-		Values: []string{},
-	}
+	// jobId, err := slurmSvc.ScheduleJob(jobFilePath, dependencies)
+	// solverSvc.errorSvc.Fatal(err, "Solver: failed to schedule the job")
+	// logrus.Println("Solver: scheduled job with ID", jobId)
 }
 
 func (solverSvc *SolverService) RunRegular(encodings []encoder.Encoding, parameters pipeline.SolveParams) {

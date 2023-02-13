@@ -2,14 +2,11 @@ package services
 
 import (
 	"benchmark/internal/command"
-	cubeslurmtask "benchmark/internal/cube_slurm_task"
 	"benchmark/internal/cuber"
 	"benchmark/internal/encoder"
 	"benchmark/internal/pipeline"
-	"benchmark/internal/slurm"
 	"context"
 	"fmt"
-	"log"
 	"math"
 	"os"
 	"os/exec"
@@ -233,60 +230,4 @@ func (cuberSvc *CuberService) RunRegular(encodings []encoder.Encoding, parameter
 	pool.StopAndWait()
 	logrus.Println("Cuber: stopped")
 	return cubesFilePaths
-}
-
-// TODO: Remove this
-func (cuberSvc *CuberService) RunSlurm(previousPipeOutput pipeline.SlurmPipeOutput, parameters pipeline.CubeParams) pipeline.SlurmPipeOutput {
-	errorSvc := cuberSvc.errorSvc
-	slurmSvc := cuberSvc.slurmSvc
-	config := cuberSvc.configSvc.Config
-	encodings, ok := previousPipeOutput.Values.([]encoder.Encoding)
-	if !ok {
-		log.Fatal("Cuber: invalid input")
-	}
-	dependencies := previousPipeOutput.Jobs
-
-	err := cuberSvc.cubeSlurmTaskSvc.RemoveAll()
-	errorSvc.Fatal(err, "Cuber: failed to clear slurm tasks")
-
-	counter := 1
-	cuberSvc.Loop(encodings, parameters, func(encoding string, threshold int, timeout int) {
-		if cuberSvc.ShouldSkip(encoding, threshold) {
-			logrus.Println("Cuber: skipped", threshold, encoding)
-			return
-		}
-
-		err := cuberSvc.cubeSlurmTaskSvc.AddTask(counter, cubeslurmtask.Task{
-			Encoding:  encoding,
-			Threshold: threshold,
-			Timeout:   time.Duration(parameters.Timeout) * time.Second,
-		})
-		errorSvc.Fatal(err, "Cuber: failed to add slurm task")
-
-		counter++
-	})
-
-	logrus.Println("Cuber: added", counter-1, "slurm tasks")
-
-	numTasks := counter - 1
-	timeout := parameters.Timeout
-	jobFilePath, err := slurmSvc.GenerateJob(
-		numTasks,
-		1,
-		1,
-		1024,
-		timeout,
-		fmt.Sprintf(
-			"%s slurm-task -t solve -i ${SLURM_ARRAY_TASK_ID}",
-			config.Paths.Bin.Benchmark))
-	errorSvc.Fatal(err, "Solver: failed to create slurm job file")
-
-	jobId, err := slurmSvc.ScheduleJob(jobFilePath, dependencies)
-	errorSvc.Fatal(err, "Solver: failed to schedule the job")
-	logrus.Println("Cuber: scheduled job with ID", jobId)
-
-	return pipeline.SlurmPipeOutput{
-		Jobs:   []slurm.Job{{Id: jobId}},
-		Values: []string{},
-	}
 }
