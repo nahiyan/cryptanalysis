@@ -6,12 +6,14 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"math/rand"
 	"os"
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/samber/lo"
 	"github.com/samber/mo"
@@ -85,8 +87,12 @@ func (cubeSelectorSvc *CubeSelectorService) Select(cubesets []string, parameters
 	encodings := []encoder.Encoding{}
 	for _, cubeset := range cubesets {
 		// Generate the binary cubeset file
-		err := cubeSelectorSvc.cubesetSvc.BinEncode(cubeset)
-		cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to binary encode "+cubeset)
+		if !cubeSelectorSvc.filesystemSvc.FileExistsNonEmpty(cubeset+".bcubes") || !cubeSelectorSvc.filesystemSvc.FileExistsNonEmpty(cubeset+".bcubes.map") {
+			startTime := time.Now()
+			err := cubeSelectorSvc.cubesetSvc.BinEncode(cubeset)
+			cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to binary encode "+cubeset)
+			log.Printf("Cube selector: generated binary cubeset in %s\n", time.Since(startTime))
+		}
 
 		var encodingPath string
 		{
