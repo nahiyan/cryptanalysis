@@ -18,7 +18,6 @@ func init() {
 	rootCmd.AddCommand(initRunCmd())
 	rootCmd.AddCommand(initSlurmTaskCmd())
 	rootCmd.AddCommand(initSummarizeCmd())
-	rootCmd.AddCommand(initClearCmd())
 }
 
 func Execute() {
