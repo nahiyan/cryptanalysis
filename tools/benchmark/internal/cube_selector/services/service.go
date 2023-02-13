@@ -42,6 +42,7 @@ func (cubeSelectorSvc *CubeSelectorService) RandomCubes(cubesCount, selectionSiz
 	return cubes[:randomCubeSelectionCount]
 }
 
+// TODO: See if it should be in the cubesets or cuber module
 func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(encodingFilePath, cubesetFilePath string, cubeIndex int, output io.Writer) error {
 	// * 1. Read the instance
 	instanceReader, err := os.OpenFile(encodingFilePath, os.O_RDONLY, 0644)
@@ -91,7 +92,7 @@ func (cubeSelectorSvc *CubeSelectorService) Select(cubesets []string, parameters
 			startTime := time.Now()
 			err := cubeSelectorSvc.cubesetSvc.BinEncode(cubeset)
 			cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to binary encode "+cubeset)
-			log.Printf("Cube selector: generated binary cubeset in %s\n", time.Since(startTime))
+			log.Printf("Cube selector: generated binary cubeset for %s in %s\n", cubeset, time.Since(startTime))
 		}
 
 		var encodingPath string
@@ -133,7 +134,6 @@ func (cubeSelectorSvc *CubeSelectorService) Select(cubesets []string, parameters
 	}
 
 	logrus.Println("Cube selector: randomly selected", len(encodings), "cubes")
-
 	return encodings
 }
 

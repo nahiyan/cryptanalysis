@@ -9,17 +9,16 @@ import (
 
 const (
 	ListOfEncodings         = "list[encoding]"
-	ListOfSlurmJobEncodings = "list[slurm_job[encoding]]"
 	ListOfSolutions         = "list[solution]"
 	ListOfSlurmJobSolutions = "list[slurm_job[solution]]"
 	ListOfCubesets          = "list[cubeset]"
-	ListOfSlurmJobCubesets  = "list[slurm_job[cubeset]]"
 	None                    = "none"
 )
 
 type InputOutputType string
 type LoopHandler func(*pipeline.Pipe, *pipeline.Pipe)
 
+// TODO: See if encoding slurmify can be removed
 func getInputType(pipe *pipeline.Pipe) InputOutputType {
 	switch pipe.Type {
 	case pipeline.Encode:
@@ -27,19 +26,15 @@ func getInputType(pipe *pipeline.Pipe) InputOutputType {
 	case pipeline.Solve:
 		return ListOfEncodings
 	case pipeline.SlurmSolve:
-		return ListOfSlurmJobEncodings
+		return ListOfEncodings
 	case pipeline.Cube:
 		return ListOfEncodings
-	// case pipeline.SlurmCube:
-	// 	return ListOfSlurmJobEncodings
 	case pipeline.CubeSelect:
-		// 	return ListOfCubesets
-		// case pipeline.SlurmCubeSelect:
-		return ListOfSlurmJobCubesets
+		return ListOfCubesets
 	case pipeline.Simplify:
 		return ListOfEncodings
-	case pipeline.EncodingSlurmify:
-		return ListOfEncodings
+		// case pipeline.EncodingSlurmify:
+		// 	return ListOfEncodings
 	}
 
 	return None
@@ -59,8 +54,8 @@ func getOutputType(pipe *pipeline.Pipe) InputOutputType {
 		return ListOfEncodings
 	case pipeline.Simplify:
 		return ListOfEncodings
-	case pipeline.EncodingSlurmify:
-		return ListOfSlurmJobEncodings
+		// case pipeline.EncodingSlurmify:
+		// 	return ListOfSlurmJobEncodings
 	}
 
 	return None

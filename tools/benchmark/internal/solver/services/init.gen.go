@@ -7,6 +7,7 @@ import (
 	services2 "benchmark/internal/error/services"
 	services1 "benchmark/internal/filesystem/services"
 	services7 "benchmark/internal/log/services"
+	services8 "benchmark/internal/random/services"
 	services4 "benchmark/internal/slurm/services"
 	services3 "benchmark/internal/solution/services"
 	do "github.com/samber/do"
@@ -21,6 +22,7 @@ type SolverService struct {
 	cubeSelectorSvc *services5.CubeSelectorService
 	encoderSvc      *services6.EncoderService
 	logSvc          *services7.LogService
+	randomSvc       *services8.RandomService
 }
 
 func NewSolverService(injector *do.Injector) (*SolverService, error) {
@@ -32,6 +34,7 @@ func NewSolverService(injector *do.Injector) (*SolverService, error) {
 	cubeSelectorSvc := do.MustInvoke[*services5.CubeSelectorService](injector)
 	encoderSvc := do.MustInvoke[*services6.EncoderService](injector)
 	logSvc := do.MustInvoke[*services7.LogService](injector)
-	svc := &SolverService{configSvc: configSvc, filesystemSvc: filesystemSvc, errorSvc: errorSvc, solutionSvc: solutionSvc, slurmSvc: slurmSvc, cubeSelectorSvc: cubeSelectorSvc, encoderSvc: encoderSvc, logSvc: logSvc}
+	randomSvc := do.MustInvoke[*services8.RandomService](injector)
+	svc := &SolverService{configSvc: configSvc, filesystemSvc: filesystemSvc, errorSvc: errorSvc, solutionSvc: solutionSvc, slurmSvc: slurmSvc, cubeSelectorSvc: cubeSelectorSvc, encoderSvc: encoderSvc, logSvc: logSvc, randomSvc: randomSvc}
 	return svc, nil
 }

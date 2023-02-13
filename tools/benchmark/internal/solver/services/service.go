@@ -71,6 +71,7 @@ func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver
 	stdinPipe, err := cmd.StdinPipe()
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to open stdin pipe")
 
+	// Start the command
 	cmd.Start()
 
 	if cube, exists := encoding.Cube.Get(); exists {
@@ -122,9 +123,9 @@ func (solverSvc *SolverService) TrackedInvoke(encoding encoder.Encoding, solver_
 }
 
 func (solverSvc *SolverService) Loop(encodings []encoder.Encoding, parameters pipeline.SolveParams, handler func(encoding encoder.Encoding, solver solver.Solver)) {
-	for _, promise := range encodings {
+	for _, encoding := range encodings {
 		for _, solver := range parameters.Solvers {
-			handler(promise, solver)
+			handler(encoding, solver)
 		}
 	}
 }
