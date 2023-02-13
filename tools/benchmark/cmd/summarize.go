@@ -8,10 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// TODO: Decide whether to keep the output argument
 func initSummarizeCmd() *cobra.Command {
-	// var output string
-
 	cmd := &cobra.Command{
 		Use:   "summarize",
 		Short: "Summarize the benchmark results",
@@ -21,8 +18,6 @@ func initSummarizeCmd() *cobra.Command {
 			summarizerSvc.Run()
 		},
 	}
-
-	// cmd.Flags().StringVarP(&output, "output", "o", "summary", "Base path of the output file. E.g. './results/summary'")
 
 	return cmd
 }
