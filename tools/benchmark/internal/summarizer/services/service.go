@@ -20,6 +20,7 @@ import (
 	"github.com/alitto/pond"
 	"github.com/dustin/go-humanize"
 	"github.com/samber/lo"
+	"gonum.org/v1/gonum/stat"
 )
 
 type solution struct {
@@ -342,8 +343,6 @@ func (summarizerSvc *SummarizerService) WriteSimplificationsLog(simplifications 
 }
 
 func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, file *os.File) {
-	// file.WriteString("### Solutions\n\n")
-
 	satCount := 0
 	satVerifiedCount := 0
 	unsatCount := 0
@@ -351,6 +350,7 @@ func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, f
 	solvedCount := 0
 	totalTime := time.Duration(0)
 	messages := []string{}
+	processTimes := []float64{}
 
 	sort.Slice(solutions, func(i, j int) bool {
 		return solutions[i].name > solutions[j].name
@@ -372,6 +372,7 @@ func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, f
 
 		if solution.result == solver.Sat || solution.result == solver.Unsat {
 			totalTime += solution.processTime
+			processTimes = append(processTimes, solution.processTime.Seconds())
 			solvedCount++
 		}
 	}
@@ -388,7 +389,14 @@ func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, f
 	failCount_ := humanize.Comma(int64(failsCount))
 	solvedCount_ := humanize.Comma(int64(solvedCount))
 
+	// Stats
+	sort.Float64s(processTimes)
+	mean, stdDev := stat.MeanStdDev(processTimes, nil)
+	median := stat.Quantile(0.5, stat.Empirical, processTimes, nil)
+	lowest, highest := processTimes[0], processTimes[len(processTimes)-1]
+
 	file.WriteString(fmt.Sprintf("%s SAT%s, %s UNSAT, %s Fails\n", satCount_, satVerifiedComment, unsatCount_, failCount_))
+	file.WriteString(fmt.Sprintf("Mean: %0.2fs, Median: %.2fs, Std. Deviation: %0.2f, Range: %.2fs to %.2fs\n", mean, median, stdDev, lowest, highest))
 	file.WriteString(fmt.Sprintf("Process time (1 CPU, %s instances): %s\n", solvedCount_, totalTime))
 	file.WriteString(fmt.Sprintf("Process time (12 CPU, %s instances): %s\n", solvedCount_, totalTime/12))
 
