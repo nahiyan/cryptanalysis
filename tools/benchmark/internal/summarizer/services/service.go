@@ -390,13 +390,7 @@ func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, f
 
 	file.WriteString(fmt.Sprintf("%s SAT%s, %s UNSAT, %s Fails\n", satCount_, satVerifiedComment, unsatCount_, failCount_))
 	file.WriteString(fmt.Sprintf("Process time (1 CPU, %s instances): %s\n", solvedCount_, totalTime))
-
-	if len(messages) > 0 {
-		file.WriteString("\nMessages:\n")
-		for i, message := range messages {
-			file.WriteString(fmt.Sprintf("%d. %s\n", i+1, message))
-		}
-	}
+	file.WriteString(fmt.Sprintf("Process time (12 CPU, %s instances): %s\n", solvedCount_, totalTime/12))
 
 	if len(cubesets) > 0 {
 		cubeset := cubesets[0]
@@ -405,6 +399,22 @@ func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, f
 		estimatedTime12Cpu := time.Duration((int(totalTime) / (solvedCount * 12)) * cubeset.cubesCount)
 		file.WriteString(fmt.Sprintf("Estimated time (1 CPU, %s instances): %s\n", cubesCount, estimatedTime))
 		file.WriteString(fmt.Sprintf("Estimated time (12 CPU, %s instances): %s\n", cubesCount, estimatedTime12Cpu))
+	}
+
+	if len(messages) > 0 {
+		file.WriteString("\nMessages:\n")
+		for i, message := range messages {
+			if len(message) != 128 {
+				log.Fatalln("Message expected to be 128 hex. chars. long")
+			}
+
+			formattedMessage := strings.Builder{}
+			for j := 0; j < 128; j += 8 {
+				formattedMessage.WriteString(message[j:j+8] + " ")
+			}
+
+			file.WriteString(fmt.Sprintf("%d. %s\n", i+1, formattedMessage.String()))
+		}
 	}
 
 	file.WriteString("\n")
