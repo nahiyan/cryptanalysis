@@ -18,16 +18,16 @@ func TestOverall(t *testing.T) {
 		configSvc: &services.ConfigService{},
 	}
 
-	tasksSetPath, err := svc.AddTasks([]task{
+	tasksSetPath, err := svc.AddTasks([]Task{
 		{
-			encoding: encoder.Encoding{
+			Encoding: encoder.Encoding{
 				BasePath: "lorem_ipsum.cnf",
 			},
-			solver:     solver.Kissat,
-			maxRuntime: time.Duration(5000) * time.Second,
+			Solver:     solver.Kissat,
+			MaxRuntime: time.Duration(5000) * time.Second,
 		},
 		{
-			encoding: encoder.Encoding{
+			Encoding: encoder.Encoding{
 				BasePath: "transalg_md4_41_00000000000000000000000000000000_dobbertin31.cnf.cadical_c1000000.cnf",
 				Cube: mo.Some(
 					encoder.Cube{
@@ -36,8 +36,8 @@ func TestOverall(t *testing.T) {
 					},
 				),
 			},
-			solver:     solver.Glucose,
-			maxRuntime: time.Duration(30) * time.Second,
+			Solver:     solver.Glucose,
+			MaxRuntime: time.Duration(30) * time.Second,
 		},
 	})
 	if err != nil {
@@ -54,20 +54,20 @@ func TestOverall(t *testing.T) {
 		}
 
 		// Cube info.
-		if _, exists := task.encoding.Cube.Get(); exists {
+		if _, exists := task.Encoding.Cube.Get(); exists {
 			t.Fatalf("Cube info. shouldn't exist")
 		}
 		// Solver
-		if task.solver != solver.Kissat {
-			t.Fatalf("Expected Kissat, got %s", task.solver)
+		if task.Solver != solver.Kissat {
+			t.Fatalf("Expected Kissat, got %s", task.Solver)
 		}
 		// Max. Runtime
-		if task.maxRuntime.Seconds() != 5000 {
-			t.Fatalf("Expected max. runtime = 5000, got %s", task.maxRuntime)
+		if task.MaxRuntime.Seconds() != 5000 {
+			t.Fatalf("Expected max. runtime = 5000, got %s", task.MaxRuntime)
 		}
 		// Base path
-		if task.encoding.BasePath != "lorem_ipsum.cnf" {
-			t.Fatalf("Expected base path = lorem_ipsum.cnf, got '%s'", task.encoding.BasePath)
+		if task.Encoding.BasePath != "lorem_ipsum.cnf" {
+			t.Fatalf("Expected base path = lorem_ipsum.cnf, got '%s'", task.Encoding.BasePath)
 		}
 	}
 
@@ -79,7 +79,7 @@ func TestOverall(t *testing.T) {
 		}
 
 		// Cube info.
-		if cube, exists := task.encoding.Cube.Get(); exists {
+		if cube, exists := task.Encoding.Cube.Get(); exists {
 			if cube.Threshold != 1234 {
 				t.Fatalf("Expected threshold = 1234, got %d", cube.Threshold)
 			}
@@ -90,16 +90,16 @@ func TestOverall(t *testing.T) {
 			t.Fatal("Cube info. should exist")
 		}
 		// Solver
-		if task.solver != solver.Glucose {
-			t.Fatalf("Expected Glucose, got %s", task.solver)
+		if task.Solver != solver.Glucose {
+			t.Fatalf("Expected Glucose, got %s", task.Solver)
 		}
 		// Max. Runtime
-		if task.maxRuntime.Seconds() != 30 {
-			t.Fatalf("Expected max. runtime = 5000, got %s", task.maxRuntime)
+		if task.MaxRuntime.Seconds() != 30 {
+			t.Fatalf("Expected max. runtime = 5000, got %s", task.MaxRuntime)
 		}
 		// Base path
-		if task.encoding.BasePath != "transalg_md4_41_00000000000000000000000000000000_dobbertin31.cnf.cadical_c1000000.cnf" {
-			t.Fatalf("Expected base path = transalg_md4_41_00000000000000000000000000000000_dobbertin31.cnf.cadical_c1000000.cnf, got '%s'", task.encoding.BasePath)
+		if task.Encoding.BasePath != "transalg_md4_41_00000000000000000000000000000000_dobbertin31.cnf.cadical_c1000000.cnf" {
+			t.Fatalf("Expected base path = transalg_md4_41_00000000000000000000000000000000_dobbertin31.cnf.cadical_c1000000.cnf, got '%s'", task.Encoding.BasePath)
 		}
 	}
 

@@ -14,13 +14,13 @@ import (
 	"github.com/samber/mo"
 )
 
-type task struct {
-	encoding   encoder.Encoding
-	solver     solver.Solver
-	maxRuntime time.Duration
+type Task struct {
+	Encoding   encoder.Encoding
+	Solver     solver.Solver
+	MaxRuntime time.Duration
 }
 
-func (solverSvc *SolverService) AddTasks(tasks []task) (string, error) {
+func (solverSvc *SolverService) AddTasks(tasks []Task) (string, error) {
 	// Tasks file
 	name := solverSvc.randomSvc.RandString(10)
 	tasksFilePath := path.Join(solverSvc.configSvc.Config.Paths.Tmp, name+".tasks")
@@ -44,7 +44,7 @@ func (solverSvc *SolverService) AddTasks(tasks []task) (string, error) {
 	for _, task := range tasks {
 		cubeThreshold := 0
 		cubeIndex := 0
-		if cube, exists := task.encoding.Cube.Get(); exists {
+		if cube, exists := task.Encoding.Cube.Get(); exists {
 			cubeThreshold = cube.Threshold
 			cubeIndex = cube.Index
 		}
@@ -61,7 +61,7 @@ func (solverSvc *SolverService) AddTasks(tasks []task) (string, error) {
 
 		// Solver
 		solverBytes := make([]byte, 1)
-		switch task.solver {
+		switch task.Solver {
 		case solver.Kissat:
 			solverBytes[0] = uint8(0)
 		case solver.Cadical:
@@ -77,12 +77,12 @@ func (solverSvc *SolverService) AddTasks(tasks []task) (string, error) {
 
 		// Timeout
 		timeoutBytes := make([]byte, 4)
-		timeoutSeconds := uint32(math.Round(task.maxRuntime.Seconds()))
+		timeoutSeconds := uint32(math.Round(task.MaxRuntime.Seconds()))
 		binary.BigEndian.PutUint32(timeoutBytes, timeoutSeconds)
 		tasksWriter.Write(timeoutBytes)
 
 		// Base path
-		basePathBytes := []byte(task.encoding.BasePath)
+		basePathBytes := []byte(task.Encoding.BasePath)
 		tasksWriter.Write(basePathBytes)
 
 		// Add the ending address to the maps
@@ -98,8 +98,8 @@ func (solverSvc *SolverService) AddTasks(tasks []task) (string, error) {
 	return tasksFilePath, nil
 }
 
-func (solverSvc *SolverService) GetTask(tasksSetPath string, index int) (task, error) {
-	task := task{}
+func (solverSvc *SolverService) GetTask(tasksSetPath string, index int) (Task, error) {
+	task := Task{}
 
 	tasksFilePath := path.Join(tasksSetPath)
 	tasksFile, err := os.OpenFile(tasksFilePath, os.O_RDONLY, 0644)
@@ -147,12 +147,12 @@ func (solverSvc *SolverService) GetTask(tasksSetPath string, index int) (task, e
 	cubeThreshold := int(binary.BigEndian.Uint16(taskBytes[0:2]))
 	cubeIndex := int(binary.BigEndian.Uint32(taskBytes[2:6]))
 	solver_ := uint8(taskBytes[6])
-	task.maxRuntime = time.Duration(int(binary.BigEndian.Uint32(taskBytes[7:11]))) * time.Second
+	task.MaxRuntime = time.Duration(int(binary.BigEndian.Uint32(taskBytes[7:11]))) * time.Second
 	basePath := string(taskBytes[11:])
 
-	task.encoding.BasePath = basePath
+	task.Encoding.BasePath = basePath
 	if cubeIndex != 0 && cubeThreshold != 0 {
-		task.encoding.Cube = mo.Some(encoder.Cube{
+		task.Encoding.Cube = mo.Some(encoder.Cube{
 			Threshold: cubeThreshold,
 			Index:     cubeIndex,
 		})
@@ -162,15 +162,15 @@ func (solverSvc *SolverService) GetTask(tasksSetPath string, index int) (task, e
 
 	switch solver_ {
 	case 0:
-		task.solver = solver.Kissat
+		task.Solver = solver.Kissat
 	case 1:
-		task.solver = solver.Cadical
+		task.Solver = solver.Cadical
 	case 2:
-		task.solver = solver.MapleSat
+		task.Solver = solver.MapleSat
 	case 3:
-		task.solver = solver.Glucose
+		task.Solver = solver.Glucose
 	case 4:
-		task.solver = solver.CryptoMiniSat
+		task.Solver = solver.CryptoMiniSat
 	}
 
 	return task, nil
