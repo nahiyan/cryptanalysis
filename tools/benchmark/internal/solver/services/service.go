@@ -170,12 +170,13 @@ func (solverSvc *SolverService) RunSlurm(encodings []encoder.Encoding, parameter
 	numConcurrentTasks := int(math.Min(float64(parameters.Workers), float64(slurmMaxJobs)))
 	timeout := parameters.Timeout
 	tasksPerWorker := int(math.Ceil(float64(len(tasks)) / float64(parameters.Workers)))
+	command := fmt.Sprintf(
+		"%s task -t solve -i %s -n %d -g ${SLURM_ARRAY_TASK_ID}",
+		config.Paths.Bin.Benchmark,
+		tasksSetPath,
+		tasksPerWorker)
 	jobFilePath, err := solverSvc.slurmSvc.GenerateJob(
-		fmt.Sprintf(
-			"%s task -t solve -i %s -n %d -g ${SLURM_ARRAY_TASK_ID}",
-			config.Paths.Bin.Benchmark,
-			tasksSetPath,
-			tasksPerWorker),
+		command,
 		numConcurrentTasks,
 		1,
 		1,
