@@ -16,7 +16,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	// Commands
 	rootCmd.AddCommand(initRunCmd())
-	rootCmd.AddCommand(initSlurmTaskCmd())
+	rootCmd.AddCommand(initTaskCmd())
 	rootCmd.AddCommand(initSummarizeCmd())
 }
 
