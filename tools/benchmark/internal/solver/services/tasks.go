@@ -98,6 +98,7 @@ func (solverSvc *SolverService) AddTasks(tasks []Task) (string, error) {
 	return tasksFilePath, nil
 }
 
+// TODO: Implement a multiple get version of this
 func (solverSvc *SolverService) GetTask(tasksSetPath string, index int) (Task, error) {
 	task := Task{}
 
