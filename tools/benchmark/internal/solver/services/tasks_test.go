@@ -4,6 +4,8 @@ import (
 	"benchmark/internal/config/services"
 	"benchmark/internal/encoder"
 	"benchmark/internal/solver"
+	"errors"
+	"io"
 	"os"
 	"testing"
 	"time"
@@ -16,7 +18,7 @@ func TestOverall(t *testing.T) {
 		configSvc: &services.ConfigService{},
 	}
 
-	name, err := svc.AddTasks([]task{
+	tasksSetPath, err := svc.AddTasks([]task{
 		{
 			encoding: encoder.Encoding{
 				BasePath: "lorem_ipsum.cnf",
@@ -41,12 +43,12 @@ func TestOverall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(name + ".tasks")
-	defer os.Remove(name + ".tasks.map")
+	defer os.Remove(tasksSetPath)
+	defer os.Remove(tasksSetPath + ".map")
 
 	// Task 1
 	{
-		task, err := svc.GetTask(name, 1)
+		task, err := svc.GetTask(tasksSetPath, 1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -71,7 +73,7 @@ func TestOverall(t *testing.T) {
 
 	// Task 2
 	{
-		task, err := svc.GetTask(name, 2)
+		task, err := svc.GetTask(tasksSetPath, 2)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -98,6 +100,18 @@ func TestOverall(t *testing.T) {
 		// Base path
 		if task.encoding.BasePath != "transalg_md4_41_00000000000000000000000000000000_dobbertin31.cnf.cadical_c1000000.cnf" {
 			t.Fatalf("Expected base path = transalg_md4_41_00000000000000000000000000000000_dobbertin31.cnf.cadical_c1000000.cnf, got '%s'", task.encoding.BasePath)
+		}
+	}
+
+	// Task 3
+	{
+		_, err := svc.GetTask(tasksSetPath, 3)
+		if err == nil {
+			t.Fatal("The call to fetch task 3 should fail")
+		}
+
+		if !errors.Is(err, io.EOF) {
+			t.Fatalf("expected EOF but got %s", err)
 		}
 	}
 }
