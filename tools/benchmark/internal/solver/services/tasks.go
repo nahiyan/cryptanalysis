@@ -95,13 +95,13 @@ func (solverSvc *SolverService) AddTasks(tasks []task) (string, error) {
 	tasksWriter.Flush()
 	tasksMapWriter.Flush()
 
-	return name, nil
+	return tasksFilePath, nil
 }
 
-func (solverSvc *SolverService) GetTask(name string, index int) (task, error) {
+func (solverSvc *SolverService) GetTask(tasksSetPath string, index int) (task, error) {
 	task := task{}
 
-	tasksFilePath := path.Join(solverSvc.configSvc.Config.Paths.Tmp, name+".tasks")
+	tasksFilePath := path.Join(tasksSetPath)
 	tasksFile, err := os.OpenFile(tasksFilePath, os.O_RDONLY, 0644)
 	if err != nil {
 		return task, err
