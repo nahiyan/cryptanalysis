@@ -13,11 +13,12 @@ require github.com/iancoleman/strcase v0.2.0
 
 require (
 	github.com/bitfield/script v0.21.4
-	github.com/boltdb/bolt v1.3.1
 	github.com/dave/jennifer v1.6.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/samber/mo v1.7.0
 	github.com/sirupsen/logrus v1.9.0
+	go.uber.org/zap v1.24.0
+	gonum.org/v1/gonum v0.12.0
 )
 
 require (
@@ -27,7 +28,6 @@ require (
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	go.uber.org/zap v1.24.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 
