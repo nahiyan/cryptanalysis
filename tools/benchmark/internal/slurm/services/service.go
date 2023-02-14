@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"path"
 	"strconv"
 	"text/template"
 
@@ -15,8 +16,7 @@ import (
 func (slurmSvc *SlurmService) GenerateJob(command string, numTasks, nodes, cpuCores, memory, timeout int) (string, error) {
 	randomSvc := slurmSvc.randomSvc
 	config := slurmSvc.configSvc.Config
-	name := randomSvc.RandString(10)
-	filePath := "/tmp/" + string(name) + ".sh"
+	filePath := path.Join(config.Paths.Tmp, randomSvc.RandString(10)+".sh")
 	jobFile, err := os.OpenFile(filePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return "", err
