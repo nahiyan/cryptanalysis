@@ -3,6 +3,7 @@ package services
 import (
 	"bufio"
 	"encoding/binary"
+	"errors"
 	"os"
 	"strconv"
 	"strings"
@@ -34,6 +35,9 @@ func (cubesetSvc *CubesetService) BinEncode(cubesetPath string) error {
 	for scanner.Scan() {
 		// Bin. Cube
 		line := scanner.Text()
+		if line == "a 0" {
+			return errors.New("empty cubeset file")
+		}
 		literals := strings.Fields(line[2 : len(line)-2])
 		for _, literal_ := range literals {
 			literal, err := strconv.ParseInt(literal_, 10, 16)
