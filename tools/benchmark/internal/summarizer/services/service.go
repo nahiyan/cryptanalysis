@@ -93,12 +93,12 @@ func parseSolutionLogName(name string) (encoder.Encoder, int, string, error) {
 	return encoder_, step, targetHash, nil
 }
 
-func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string) []solution {
+func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers int) []solution {
 	config := summarizerSvc.configSvc.Config
 	solutions := []solution{}
 	logFilesCount := len(logFiles)
 	lock := sync.Mutex{}
-	pool := pond.New(100, 1000, pond.IdleTimeout(100*time.Millisecond))
+	pool := pond.New(workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 	for i, logFile := range logFiles {
 		pool.Submit(func(i int, logFile string) func() {
 			return func() {
@@ -476,7 +476,7 @@ func (summarizerSvc *SummarizerService) WriteCombinationsLog(combinations map[st
 	}
 }
 
-func (summarizerSvc *SummarizerService) Run() {
+func (summarizerSvc *SummarizerService) Run(workers int) {
 	startTime := time.Now()
 	files, err := os.ReadDir(summarizerSvc.configSvc.Config.Paths.Logs)
 	summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to find log files")
@@ -508,7 +508,7 @@ func (summarizerSvc *SummarizerService) Run() {
 	summarizerSvc.WriteSimplificationsLog(simplifications)
 	log.Printf("Written summary for %d simplifications\n", len(simplifications))
 
-	solutions := summarizerSvc.GetSolutions(solutionLogFiles)
+	solutions := summarizerSvc.GetSolutions(solutionLogFiles, workers)
 	summarizerSvc.WriteSolutionsLog(solutions)
 	log.Printf("Written summary for %d solutions\n", len(solutions))
 
