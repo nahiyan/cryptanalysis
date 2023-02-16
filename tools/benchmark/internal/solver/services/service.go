@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/alitto/pond"
@@ -134,7 +135,7 @@ func (solverSvc *SolverService) Loop(encodings []encoder.Encoding, parameters pi
 }
 
 // TODO: Read the log file and see if it actually finished writing
-func (solverSvc *SolverService) ShouldSkip(encoding encoder.Encoding, solver_ solver.Solver, timeout int) bool {
+func (solverSvc *SolverService) ShouldSkip(encoding encoder.Encoding, solver_ solver.Solver) bool {
 	logFilePath := encoding.GetLogPath(solverSvc.configSvc.Config.Paths.Logs, mo.Some(solver_))
 	result, _, err := solverSvc.ParseLog(logFilePath, solver_, nil)
 	if err != nil {
@@ -152,17 +153,28 @@ func (solverSvc *SolverService) RunSlurm(encodings []encoder.Encoding, parameter
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to prepare directory for storing the solutions, logs, and tasks")
 
 	tasks := []Task{}
-	solverSvc.Loop(encodings, parameters, func(encoding encoder.Encoding, solver solver.Solver) {
-		if !parameters.Redundant && solverSvc.ShouldSkip(encoding, solver, parameters.Timeout) {
-			return
-		}
+	pool := pond.New(100, 1000, pond.IdleTimeout(100*time.Millisecond))
+	lock := sync.Mutex{}
+	solverSvc.Loop(encodings, parameters, func(encoding encoder.Encoding, solver_ solver.Solver) {
+		pool.Submit(func(encoding encoder.Encoding, solver_ solver.Solver) func() {
+			return func() {
+				if !parameters.Redundant && solverSvc.ShouldSkip(encoding, solver_) {
+					return
+				}
 
-		tasks = append(tasks, Task{
-			Encoding:   encoding,
-			Solver:     solver,
-			MaxRuntime: time.Duration(parameters.Timeout) * time.Second,
-		})
+				lock.Lock()
+				tasks = append(tasks, Task{
+					Encoding:   encoding,
+					Solver:     solver_,
+					MaxRuntime: time.Duration(parameters.Timeout) * time.Second,
+				})
+				lock.Unlock()
+			}
+		}(encoding, solver_))
 	})
+	pool.StopAndWait()
+
+	log.Printf("Solver: Skipped %d tasks", len(encodings)-len(tasks))
 
 	tasksSetPath, err := solverSvc.AddTasks(tasks)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to generate the taskset file")
@@ -198,7 +210,7 @@ func (solverSvc *SolverService) RunRegular(encodings []encoder.Encoding, paramet
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 
 	solverSvc.Loop(encodings, parameters, func(encoding encoder.Encoding, solver_ solver.Solver) {
-		if !parameters.Redundant && solverSvc.ShouldSkip(encoding, solver_, parameters.Timeout) {
+		if !parameters.Redundant && solverSvc.ShouldSkip(encoding, solver_) {
 			logrus.Println("Solver: skipped", encoding, "with "+string(solver_))
 			return
 		}
