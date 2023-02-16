@@ -389,14 +389,22 @@ func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, f
 	failCount_ := humanize.Comma(int64(failsCount))
 	solvedCount_ := humanize.Comma(int64(solvedCount))
 
+	remaining := 0
+	if len(cubesets) > 0 {
+		remaining = cubesets[0].cubesCount - solvedCount
+	} else {
+		remaining = 1 - solvedCount
+	}
+	remaining_ := humanize.Comma(int64(remaining))
+
 	// Stats
 	sort.Float64s(processTimes)
 	mean, stdDev := stat.MeanStdDev(processTimes, nil)
 	median := stat.Quantile(0.5, stat.Empirical, processTimes, nil)
 	lowest, highest := processTimes[0], processTimes[len(processTimes)-1]
 
-	file.WriteString(fmt.Sprintf("%s SAT%s, %s UNSAT, %s Fails\n", satCount_, satVerifiedComment, unsatCount_, failCount_))
-	file.WriteString(fmt.Sprintf("Mean: %0.2fs, Median: %.2fs, Std. Deviation: %0.2f, Range: %.2fs to %.2fs\n", mean, median, stdDev, lowest, highest))
+	file.WriteString(fmt.Sprintf("%s SAT%s, %s UNSAT, %s Fails, %s Remaining\n", satCount_, satVerifiedComment, unsatCount_, failCount_, remaining_))
+	file.WriteString(fmt.Sprintf("Mean: %0.2fs, Median: %.2fs, Std. Deviation: %0.2f, Range: %.2fs to %.2fs\n\n", mean, median, stdDev, lowest, highest))
 	file.WriteString(fmt.Sprintf("Process time (1 CPU, %s instances): %s\n", solvedCount_, totalTime))
 	file.WriteString(fmt.Sprintf("Process time (12 CPU, %s instances): %s\n", solvedCount_, totalTime/12))
 
@@ -405,7 +413,7 @@ func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, f
 		cubesCount := humanize.Comma(int64(cubeset.cubesCount))
 		estimatedTime := time.Duration((int(totalTime) / solvedCount) * cubeset.cubesCount)
 		estimatedTime12Cpu := time.Duration((int(totalTime) / (solvedCount * 12)) * cubeset.cubesCount)
-		file.WriteString(fmt.Sprintf("Estimated time (1 CPU, %s instances): %s\n", cubesCount, estimatedTime))
+		file.WriteString(fmt.Sprintf("\nEstimated time (1 CPU, %s instances): %s\n", cubesCount, estimatedTime))
 		file.WriteString(fmt.Sprintf("Estimated time (12 CPU, %s instances): %s\n", cubesCount, estimatedTime12Cpu))
 	}
 
