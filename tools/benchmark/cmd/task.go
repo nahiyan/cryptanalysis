@@ -6,6 +6,7 @@ import (
 	solverServices "benchmark/internal/solver/services"
 	"errors"
 	"io"
+	"log"
 
 	"github.com/samber/do"
 	"github.com/spf13/cobra"
@@ -34,8 +35,10 @@ func initTaskCmd() *cobra.Command {
 				solverSvc := do.MustInvoke[*solverServices.SolverService](injector)
 				errorSvc := do.MustInvoke[*errorServices.ErrorService](injector)
 
-				taskIdsEnd := groupId * tasksPerGroup
 				taskIdsStart := (groupId-1)*tasksPerGroup + 1
+				taskIdsEnd := groupId * tasksPerGroup
+				tasksCounter := 0
+				log.Printf("Started with task IDs %d to %d\n", taskIdsStart, taskIdsEnd)
 				for i := taskIdsStart; i <= taskIdsEnd; i++ {
 					// TODO: Do a batch search
 					task, err := solverSvc.GetTask(inputFilePath, i)
@@ -45,7 +48,10 @@ func initTaskCmd() *cobra.Command {
 					errorSvc.Fatal(err, "Task: failed to get task from the taskset")
 
 					solverSvc.TrackedInvoke(task.Encoding, task.Solver, int(task.MaxRuntime.Seconds()))
+
+					tasksCounter++
 				}
+				log.Printf("Ran %d tasks\n", tasksCounter)
 			}
 		},
 	}
