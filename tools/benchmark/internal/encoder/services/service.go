@@ -16,22 +16,21 @@ import (
 )
 
 func (encoderSvc *EncoderService) GetInstanceName(info encoder.InstanceInfo) string {
-	encoder := info.Encoder
+	encoder_ := info.Encoder
 	function := info.Function
 	steps := info.Steps
 	adderType := info.AdderType
 	targetHash := info.TargetHash
 
 	instanceName := fmt.Sprintf("%s_%s_%d_%s",
-		encoder,
+		encoder_,
 		function,
 		steps,
 		targetHash)
 	if dobbertinInfo, enabled := info.Dobbertin.Get(); enabled {
 		instanceName += fmt.Sprintf("_dobbertin%d", dobbertinInfo.Bits)
 	}
-	// TODO: Use constant for the encoder
-	if encoder == "saeed_e" {
+	if encoder_ == encoder.SaeedE {
 		instanceName += "_" + string(adderType)
 
 		if info.IsXorEnabled {
