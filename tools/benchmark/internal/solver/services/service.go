@@ -21,7 +21,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// TODO: Refactor
 func (solverSvc *SolverService) GetCmdInfo(solver_ solver.Solver, solutionPath string) (string, []string) {
 	config := solverSvc.configSvc.Config
 
@@ -30,22 +29,16 @@ func (solverSvc *SolverService) GetCmdInfo(solver_ solver.Solver, solutionPath s
 	switch solver_ {
 	case solver.Kissat:
 		binPath = config.Paths.Bin.Kissat
-		// args = "-q"
 	case solver.Cadical:
 		binPath = config.Paths.Bin.Cadical
-		// args = "-q"
 	case solver.CryptoMiniSat:
 		binPath = config.Paths.Bin.CryptoMiniSat
-		// args = "--verb=0"
 	case solver.MapleSat:
 		binPath = config.Paths.Bin.MapleSat
-		// args = "-verb=0"
 	case solver.Glucose:
 		binPath = config.Paths.Bin.Glucose
-		// args = "-verb=0"
 	}
 
-	// args += " " + encoding
 	if solver_ == solver.MapleSat || solver_ == solver.Glucose {
 		args += " " + solutionPath
 	}
@@ -134,7 +127,6 @@ func (solverSvc *SolverService) Loop(encodings []encoder.Encoding, parameters pi
 	}
 }
 
-// TODO: Read the log file and see if it actually finished writing
 func (solverSvc *SolverService) ShouldSkip(encoding encoder.Encoding, solver_ solver.Solver) bool {
 	logFilePath := encoding.GetLogPath(solverSvc.configSvc.Config.Paths.Logs, mo.Some(solver_))
 	result, _, err := solverSvc.ParseLog(logFilePath, solver_, nil)

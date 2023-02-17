@@ -18,7 +18,6 @@ const (
 type InputOutputType string
 type LoopHandler func(*pipeline.Pipe, *pipeline.Pipe)
 
-// TODO: See if encoding slurmify can be removed
 func getInputType(pipe *pipeline.Pipe) InputOutputType {
 	switch pipe.Type {
 	case pipeline.Encode:
@@ -33,8 +32,6 @@ func getInputType(pipe *pipeline.Pipe) InputOutputType {
 		return ListOfCubesets
 	case pipeline.Simplify:
 		return ListOfEncodings
-		// case pipeline.EncodingSlurmify:
-		// 	return ListOfEncodings
 	}
 
 	return None
@@ -54,8 +51,6 @@ func getOutputType(pipe *pipeline.Pipe) InputOutputType {
 		return ListOfEncodings
 	case pipeline.Simplify:
 		return ListOfEncodings
-		// case pipeline.EncodingSlurmify:
-		// 	return ListOfSlurmJobEncodings
 	}
 
 	return None

@@ -33,7 +33,6 @@ func (simplifierSvc *SimplifierService) getLogPath(instancePath string) string {
 	return logFilePath
 }
 
-// TODO: Finalize the code
 func (simplifierSvc *SimplifierService) TrackedInvoke(simplifier_ simplifier.Simplifier, encoding, outputFilePath string, conflicts int, parameters pipeline.SimplifyParams) error {
 	config := simplifierSvc.configSvc.Config
 

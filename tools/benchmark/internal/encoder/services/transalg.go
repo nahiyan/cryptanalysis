@@ -19,7 +19,6 @@ import (
 //go:embed transalg.txt
 var layout string
 
-// TODO: Add arg dobbertinConstant
 func (encoderSvc *EncoderService) GenerateTransalgCode(instanceInfo encoder.InstanceInfo, dobbertinConstant uint32) (string, error) {
 	tmpl := template.New("transalg.txt").Funcs(map[string]interface{}{
 		"inc": func(i int) int {
@@ -135,7 +134,7 @@ func (encoderSvc *EncoderService) GenerateTransalgCode(instanceInfo encoder.Inst
 
 // TODO: Reduce shared redundant code with SaeedE invokation
 func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.EncodeParams) []encoder.Encoding {
-	err := encoderSvc.filesystemSvc.PrepareTempDir()
+	err := encoderSvc.filesystemSvc.PrepareDir("tmp")
 	encoderSvc.errorSvc.Fatal(err, "Encoder: failed to create tmp dir")
 
 	encodings := []encoder.Encoding{}

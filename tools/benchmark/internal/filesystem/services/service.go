@@ -1,17 +1,11 @@
 package services
 
 import (
-	"benchmark/internal/consts"
 	"bufio"
 	"bytes"
-	"crypto/sha1"
 	"errors"
-	"fmt"
 	"io"
-	"log"
 	"os"
-	"strings"
-	"time"
 )
 
 func (filesystemSvc *FilesystemService) CountLines(filePath string) (int, error) {
@@ -90,57 +84,6 @@ func (filesystemSvc *FilesystemService) WriteFromPipe(pipe io.Reader, filePath s
 	return nil
 }
 
-// TODO: Move this to the log module
-func (filesystemSvc *FilesystemService) LogInfo(messages ...string) {
-	filesystemSvc.Log(consts.Info, messages...)
-}
-
-func (filesystemSvc *FilesystemService) LogDebug(messages ...string) {
-	filesystemSvc.Log(consts.Debug, messages...)
-}
-
-func (filesystemSvc *FilesystemService) Log(type_ string, messages ...string) {
-	filePath := ""
-	switch type_ {
-	case consts.Info:
-		filePath = "info.log"
-	case consts.Debug:
-		filePath = "debug.log"
-	}
-
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Println("FS log: failed to open log file of type " + type_)
-	}
-
-	if _, err := file.WriteString(strings.Join(messages, " ") + "\n"); err != nil {
-		log.Println("FS log: failed to write log of type " + type_)
-	}
-}
-
-func (filesystemSvc *FilesystemService) Checksum(filePath string) (string, error) {
-	startTime := time.Now()
-	defer filesystemSvc.LogInfo("Checksum: took", time.Since(startTime).String())
-
-	if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
-		return "", os.ErrNotExist
-	}
-
-	file, err := os.Open(filePath)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	hash := sha1.New()
-	_, err = io.Copy(hash, file)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("%x", hash.Sum(nil)), nil
-}
-
 func (filesystemSvc *FilesystemService) PrepareDir(name string) error {
 	if filesystemSvc.FileExists(name) {
 		return nil
@@ -158,9 +101,4 @@ func (filesystemSvc *FilesystemService) PrepareDirs(names []string) error {
 	}
 
 	return nil
-}
-
-func (filesystemSvc *FilesystemService) PrepareTempDir() error {
-	err := filesystemSvc.PrepareDir("tmp")
-	return err
 }
