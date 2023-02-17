@@ -376,6 +376,7 @@ func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, f
 			solvedCount++
 		}
 	}
+	totalTime = totalTime.Round(time.Millisecond)
 	satCount_ := humanize.Comma(int64(satCount))
 	satVerifiedComment := ""
 	if satCount > 0 {
@@ -411,8 +412,8 @@ func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, f
 	if len(cubesets) > 0 {
 		cubeset := cubesets[0]
 		cubesCount := humanize.Comma(int64(cubeset.cubesCount))
-		estimatedTime := time.Duration((int(totalTime) / solvedCount) * cubeset.cubesCount)
-		estimatedTime12Cpu := time.Duration((int(totalTime) / (solvedCount * 12)) * cubeset.cubesCount)
+		estimatedTime := time.Duration((int(totalTime) / solvedCount) * cubeset.cubesCount).Round(time.Millisecond)
+		estimatedTime12Cpu := time.Duration((int(totalTime) / (solvedCount * 12)) * cubeset.cubesCount).Round(time.Millisecond)
 		file.WriteString(fmt.Sprintf("\nEstimated time (1 CPU, %s instances): %s\n", cubesCount, estimatedTime))
 		file.WriteString(fmt.Sprintf("Estimated time (12 CPU, %s instances): %s\n", cubesCount, estimatedTime12Cpu))
 	}
