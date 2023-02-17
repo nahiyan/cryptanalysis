@@ -30,8 +30,7 @@ func (slurmSvc *SlurmService) GenerateJob(command string, numTasks, nodes, cpuCo
 		return "", err
 	}
 
-	// extra time for other operations
-	timeout_ := math.Round(float64(timeout) * config.Slurm.ExtraTime)
+	timeout_ := math.Round(float64(timeout) * config.Slurm.WorkerTimeMul)
 	if err := tmpl.Execute(jobFile, map[string]interface{}{
 		"Nodes":        nodes,
 		"CpuCores":     cpuCores,

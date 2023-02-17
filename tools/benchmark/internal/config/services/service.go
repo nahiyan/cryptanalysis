@@ -45,7 +45,8 @@ func (configSvc *ConfigService) Process() {
 
 	// Slurm
 	viper.SetDefault("Slurm.MaxJobs", 1000)
-	viper.SetDefault("Slurm.ExtraTime", 1.1)
+	// TODO: Rename it
+	viper.SetDefault("Slurm.WorkerTimeMul", 1)
 
 	// Set config file
 	viper.SetConfigFile(configFilePath)
