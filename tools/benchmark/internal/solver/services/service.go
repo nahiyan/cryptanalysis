@@ -173,6 +173,7 @@ func (solverSvc *SolverService) RunSlurm(encodings []encoder.Encoding, parameter
 	slurmMaxJobs := config.Slurm.MaxJobs
 	numConcurrentTasks := int(math.Min(float64(parameters.Workers), float64(slurmMaxJobs)))
 	timeout := parameters.Timeout
+	// TODO: Prove that there will always be at least 1 task for the last worker
 	tasksPerWorker := int(math.Ceil(float64(len(tasks)) / float64(parameters.Workers)))
 	command := fmt.Sprintf(
 		"%s task -t solve -i %s -n %d -g ${SLURM_ARRAY_TASK_ID}",
