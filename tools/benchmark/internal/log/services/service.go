@@ -26,7 +26,7 @@ func (logSvc *LogService) Debug(message string) {
 	logSvc.logger.Sync()
 }
 
-// TODO: Add details such as runtime
+// TODO: Add details, such as runtime
 func (logSvc *LogService) SolveResult(encoding encoder.Encoding, solver_ solver.Solver, exitCode int, result solver.Result) {
 	logSvc.logger.Info(
 		"Solve",

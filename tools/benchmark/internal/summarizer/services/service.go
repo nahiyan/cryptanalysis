@@ -506,7 +506,7 @@ func (summarizerSvc *SummarizerService) WriteCombinationsLog(combinations map[st
 func (summarizerSvc *SummarizerService) Run(workers int) {
 	startTime := time.Now()
 	files, err := os.ReadDir(summarizerSvc.configSvc.Config.Paths.Logs)
-	summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to find log files")
+	summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to find the log files")
 
 	solutionLogFiles := []string{}
 	cubesetLogFiles := []string{}
