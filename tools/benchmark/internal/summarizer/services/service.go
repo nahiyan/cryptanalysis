@@ -26,6 +26,7 @@ import (
 type solution struct {
 	name        string
 	processTime time.Duration
+	runTime     time.Duration
 	result      solver.Result
 	solver      solver.Solver
 	verified    bool
@@ -112,7 +113,7 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 					solver_ = solver.Solver(segments[len(segments)-1])
 				}
 				solutionLiterals := make([]int, 0)
-				result, processTime, err := summarizerSvc.solverSvc.ParseLog(path.Join(config.Paths.Logs, logFile), solver_, &solutionLiterals)
+				result, processTime, runTime, err := summarizerSvc.solverSvc.ParseLog(path.Join(config.Paths.Logs, logFile), solver_, &solutionLiterals)
 				if err != nil {
 					return
 				}
@@ -120,6 +121,7 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 				solution := solution{
 					name:        name,
 					processTime: processTime,
+					runTime:     runTime,
 					result:      result,
 					solver:      solver_,
 				}
@@ -297,7 +299,7 @@ func (summarizerSvc *SummarizerService) WriteSolutionsLog(solutions []solution) 
 			return solutions[i].name < solutions[j].name
 		})
 
-		writer.Write([]string{"Result", "Process Time", "Solver", "Instance Name"})
+		writer.Write([]string{"Result", "Process Time", "Run Time", "Solver", "Instance Name"})
 		for _, solution := range solutions {
 			name := solution.name
 			result := string(solution.result)
@@ -309,8 +311,9 @@ func (summarizerSvc *SummarizerService) WriteSolutionsLog(solutions []solution) 
 				}
 			}
 			processTime := fmt.Sprintf("%.3f", solution.processTime.Seconds())
+			runTime := fmt.Sprintf("%.3f", solution.runTime.Seconds())
 			solver_ := solution.solver
-			writer.Write([]string{result, processTime, string(solver_), name})
+			writer.Write([]string{result, processTime, runTime, string(solver_), name})
 		}
 	})
 }
@@ -348,7 +351,8 @@ func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, f
 	unsatCount := 0
 	failsCount := 0
 	solvedCount := 0
-	totalTime := time.Duration(0)
+	totalProcessTime := time.Duration(0)
+	totalRunTime := time.Duration(0)
 	messages := []string{}
 	processTimes := []float64{}
 
@@ -371,12 +375,14 @@ func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, f
 		}
 
 		if solution.result == solver.Sat || solution.result == solver.Unsat {
-			totalTime += solution.processTime
+			totalProcessTime += solution.processTime
 			processTimes = append(processTimes, solution.processTime.Seconds())
 			solvedCount++
 		}
+
+		totalRunTime += solution.runTime
 	}
-	totalTime = totalTime.Round(time.Millisecond)
+	totalProcessTime = totalProcessTime.Round(time.Millisecond)
 	satCount_ := humanize.Comma(int64(satCount))
 	satVerifiedComment := ""
 	if satCount > 0 {
@@ -389,6 +395,7 @@ func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, f
 	unsatCount_ := humanize.Comma(int64(unsatCount))
 	failCount_ := humanize.Comma(int64(failsCount))
 	solvedCount_ := humanize.Comma(int64(solvedCount))
+	allCount_ := humanize.Comma(int64(solvedCount + failsCount))
 
 	remaining := 0
 	if len(cubesets) > 0 {
@@ -398,22 +405,31 @@ func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, f
 	}
 	remaining_ := humanize.Comma(int64(remaining))
 
-	// Stats
-	sort.Float64s(processTimes)
-	mean, stdDev := stat.MeanStdDev(processTimes, nil)
-	median := stat.Quantile(0.5, stat.Empirical, processTimes, nil)
-	lowest, highest := processTimes[0], processTimes[len(processTimes)-1]
-
 	file.WriteString(fmt.Sprintf("%s SAT%s, %s UNSAT, %s Fails, %s Remaining\n", satCount_, satVerifiedComment, unsatCount_, failCount_, remaining_))
-	file.WriteString(fmt.Sprintf("Mean: %0.2fs, Median: %.2fs, Std. Deviation: %0.2f, Range: %.2fs to %.2fs\n\n", mean, median, stdDev, lowest, highest))
-	file.WriteString(fmt.Sprintf("Process time (1 CPU, %s instances): %s\n", solvedCount_, totalTime))
-	file.WriteString(fmt.Sprintf("Process time (12 CPU, %s instances): %s\n", solvedCount_, totalTime/12))
+
+	// Stats
+	if len(processTimes) > 1 {
+		sort.Float64s(processTimes)
+		mean, stdDev := stat.MeanStdDev(processTimes, nil)
+		median := stat.Quantile(0.5, stat.Empirical, processTimes, nil)
+		lowest, highest := processTimes[0], processTimes[len(processTimes)-1]
+		file.WriteString(fmt.Sprintf("Mean: %0.2fs, Median: %.2fs, Std. Deviation: %0.2f, Range: %.2fs to %.2fs\n\n", mean, median, stdDev, lowest, highest))
+	}
+
+	if solvedCount > 0 {
+		file.WriteString(fmt.Sprintf("Process time (1 CPU, %s instances): %s\n", solvedCount_, totalProcessTime))
+		file.WriteString(fmt.Sprintf("Process time (12 CPU, %s instances): %s\n", solvedCount_, time.Duration(totalProcessTime/12).Round(time.Millisecond)))
+	}
+
+	// TODO: Include runtimes
+	file.WriteString(fmt.Sprintf("Run time (1 CPU, %s instances): %s\n", allCount_, totalRunTime))
+	file.WriteString(fmt.Sprintf("Run time (12 CPU, %s instances): %s\n", allCount_, time.Duration(totalRunTime/12).Round(time.Millisecond)))
 
 	if len(cubesets) > 0 {
 		cubeset := cubesets[0]
 		cubesCount := humanize.Comma(int64(cubeset.cubesCount))
-		estimatedTime := time.Duration((int(totalTime) / solvedCount) * cubeset.cubesCount).Round(time.Millisecond)
-		estimatedTime12Cpu := time.Duration((int(totalTime) / (solvedCount * 12)) * cubeset.cubesCount).Round(time.Millisecond)
+		estimatedTime := time.Duration((int(totalProcessTime) / solvedCount) * cubeset.cubesCount).Round(time.Millisecond)
+		estimatedTime12Cpu := time.Duration((int(totalProcessTime) / (solvedCount * 12)) * cubeset.cubesCount).Round(time.Millisecond)
 		file.WriteString(fmt.Sprintf("\nEstimated time (1 CPU, %s instances): %s\n", cubesCount, estimatedTime))
 		file.WriteString(fmt.Sprintf("Estimated time (12 CPU, %s instances): %s\n", cubesCount, estimatedTime12Cpu))
 	}
@@ -515,8 +531,11 @@ func (summarizerSvc *SummarizerService) Run(workers int) {
 		if file.IsDir() {
 			continue
 		}
-
 		fileName := file.Name()
+		if path.Ext(fileName) != ".log" {
+			continue
+		}
+
 		if strings.Contains(fileName, solver.Kissat) || strings.Contains(fileName, solver.Cadical+".log") || strings.Contains(fileName, solver.CryptoMiniSat) || strings.Contains(fileName, solver.Glucose) || strings.Contains(fileName, solver.MapleSat) {
 			solutionLogFiles = append(solutionLogFiles, fileName)
 		} else if strings.Contains(fileName, "march") {
