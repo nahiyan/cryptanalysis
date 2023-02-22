@@ -132,15 +132,24 @@ func (solverSvc *SolverService) Loop(encodings []encoder.Encoding, parameters pi
 	}
 }
 
-func (solverSvc *SolverService) ShouldSkip(encoding encoder.Encoding, solver_ solver.Solver) bool {
+func (solverSvc *SolverService) ShouldSkip(encoding encoder.Encoding, solver_ solver.Solver, maxRunTime time.Duration) bool {
 	logFilePath := encoding.GetLogPath(solverSvc.configSvc.Config.Paths.Logs, mo.Some(solver_))
-	result, _, err := solverSvc.ParseLog(logFilePath, solver_, nil)
+	result, _, runTime, err := solverSvc.ParseLog(logFilePath, solver_, nil)
 	if err != nil {
 		return false
 	}
 
 	isSolved := result == solver.Unsat || result == solver.Sat
-	return isSolved
+	if isSolved {
+		return true
+	}
+
+	// See if it was attempted but timed out, being strict up to a second
+	if diff := maxRunTime - runTime; diff < 1 {
+		return true
+	}
+
+	return false
 }
 
 func (solverSvc *SolverService) RunSlurm(encodings []encoder.Encoding, parameters pipeline.SolveParams) {
@@ -155,7 +164,7 @@ func (solverSvc *SolverService) RunSlurm(encodings []encoder.Encoding, parameter
 	solverSvc.Loop(encodings, parameters, func(encoding encoder.Encoding, solver_ solver.Solver) {
 		pool.Submit(func(encoding encoder.Encoding, solver_ solver.Solver) func() {
 			return func() {
-				if !parameters.Redundant && solverSvc.ShouldSkip(encoding, solver_) {
+				if !parameters.Redundant && solverSvc.ShouldSkip(encoding, solver_, time.Duration(parameters.Timeout)*time.Second) {
 					return
 				}
 
@@ -208,7 +217,7 @@ func (solverSvc *SolverService) RunRegular(encodings []encoder.Encoding, paramet
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 
 	solverSvc.Loop(encodings, parameters, func(encoding encoder.Encoding, solver_ solver.Solver) {
-		if !parameters.Redundant && solverSvc.ShouldSkip(encoding, solver_) {
+		if !parameters.Redundant && solverSvc.ShouldSkip(encoding, solver_, time.Duration(parameters.Timeout)*time.Second) {
 			logrus.Println("Solver: skipped", encoding, "with "+string(solver_))
 			return
 		}
