@@ -260,6 +260,12 @@ func main() {
 			HasInitFunction: true,
 			HasProperties:   true,
 		},
+		{
+			Name:          "combined_logs",
+			Dependencies:  []string{"error", "config", "filesystem"},
+			Type:          Service,
+			HasProperties: true,
+		},
 	}
 
 	generateInjector(providers)

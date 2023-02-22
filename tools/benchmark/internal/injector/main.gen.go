@@ -1,6 +1,7 @@
 package injector
 
 import (
+	services21 "benchmark/internal/combined_logs/services"
 	services15 "benchmark/internal/command/services"
 	services "benchmark/internal/config/services"
 	services14 "benchmark/internal/cube_selector/services"
@@ -48,5 +49,6 @@ func New() *do.Injector {
 	do.Provide(injector, services18.NewSimplificationService)
 	do.Provide(injector, services19.NewMd4Service)
 	do.Provide(injector, services20.NewLogService)
+	do.Provide(injector, services21.NewCombinedLogsService)
 	return injector
 }
