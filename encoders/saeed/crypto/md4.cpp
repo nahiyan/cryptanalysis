@@ -186,9 +186,9 @@ void MD4::encode()
         }
     }
 
-    int R = rounds, r = rounds % 4;
-    cnf.add2(out[0], chain[0], q[R + (4 - r) % 4]);
-    cnf.add2(out[1], chain[1], q[R + (3 - r) % 4]);
-    cnf.add2(out[2], chain[2], q[R + (6 - r) % 4]);
-    cnf.add2(out[3], chain[3], q[R + (5 - r) % 4]);
+    // int R = rounds, r = rounds % 4;
+    // cnf.add2(out[0], chain[0], q[R + (4 - r) % 4]);
+    // cnf.add2(out[1], chain[1], q[R + (3 - r) % 4]);
+    // cnf.add2(out[2], chain[2], q[R + (6 - r) % 4]);
+    // cnf.add2(out[3], chain[3], q[R + (5 - r) % 4]);
 }
