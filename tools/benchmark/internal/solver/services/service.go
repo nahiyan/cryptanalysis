@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/alitto/pond"
+	"github.com/bitfield/script"
 	"github.com/samber/mo"
 	"github.com/sirupsen/logrus"
 )
@@ -69,6 +70,7 @@ func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to open stdin pipe")
 
 	// Start the command
+	startTime := time.Now()
 	cmd.Start()
 
 	if cube, exists := encoding.Cube.Get(); exists {
@@ -109,6 +111,9 @@ func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver
 		} else {
 			logrus.Error(err)
 		}
+
+		runtimeSeconds := time.Since(startTime).Round(time.Millisecond).Seconds()
+		script.Echo(fmt.Sprintf("\nInfo: Ended after %.2f seconds", runtimeSeconds)).AppendFile(logFilePath)
 	})
 
 	return result, exitCode
