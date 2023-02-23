@@ -4,7 +4,6 @@ import (
 	"benchmark/internal/encoder"
 	"benchmark/internal/pipeline"
 	"fmt"
-	"log"
 	"path"
 
 	"github.com/sirupsen/logrus"
@@ -12,12 +11,6 @@ import (
 
 func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.EncodeParams) []encoder.Encoding {
 	config := &encoderSvc.configSvc.Config
-	filesystemSvc := encoderSvc.filesystemSvc
-
-	// Check if the encoder exists
-	if !filesystemSvc.FileExists(config.Paths.Bin.SaeedE) {
-		log.Fatal("Failed to find the encoder in the path '" + config.Paths.Bin.SaeedE + "'. Can you ensure that you compiled it?")
-	}
 
 	// * Loop through the variations
 	encodings := []encoder.Encoding{}
