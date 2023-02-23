@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// TODO: Fix issues at higher values
 func integerToRoman(number int) string {
 	maxRomanNumber := 3999
 	if number > maxRomanNumber {

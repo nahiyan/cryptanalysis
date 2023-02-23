@@ -160,7 +160,7 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 				log.Fatal("Cuber expects a list of encoding promises")
 			}
 
-			lastValue = pipelineSvc.cuberSvc.RunRegular(input, pipe.CubeParams)
+			lastValue = pipelineSvc.cuberSvc.Run(input, pipe.CubeParams)
 
 		case pipeline.CubeSelect:
 			input, ok := lastValue.([]string)

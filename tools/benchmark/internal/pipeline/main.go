@@ -37,6 +37,7 @@ type SolveParams struct {
 
 type CubeParams struct {
 	MaxCubes         int
+	MinCubes         int
 	MinRefutedLeaves int
 	MinThreshold     int
 	Thresholds       []int

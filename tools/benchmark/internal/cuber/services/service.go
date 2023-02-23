@@ -23,6 +23,7 @@ type InvokeParameters struct {
 	Threshold        int
 	Timeout          time.Duration
 	MaxCubes         int
+	MinCubes         int
 	MinRefutedLeaves int
 }
 
@@ -56,25 +57,6 @@ func (cuberSvc *CuberService) ShouldSkip(encoding string, threshold int) bool {
 	return err == nil
 }
 
-// func (cuberSvc *CuberService) ReadMarchOutput(output string) (int, int, error) {
-// 	lines := strings.Split(output, "\n")
-// 	for _, line := range lines {
-// 		if !strings.HasPrefix(line, "c number of cubes") {
-// 			continue
-// 		}
-
-// 		var cubes, refutedLeaves int
-// 		_, err := fmt.Sscanf(line, "c number of cubes %d, including %d refuted leaves", &cubes, &refutedLeaves)
-// 		if err != nil {
-// 			return 0, 0, err
-// 		}
-
-// 		return cubes, refutedLeaves, nil
-// 	}
-
-// 	return 0, 0, nil
-// }
-
 func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control InvokeControl) error {
 	if shouldStop_, exists := control.ShouldStop[parameters.Encoding]; exists && shouldStop_ {
 		return nil
@@ -90,22 +72,10 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 		return err
 	}
 
-	// instanceName := strings.TrimSuffix(parameters.Encoding, ".cnf")
-	// cubesFilePath := cuberSvc.CubesFilePath(parameters.Encoding, parameters.Threshold)
-	// err = cubesetSvc.Register(cubesFilePath, cubeset.CubeSet{
-	// 	Threshold:     parameters.Threshold,
-	// 	InstanceName:  instanceName,
-	// 	Cubes:         cubes,
-	// 	RefutedLeaves: refutedLeaves,
-	// 	Runtime:       runtime,
-	// })
-	// if err != nil {
-	// 	return err
-	// }
-
 	maxCubesExceeded := parameters.MaxCubes > 0 && numCubes > parameters.MaxCubes
+	minCubesExceeded := numCubes < parameters.MinCubes
 	minRefutedLeavesViolated := parameters.MinRefutedLeaves > 0 && numRefutedLeaves < parameters.MinRefutedLeaves
-	hasViolated := maxCubesExceeded || minRefutedLeavesViolated
+	hasViolated := maxCubesExceeded || minRefutedLeavesViolated || minCubesExceeded || numCubes <= 1
 
 	cuberSvc.logSvc.CubeResult(cubesFilePath, processTime, numCubes, numRefutedLeaves, hasViolated)
 
@@ -119,7 +89,6 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 		if err := os.Remove(cubesFilePath); err != nil {
 			return err
 		}
-		// logrus.Println("Cuber: removed", cubesFilePath)
 		return cuber.ErrCubesetViolatedConstraints
 	}
 
@@ -128,6 +97,7 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 	return nil
 }
 
+// TODO: March doesn't like comments, strip 'em!
 func (cuberSvc *CuberService) Invoke(parameters InvokeParameters, control InvokeControl) (string, string, error) {
 	config := cuberSvc.configSvc.Config
 
@@ -182,7 +152,7 @@ func (cuberSvc *CuberService) Loop(encodings []encoder.Encoding, parameters pipe
 	}
 }
 
-func (cuberSvc *CuberService) RunRegular(encodings []encoder.Encoding, parameters pipeline.CubeParams) []string {
+func (cuberSvc *CuberService) Run(encodings []encoder.Encoding, parameters pipeline.CubeParams) []string {
 	err := cuberSvc.filesystemSvc.PrepareDirs([]string{"cubesets", "encodings", "logs"})
 	cuberSvc.errorSvc.Fatal(err, "Cuber: failed to prepare the required dirs")
 
@@ -205,11 +175,13 @@ func (cuberSvc *CuberService) RunRegular(encodings []encoder.Encoding, parameter
 
 		pool.Submit(func(encoding string, threshold int) func() {
 			return func() {
+				// TODO: Simplify
 				err := cuberSvc.TrackedInvoke(InvokeParameters{
 					Encoding:         encoding,
 					Threshold:        threshold,
 					Timeout:          time.Duration(timeout) * time.Second,
 					MaxCubes:         parameters.MaxCubes,
+					MinCubes:         parameters.MinCubes,
 					MinRefutedLeaves: parameters.MinRefutedLeaves,
 				}, InvokeControl{
 					CommandGroup: commandGrps[encoding],
