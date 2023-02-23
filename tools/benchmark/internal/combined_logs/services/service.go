@@ -2,16 +2,26 @@ package services
 
 import (
 	"bufio"
+	"errors"
+	"io"
 	"log"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/alitto/pond"
+	"github.com/samber/mo"
 )
 
+type LogFileMapping struct {
+	Offset uint32
+	Size   uint32
+}
+
 type Properties struct {
+	LogFiles map[string]*LogFileMapping
 }
 
 func (combinedLogsSvc *CombinedLogsService) Generate(workers int) {
@@ -59,4 +69,60 @@ func (combinedLogsSvc *CombinedLogsService) Generate(workers int) {
 	}
 	pool.StopAndWait()
 	log.Printf("Took %s to process %d files", time.Since(startTime), numFiles)
+}
+
+func (combinedLogsSvc *CombinedLogsService) Load() error {
+	combinedLogsSvc.LogFiles = map[string]*LogFileMapping{}
+	file, err := os.OpenFile("all.clog", os.O_RDONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	bytesAccumulator := uint32(0)
+	var currentFileSizePtr *uint32
+	for scanner.Scan() {
+		lineBytes := scanner.Bytes()
+		line := string(lineBytes)
+		lineSize := uint32(len(lineBytes) + 1)
+		bytesAccumulator += lineSize
+		if strings.HasPrefix(line, "FN:") {
+			fileName := line[3:]
+			entry := LogFileMapping{
+				Offset: bytesAccumulator,
+				Size:   -lineSize,
+			}
+			combinedLogsSvc.LogFiles[fileName] = &entry
+			currentFileSizePtr = &entry.Size
+		}
+		if currentFileSizePtr != nil {
+			*currentFileSizePtr += lineSize
+		}
+	}
+
+	return nil
+}
+
+func (combinedLogsSvc *CombinedLogsService) Get(name string) (mo.Option[string], error) {
+	entry, exists := combinedLogsSvc.LogFiles[name]
+	if !exists {
+		return mo.None[string](), nil
+	}
+
+	file, err := os.OpenFile("all.clog", os.O_RDONLY, 0644)
+	if err != nil {
+		return mo.None[string](), err
+	}
+
+	data := make([]byte, entry.Size)
+	_, err = file.ReadAt(data, int64(entry.Offset))
+	if err != nil && !errors.Is(err, io.EOF) {
+		return mo.None[string](), err
+	}
+	if errors.Is(err, io.EOF) {
+		data = data[:len(data)-1]
+	}
+
+	return mo.Some(string(data)), nil
 }

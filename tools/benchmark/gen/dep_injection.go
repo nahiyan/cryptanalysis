@@ -181,7 +181,7 @@ func main() {
 		// TODO: Rename to solve
 		{
 			Name:         "solver",
-			Dependencies: []string{"config", "filesystem", "error", "solution", "slurm", "cube_selector", "encoder", "log", "random"},
+			Dependencies: []string{"config", "filesystem", "error", "solution", "slurm", "cube_selector", "encoder", "log", "random", "combined_logs"},
 		},
 		{
 			Name:         "solution",
