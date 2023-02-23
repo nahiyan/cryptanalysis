@@ -1,6 +1,7 @@
 package services
 
 import (
+	services9 "benchmark/internal/combined_logs/services"
 	services "benchmark/internal/config/services"
 	services5 "benchmark/internal/cube_selector/services"
 	services6 "benchmark/internal/encoder/services"
@@ -23,6 +24,7 @@ type SolverService struct {
 	encoderSvc      *services6.EncoderService
 	logSvc          *services7.LogService
 	randomSvc       *services8.RandomService
+	combinedLogsSvc *services9.CombinedLogsService
 }
 
 func NewSolverService(injector *do.Injector) (*SolverService, error) {
@@ -35,6 +37,7 @@ func NewSolverService(injector *do.Injector) (*SolverService, error) {
 	encoderSvc := do.MustInvoke[*services6.EncoderService](injector)
 	logSvc := do.MustInvoke[*services7.LogService](injector)
 	randomSvc := do.MustInvoke[*services8.RandomService](injector)
-	svc := &SolverService{configSvc: configSvc, filesystemSvc: filesystemSvc, errorSvc: errorSvc, solutionSvc: solutionSvc, slurmSvc: slurmSvc, cubeSelectorSvc: cubeSelectorSvc, encoderSvc: encoderSvc, logSvc: logSvc, randomSvc: randomSvc}
+	combinedLogsSvc := do.MustInvoke[*services9.CombinedLogsService](injector)
+	svc := &SolverService{configSvc: configSvc, filesystemSvc: filesystemSvc, errorSvc: errorSvc, solutionSvc: solutionSvc, slurmSvc: slurmSvc, cubeSelectorSvc: cubeSelectorSvc, encoderSvc: encoderSvc, logSvc: logSvc, randomSvc: randomSvc, combinedLogsSvc: combinedLogsSvc}
 	return svc, nil
 }
