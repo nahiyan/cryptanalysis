@@ -152,12 +152,11 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 				summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed extract message from the solution literal")
 
 				// Take the steps derived from the instance name
-				encoder_, step, targetHash, err := parseSolutionLogName(fileName)
+				_, step, targetHash, err := parseSolutionLogName(fileName)
 				summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to extract information from the log file name")
 
 				// Verify the solution
-				addChainingVars := encoder_ == encoder.SaeedE
-				hash, err := summarizerSvc.md4Svc.Run(message, step, addChainingVars)
+				hash, err := summarizerSvc.md4Svc.Run(message, step, false)
 				summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the hash")
 				solution.verified = hash == targetHash
 				if solution.verified {
