@@ -9,6 +9,8 @@ type Config struct {
 			Glucose          string
 			MapleSat         string
 			XnfSat           string
+			YalSat           string
+			PalSat           string
 			March            string
 			Satelite         string
 			Verifier         string
@@ -29,5 +31,11 @@ type Config struct {
 	Slurm struct {
 		MaxJobs       int
 		WorkerTimeMul float64
+	}
+
+	Solver struct {
+		Slurm struct {
+			NumTaskSelectWorkers int
+		}
 	}
 }

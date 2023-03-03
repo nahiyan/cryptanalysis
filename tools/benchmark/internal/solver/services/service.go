@@ -36,25 +36,42 @@ func (solverSvc *SolverService) GetCmdInfo(solver_ solver.Solver, solutionPath s
 		binPath = config.Paths.Bin.CryptoMiniSat
 	case solver.MapleSat:
 		binPath = config.Paths.Bin.MapleSat
+		args += "-model"
 	case solver.Glucose:
 		binPath = config.Paths.Bin.Glucose
+		args += "-model"
+	case solver.YalSat:
+		binPath = config.Paths.Bin.YalSat
+		args += "--witness=1"
+	case solver.PalSat:
+		binPath = config.Paths.Bin.PalSat
+		args += "--witness=1"
 	}
 
-	if solver_ == solver.MapleSat || solver_ == solver.Glucose {
-		args += " " + solutionPath
-	}
 	args_ := strings.Fields(args)
 
 	return binPath, args_
 }
 
-func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver.Solver, timeout int) (solver.Result, int) {
+func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver.Solver, timeout int, localSearch bool) (solver.Result, int) {
 	errorSvc := solverSvc.errorSvc
 	solutionsDir := solverSvc.configSvc.Config.Paths.Solutions
 	solutionPath := path.Join(solutionsDir, path.Base(encoding.GetName())+"."+string(solver_)+".sol")
 	binPath, solverArgs := solverSvc.GetCmdInfo(solver_, solutionPath)
 	duration := time.Duration(timeout) * time.Second
 
+	// Local search
+	if localSearch {
+		if solver_ == solver.Kissat {
+			solverArgs = append(solverArgs, "--walkinitially=true")
+		} else if solver_ == solver.Cadical {
+			solverArgs = append(solverArgs, "-L1")
+		} else {
+			log.Println("Solver: Warning; the solver doesn't support local search")
+		}
+	}
+
+	// Command context
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
 	defer cancel()
 
@@ -74,12 +91,14 @@ func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver
 	cmd.Start()
 
 	if cube, exists := encoding.Cube.Get(); exists {
+		// Handle cubes
 		cubesetPath, err := encoding.GetCubesetPath(solverSvc.configSvc.Config.Paths.Cubesets)
 		solverSvc.errorSvc.Fatal(err, "Solver: can't get cubeset path of an encoding that isn't cubed")
 
 		err = solverSvc.cubeSelectorSvc.EncodingFromCube(encoding.BasePath, cubesetPath, cube.Index, stdinPipe)
 		solverSvc.errorSvc.Fatal(err, "Solver: failed to construct instance from cube")
 	} else {
+		// Handle regular files
 		reader, err := os.OpenFile(encoding.BasePath, os.O_RDONLY, 0644)
 		solverSvc.errorSvc.Fatal(err, "Solver: failed to read the instance file")
 		_, err = io.Copy(stdinPipe, reader)
@@ -119,8 +138,8 @@ func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver
 	return result, exitCode
 }
 
-func (solverSvc *SolverService) TrackedInvoke(encoding encoder.Encoding, solver_ solver.Solver, timeout int) {
-	result, exitCode := solverSvc.Invoke(encoding, solver_, timeout)
+func (solverSvc *SolverService) TrackedInvoke(encoding encoder.Encoding, solver_ solver.Solver, timeout int, localSearch bool) {
+	result, exitCode := solverSvc.Invoke(encoding, solver_, timeout, localSearch)
 	solverSvc.logSvc.SolveResult(encoding, solver_, exitCode, result)
 }
 
@@ -158,12 +177,16 @@ func (solverSvc *SolverService) RunSlurm(encodings []encoder.Encoding, parameter
 	err := solverSvc.filesystemSvc.PrepareDirs(dirs)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to prepare directory for storing the solutions, logs, and tasks")
 
+	// Select the unfinished tasks and skip the rest
 	tasks := []Task{}
-	pool := pond.New(100, 1000, pond.IdleTimeout(100*time.Millisecond))
+	pool := pond.New(config.Solver.Slurm.NumTaskSelectWorkers, 1000, pond.IdleTimeout(100*time.Millisecond))
 	lock := sync.Mutex{}
+	counter := 1
+	numEncodings := len(encodings)
 	solverSvc.Loop(encodings, parameters, func(encoding encoder.Encoding, solver_ solver.Solver) {
-		pool.Submit(func(encoding encoder.Encoding, solver_ solver.Solver) func() {
+		pool.Submit(func(encoding encoder.Encoding, solver_ solver.Solver, index int, numEncodings int) func() {
 			return func() {
+				log.Printf("Solver: [%d/%d] processing task", index, numEncodings)
 				if !parameters.Redundant && solverSvc.ShouldSkip(encoding, solver_, time.Duration(parameters.Timeout)*time.Second) {
 					return
 				}
@@ -176,10 +199,10 @@ func (solverSvc *SolverService) RunSlurm(encodings []encoder.Encoding, parameter
 				})
 				lock.Unlock()
 			}
-		}(encoding, solver_))
+		}(encoding, solver_, counter, numEncodings))
+		counter++
 	})
 	pool.StopAndWait()
-
 	log.Printf("Solver: Skipped %d tasks", len(encodings)-len(tasks))
 
 	tasksSetPath, err := solverSvc.AddTasks(tasks)
@@ -223,10 +246,19 @@ func (solverSvc *SolverService) RunRegular(encodings []encoder.Encoding, paramet
 		}
 
 		pool.Submit(func() {
-			solverSvc.TrackedInvoke(encoding, solver_, parameters.Timeout)
+			solverSvc.TrackedInvoke(encoding, solver_, parameters.Timeout, parameters.LocalSearch)
 		})
 	})
 
 	pool.StopAndWait()
 	logrus.Println("Solver: stopped")
+}
+
+func (solverSvc *SolverService) Run(encodings []encoder.Encoding, asSlurmJobs bool, parameters pipeline.SolveParams) {
+	if asSlurmJobs {
+		solverSvc.RunSlurm(encodings, parameters)
+		return
+	}
+
+	solverSvc.RunRegular(encodings, parameters)
 }

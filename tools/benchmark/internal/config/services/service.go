@@ -25,6 +25,8 @@ func (configSvc *ConfigService) Process() {
 	viper.SetDefault("Paths.Bin.Glucose", "glucose")
 	viper.SetDefault("Paths.Bin.MapleSat", "maplesat")
 	viper.SetDefault("Paths.Bin.XnfSat", "xnfsat")
+	viper.SetDefault("Paths.Bin.YalSat", "yalsat")
+	viper.SetDefault("Paths.Bin.PalSat", "palsat")
 	viper.SetDefault("Paths.Bin.March", "march_cu")
 	viper.SetDefault("Paths.Bin.Satelite", "satelite")
 	viper.SetDefault("Paths.Bin.SolutionAnalyzer", "solution_analyzer")

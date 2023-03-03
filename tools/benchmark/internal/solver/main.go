@@ -25,6 +25,8 @@ const (
 	MapleSat      = "maplesat"
 	Glucose       = "glucose"
 	XnfSat        = "xnfsat"
+	YalSat        = "yalsat"
+	PalSat        = "palsat"
 )
 
 const (

@@ -535,7 +535,8 @@ func (summarizerSvc *SummarizerService) Run(workers int) {
 			continue
 		}
 
-		if strings.Contains(fileName, solver.Kissat) || strings.Contains(fileName, solver.Cadical+".log") || strings.Contains(fileName, solver.CryptoMiniSat) || strings.Contains(fileName, solver.Glucose) || strings.Contains(fileName, solver.MapleSat) {
+		regexp_ := regexp.MustCompile(fmt.Sprintf("(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)", solver.Kissat, simplifier.Cadical, solver.CryptoMiniSat, solver.Glucose, solver.MapleSat, solver.YalSat, solver.PalSat))
+		if regexp_.Match([]byte(fileName)) {
 			solutionLogFiles = append(solutionLogFiles, fileName)
 		} else if strings.Contains(fileName, "march") {
 			cubesetLogFiles = append(cubesetLogFiles, fileName)
