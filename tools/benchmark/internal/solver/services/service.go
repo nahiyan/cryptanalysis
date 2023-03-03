@@ -67,7 +67,7 @@ func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver
 		} else if solver_ == solver.Cadical {
 			solverArgs = append(solverArgs, "-L1")
 		} else {
-			log.Println("Solver: Warning; the solver doesn't support local search")
+			log.Println("Solver: WARNING; the solver doesn't support local search")
 		}
 	}
 
@@ -176,6 +176,11 @@ func (solverSvc *SolverService) RunSlurm(encodings []encoder.Encoding, parameter
 	dirs := []string{config.Paths.Solutions, solverSvc.configSvc.Config.Paths.Logs, solverSvc.configSvc.Config.Paths.Tmp}
 	err := solverSvc.filesystemSvc.PrepareDirs(dirs)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to prepare directory for storing the solutions, logs, and tasks")
+
+	// Warn about local search
+	if parameters.LocalSearch {
+		log.Println("Solver: WARNING; local search isn't supported with Slurm tasks")
+	}
 
 	// Select the unfinished tasks and skip the rest
 	tasks := []Task{}
