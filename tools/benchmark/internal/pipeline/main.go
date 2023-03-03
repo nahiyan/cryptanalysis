@@ -6,13 +6,12 @@ import (
 )
 
 const (
-	Encode           = "encode"
-	Simplify         = "simplify"
-	Cube             = "cube"
-	CubeSelect       = "cube_select"
-	Solve            = "solve"
-	SlurmSolve       = "slurm_solve"
-	EncodingSlurmify = "encoding_slurmify"
+	Encode     = "encode"
+	Simplify   = "simplify"
+	Cube       = "cube"
+	CubeSelect = "cube_select"
+	Solve      = "solve"
+	SlurmSolve = "slurm_solve"
 )
 
 type Type string
@@ -29,10 +28,11 @@ type EncodeParams struct {
 	Solvers       []Solver
 }
 type SolveParams struct {
-	Solvers   []solver.Solver
-	Timeout   int
-	Workers   int
-	Redundant bool
+	Solvers     []solver.Solver
+	Timeout     int
+	Workers     int
+	Redundant   bool
+	LocalSearch bool
 }
 
 type CubeParams struct {

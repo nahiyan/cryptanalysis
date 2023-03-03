@@ -47,7 +47,7 @@ func initTaskCmd() *cobra.Command {
 					}
 					errorSvc.Fatal(err, "Task: failed to get task from the taskset")
 
-					solverSvc.TrackedInvoke(task.Encoding, task.Solver, int(task.MaxRuntime.Seconds()))
+					solverSvc.TrackedInvoke(task.Encoding, task.Solver, int(task.MaxRuntime.Seconds()), false)
 
 					tasksCounter++
 				}
