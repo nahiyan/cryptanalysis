@@ -49,6 +49,9 @@ func (configSvc *ConfigService) Process() {
 	viper.SetDefault("Slurm.MaxJobs", 1000)
 	viper.SetDefault("Slurm.WorkerTimeMul", 1)
 
+	// Solver
+	viper.SetDefault("Solver.Slurm.NumTaskSelectWorkers", 1000)
+
 	// Set config file
 	viper.SetConfigFile(configFilePath)
 	viper.ReadInConfig()
