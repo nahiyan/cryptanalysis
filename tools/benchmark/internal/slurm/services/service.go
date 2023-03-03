@@ -3,14 +3,13 @@ package services
 import (
 	"benchmark/internal/slurm"
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"os/exec"
 	"path"
 	"strconv"
 	"text/template"
-
-	"github.com/sirupsen/logrus"
 )
 
 func (slurmSvc *SlurmService) GenerateJob(command string, numTasks, nodes, cpuCores, memory, timeout int) (string, error) {
@@ -71,7 +70,7 @@ func (slurmSvc *SlurmService) ScheduleJob(jobPath string, dependencies []slurm.J
 	if err != nil {
 		return 0, err
 	}
-	logrus.Println("Submitted job", jobId)
+	log.Println("Submitted job", jobId)
 
 	return jobId, nil
 }

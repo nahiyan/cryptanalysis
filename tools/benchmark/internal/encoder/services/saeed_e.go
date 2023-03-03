@@ -4,9 +4,8 @@ import (
 	"benchmark/internal/encoder"
 	"benchmark/internal/pipeline"
 	"fmt"
+	"log"
 	"path"
-
-	"github.com/sirupsen/logrus"
 )
 
 func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.EncodeParams) []encoder.Encoding {
@@ -21,7 +20,7 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.EncodeParams)
 
 		// Skip if encoding already exists
 		if encoderSvc.filesystemSvc.FileExists(encodingPath) {
-			logrus.Println("Encoder: skipped", encodingPath)
+			log.Println("Encoder: skipped", encodingPath)
 			return
 		}
 
@@ -51,7 +50,7 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.EncodeParams)
 		cmd := encoderSvc.commandSvc.Create(command)
 		encoderSvc.OutputToFile(cmd, encodingPath)
 
-		logrus.Println("Encoder:", encodingPath)
+		log.Println("Encoder:", encodingPath)
 	})
 	return encodings
 }

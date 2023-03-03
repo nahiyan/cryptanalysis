@@ -7,6 +7,7 @@ import (
 	"benchmark/internal/pipeline"
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"os/exec"
@@ -15,7 +16,6 @@ import (
 	"time"
 
 	"github.com/alitto/pond"
-	"github.com/sirupsen/logrus"
 )
 
 type InvokeParameters struct {
@@ -82,7 +82,6 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 	if maxCubesExceeded {
 		control.ShouldStop[parameters.Encoding] = true
 		cuberSvc.commandSvc.StopGroup(control.CommandGroup)
-		// logrus.Println("Cuber: Written stop signal", parameters.Threshold, parameters.Encoding)
 	}
 
 	if hasViolated {
@@ -160,11 +159,11 @@ func (cuberSvc *CuberService) Run(encodings []encoder.Encoding, parameters pipel
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 	shouldStop := map[string]bool{}
 	commandGrps := map[string]*command.Group{}
-	logrus.Println("Cuber: started")
+	log.Println("Cuber: started")
 
 	cuberSvc.Loop(encodings, parameters, func(encoding string, threshold, timeout int) {
 		if cuberSvc.ShouldSkip(encoding, threshold) {
-			logrus.Println("Cuber: skipped", threshold, encoding)
+			log.Println("Cuber: skipped", threshold, encoding)
 			cubesFilePaths = append(cubesFilePaths, cuberSvc.CubesFilePath(encoding, threshold))
 			return
 		}
@@ -200,6 +199,6 @@ func (cuberSvc *CuberService) Run(encodings []encoder.Encoding, parameters pipel
 	})
 
 	pool.StopAndWait()
-	logrus.Println("Cuber: stopped")
+	log.Println("Cuber: stopped")
 	return cubesFilePaths
 }

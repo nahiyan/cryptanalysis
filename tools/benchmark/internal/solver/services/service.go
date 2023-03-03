@@ -19,7 +19,6 @@ import (
 	"github.com/alitto/pond"
 	"github.com/bitfield/script"
 	"github.com/samber/mo"
-	"github.com/sirupsen/logrus"
 )
 
 func (solverSvc *SolverService) GetCmdInfo(solver_ solver.Solver, solutionPath string) (string, []string) {
@@ -128,7 +127,7 @@ func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver
 		} else if exitCode == 20 {
 			result = solver.Unsat
 		} else {
-			logrus.Error(err)
+			log.Println(err)
 		}
 
 		runtimeSeconds := time.Since(startTime).Round(time.Millisecond).Seconds()
@@ -241,12 +240,12 @@ func (solverSvc *SolverService) RunRegular(encodings []encoder.Encoding, paramet
 	err := solverSvc.filesystemSvc.PrepareDirs(dirs)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to prepare directory for storing the solutions and logs")
 
-	logrus.Println("Solver: started")
+	log.Println("Solver: started")
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 
 	solverSvc.Loop(encodings, parameters, func(encoding encoder.Encoding, solver_ solver.Solver) {
 		if !parameters.Redundant && solverSvc.ShouldSkip(encoding, solver_, time.Duration(parameters.Timeout)*time.Second) {
-			logrus.Println("Solver: skipped", encoding, "with "+string(solver_))
+			log.Println("Solver: skipped", encoding, "with "+string(solver_))
 			return
 		}
 
@@ -256,7 +255,7 @@ func (solverSvc *SolverService) RunRegular(encodings []encoder.Encoding, paramet
 	})
 
 	pool.StopAndWait()
-	logrus.Println("Solver: stopped")
+	log.Println("Solver: stopped")
 }
 
 func (solverSvc *SolverService) Run(encodings []encoder.Encoding, asSlurmJobs bool, parameters pipeline.SolveParams) {

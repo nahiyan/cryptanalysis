@@ -17,7 +17,6 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/samber/mo"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -133,7 +132,7 @@ func (cubeSelectorSvc *CubeSelectorService) Select(cubesets []string, parameters
 		}
 	}
 
-	logrus.Println("Cube selector: randomly selected", len(encodings), "cubes")
+	log.Println("Cube selector: randomly selected", len(encodings), "cubes")
 	return encodings
 }
 

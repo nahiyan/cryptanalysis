@@ -5,6 +5,7 @@ import (
 	"benchmark/internal/pipeline"
 	"bytes"
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"path"
@@ -13,7 +14,6 @@ import (
 	_ "embed"
 
 	"github.com/samber/lo"
-	"github.com/sirupsen/logrus"
 )
 
 //go:embed transalg.txt
@@ -147,7 +147,7 @@ func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.EncodeParam
 
 		// Skip if encoding already exists
 		if encoderSvc.filesystemSvc.FileExists(encodingPath) {
-			logrus.Println("Encoder: skipped", encodingPath)
+			log.Println("Encoder: skipped", encodingPath)
 			return
 		}
 
@@ -164,7 +164,7 @@ func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.EncodeParam
 		defer os.Remove(transalgFilePath)
 		encoderSvc.errorSvc.Fatal(err, "Encoder: failed to run Transalg for "+instanceName)
 
-		logrus.Println("Encoder:", encodingPath)
+		log.Println("Encoder:", encodingPath)
 	})
 
 	return encodings

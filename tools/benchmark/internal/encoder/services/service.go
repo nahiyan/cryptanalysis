@@ -6,13 +6,13 @@ import (
 	"benchmark/internal/simplifier"
 	"errors"
 	"fmt"
+	"log"
 	"os/exec"
 	"path"
 	"strconv"
 	"strings"
 
 	"github.com/samber/mo"
-	"github.com/sirupsen/logrus"
 )
 
 func (encoderSvc *EncoderService) GetInstanceName(info encoder.InstanceInfo) string {
@@ -242,11 +242,11 @@ func (encoderSvc *EncoderService) Run(parameters pipeline.EncodeParams) []encode
 	switch parameters.Encoder {
 	case encoder.SaeedE:
 		encodings := encoderSvc.InvokeSaeedE(parameters)
-		logrus.Println("Encoder: saeed_e", encodings)
+		log.Println("Encoder: saeed_e", encodings)
 		return encodings
 	case encoder.Transalg:
 		promises := encoderSvc.InvokeTransalg(parameters)
-		logrus.Println("Encoder: transalg", promises)
+		log.Println("Encoder: transalg", promises)
 		return promises
 	}
 

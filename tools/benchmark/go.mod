@@ -16,7 +16,6 @@ require (
 	github.com/dave/jennifer v1.6.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/samber/mo v1.7.0
-	github.com/sirupsen/logrus v1.9.0
 	go.uber.org/zap v1.24.0
 	gonum.org/v1/gonum v0.12.0
 )
