@@ -170,7 +170,7 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 			lastValue = pipelineSvc.cubeSelectorSvc.Run(input, pipe.CubeSelectParams)
 
 		case pipeline.Solve:
-			pipelineSvc.solverSvc.RunRegular(lastValue.([]encoder.Encoding), pipe.SolveParams)
+			pipelineSvc.solverSvc.Run(lastValue.([]encoder.Encoding), false, pipe.SolveParams)
 
 		case pipeline.SlurmSolve:
 			input, ok := lastValue.([]encoder.Encoding)
@@ -178,7 +178,7 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 				log.Fatal("Slurm-based solver expects a slurm-based input")
 			}
 
-			pipelineSvc.solverSvc.RunSlurm(input, pipe.SolveParams)
+			pipelineSvc.solverSvc.Run(input, true, pipe.SolveParams)
 		}
 	})
 }
