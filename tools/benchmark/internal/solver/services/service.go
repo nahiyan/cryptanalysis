@@ -65,7 +65,7 @@ func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver
 			solverArgs = append(solverArgs, "--walkinitially=true")
 		} else if solver_ == solver.Cadical {
 			solverArgs = append(solverArgs, "-L1")
-		} else {
+		} else if solver_ != solver.YalSat && solver_ != solver.PalSat {
 			log.Println("Solver: WARNING; the solver doesn't support local search")
 		}
 	}
