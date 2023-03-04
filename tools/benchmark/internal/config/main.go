@@ -37,5 +37,18 @@ type Config struct {
 		Slurm struct {
 			NumTaskSelectWorkers int
 		}
+
+		Kissat struct {
+			LocalSearch bool
+		}
+
+		Cadical struct {
+			LocalSearchRounds int
+		}
+
+		CryptoMiniSat struct {
+			LocalSearch     bool
+			LocalSearchType string
+		}
 	}
 }

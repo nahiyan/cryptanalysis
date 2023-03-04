@@ -28,11 +28,10 @@ type EncodeParams struct {
 	Solvers       []Solver
 }
 type SolveParams struct {
-	Solvers     []solver.Solver
-	Timeout     int
-	Workers     int
-	Redundant   bool
-	LocalSearch bool
+	Solvers   []solver.Solver
+	Timeout   int
+	Workers   int
+	Redundant bool
 }
 
 type CubeParams struct {

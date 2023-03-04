@@ -52,7 +52,8 @@ func (solverSvc *SolverService) GetCmdInfo(solver_ solver.Solver, solutionPath s
 	return binPath, args_
 }
 
-func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver.Solver, timeout int, localSearch bool) (solver.Result, int) {
+func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver.Solver, timeout int) (solver.Result, int) {
+	config := solverSvc.configSvc.Config
 	errorSvc := solverSvc.errorSvc
 	solutionsDir := solverSvc.configSvc.Config.Paths.Solutions
 	solutionPath := path.Join(solutionsDir, path.Base(encoding.GetName())+"."+string(solver_)+".sol")
@@ -60,14 +61,12 @@ func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver
 	duration := time.Duration(timeout) * time.Second
 
 	// Local search
-	if localSearch {
-		if solver_ == solver.Kissat {
-			solverArgs = append(solverArgs, "--walkinitially=true")
-		} else if solver_ == solver.Cadical {
-			solverArgs = append(solverArgs, "-L1")
-		} else if solver_ != solver.YalSat && solver_ != solver.PalSat {
-			log.Println("Solver: WARNING; the solver doesn't support local search")
-		}
+	if solver_ == solver.Kissat && config.Solver.Kissat.LocalSearch {
+		solverArgs = append(solverArgs, "--walkinitially=true")
+	} else if solver_ == solver.Cadical && config.Solver.Cadical.LocalSearchRounds > 0 {
+		solverArgs = append(solverArgs, fmt.Sprintf("-L%d", config.Solver.Cadical.LocalSearchRounds))
+	} else if solver_ == solver.CryptoMiniSat && config.Solver.CryptoMiniSat.LocalSearch {
+		solverArgs = append(solverArgs, "--sls=1 --slstype="+config.Solver.CryptoMiniSat.LocalSearchType)
 	}
 
 	// Command context
@@ -137,8 +136,8 @@ func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver
 	return result, exitCode
 }
 
-func (solverSvc *SolverService) TrackedInvoke(encoding encoder.Encoding, solver_ solver.Solver, timeout int, localSearch bool) {
-	result, exitCode := solverSvc.Invoke(encoding, solver_, timeout, localSearch)
+func (solverSvc *SolverService) TrackedInvoke(encoding encoder.Encoding, solver_ solver.Solver, timeout int) {
+	result, exitCode := solverSvc.Invoke(encoding, solver_, timeout)
 	solverSvc.logSvc.SolveResult(encoding, solver_, exitCode, result)
 }
 
@@ -175,11 +174,6 @@ func (solverSvc *SolverService) RunSlurm(encodings []encoder.Encoding, parameter
 	dirs := []string{config.Paths.Solutions, solverSvc.configSvc.Config.Paths.Logs, solverSvc.configSvc.Config.Paths.Tmp}
 	err := solverSvc.filesystemSvc.PrepareDirs(dirs)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to prepare directory for storing the solutions, logs, and tasks")
-
-	// Warn about local search
-	if parameters.LocalSearch {
-		log.Println("Solver: WARNING; local search isn't supported with Slurm tasks")
-	}
 
 	// Select the unfinished tasks and skip the rest
 	tasks := []Task{}
@@ -250,7 +244,7 @@ func (solverSvc *SolverService) RunRegular(encodings []encoder.Encoding, paramet
 		}
 
 		pool.Submit(func() {
-			solverSvc.TrackedInvoke(encoding, solver_, parameters.Timeout, parameters.LocalSearch)
+			solverSvc.TrackedInvoke(encoding, solver_, parameters.Timeout)
 		})
 	})
 
