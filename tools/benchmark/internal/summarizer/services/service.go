@@ -424,7 +424,7 @@ func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, f
 	file.WriteString(fmt.Sprintf("Run time (1 CPU, %s instances): %s\n", allCount_, totalRunTime))
 	file.WriteString(fmt.Sprintf("Run time (12 CPU, %s instances): %s\n", allCount_, time.Duration(totalRunTime/12).Round(time.Millisecond)))
 
-	if len(cubesets) > 0 {
+	if len(cubesets) > 0 && solvedCount > 0 {
 		cubeset := cubesets[0]
 		cubesCount := humanize.Comma(int64(cubeset.cubesCount))
 		estimatedTime := time.Duration((int(totalProcessTime) / solvedCount) * cubeset.cubesCount).Round(time.Millisecond)
