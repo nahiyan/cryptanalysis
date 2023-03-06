@@ -1,6 +1,7 @@
 package services
 
 import (
+	services8 "benchmark/internal/combined_logs/services"
 	services2 "benchmark/internal/config/services"
 	services3 "benchmark/internal/cuber/services"
 	services1 "benchmark/internal/encoder/services"
@@ -13,14 +14,15 @@ import (
 )
 
 type SummarizerService struct {
-	errorSvc      *services.ErrorService
-	encoderSvc    *services1.EncoderService
-	configSvc     *services2.ConfigService
-	cuberSvc      *services3.CuberService
-	solverSvc     *services4.SolverService
-	simplifierSvc *services5.SimplifierService
-	solutionSvc   *services6.SolutionService
-	md4Svc        *services7.Md4Service
+	errorSvc        *services.ErrorService
+	encoderSvc      *services1.EncoderService
+	configSvc       *services2.ConfigService
+	cuberSvc        *services3.CuberService
+	solverSvc       *services4.SolverService
+	simplifierSvc   *services5.SimplifierService
+	solutionSvc     *services6.SolutionService
+	md4Svc          *services7.Md4Service
+	combinedLogsSvc *services8.CombinedLogsService
 }
 
 func NewSummarizerService(injector *do.Injector) (*SummarizerService, error) {
@@ -32,6 +34,7 @@ func NewSummarizerService(injector *do.Injector) (*SummarizerService, error) {
 	simplifierSvc := do.MustInvoke[*services5.SimplifierService](injector)
 	solutionSvc := do.MustInvoke[*services6.SolutionService](injector)
 	md4Svc := do.MustInvoke[*services7.Md4Service](injector)
-	svc := &SummarizerService{errorSvc: errorSvc, encoderSvc: encoderSvc, configSvc: configSvc, cuberSvc: cuberSvc, solverSvc: solverSvc, simplifierSvc: simplifierSvc, solutionSvc: solutionSvc, md4Svc: md4Svc}
+	combinedLogsSvc := do.MustInvoke[*services8.CombinedLogsService](injector)
+	svc := &SummarizerService{errorSvc: errorSvc, encoderSvc: encoderSvc, configSvc: configSvc, cuberSvc: cuberSvc, solverSvc: solverSvc, simplifierSvc: simplifierSvc, solutionSvc: solutionSvc, md4Svc: md4Svc, combinedLogsSvc: combinedLogsSvc}
 	return svc, nil
 }

@@ -61,9 +61,22 @@ func (summarizerSvc *SummarizerService) GetCubesets(logFiles []string) []cubeset
 	config := summarizerSvc.configSvc.Config
 	cubesets := []cubeset{}
 	for _, logFile := range logFiles {
-		processTime, cubesCount, refutedLeavesCount, err := summarizerSvc.cuberSvc.ParseOutput(path.Join(config.Paths.Logs, logFile))
-		if err != nil {
-			continue
+		var (
+			processTime        time.Duration
+			cubesCount         int
+			refutedLeavesCount int
+			err                error
+		)
+		if summarizerSvc.combinedLogsSvc.IsLoaded() {
+			processTime, cubesCount, refutedLeavesCount, err = summarizerSvc.cuberSvc.ParseOutputFromCombinedLog(logFile)
+			if err != nil {
+				continue
+			}
+		} else {
+			processTime, cubesCount, refutedLeavesCount, err = summarizerSvc.cuberSvc.ParseOutputFromFile(path.Join(config.Paths.Logs, logFile))
+			if err != nil {
+				continue
+			}
 		}
 
 		name := path.Base(logFile)[:len(logFile)-4]
@@ -113,9 +126,22 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 					solver_ = solver.Solver(segments[len(segments)-1])
 				}
 				solutionLiterals := make([]int, 0)
-				result, processTime, runTime, err := summarizerSvc.solverSvc.ParseLog(path.Join(config.Paths.Logs, logFile), solver_, &solutionLiterals)
-				if err != nil {
-					return
+				var (
+					processTime time.Duration
+					runTime     time.Duration
+					result      solver.Result
+					err         error
+				)
+				if summarizerSvc.combinedLogsSvc.IsLoaded() {
+					result, processTime, runTime, err = summarizerSvc.solverSvc.ParseLogFromCombinedLog(logFile, solver_, &solutionLiterals)
+					if err != nil {
+						return
+					}
+				} else {
+					result, processTime, runTime, err = summarizerSvc.solverSvc.ParseLogFromFile(path.Join(config.Paths.Logs, logFile), solver_, &solutionLiterals)
+					if err != nil {
+						return
+					}
 				}
 
 				solution := solution{
@@ -178,6 +204,7 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 func (summarizerSvc *SummarizerService) GetSimplifications(logFiles []string) []simplification {
 	config := summarizerSvc.configSvc.Config
 	simplifications := []simplification{}
+	combinedLogsLoaded := summarizerSvc.combinedLogsSvc.IsLoaded()
 	for _, logFile := range logFiles {
 		name := path.Base(logFile)[:len(logFile)-4]
 		var (
@@ -196,9 +223,18 @@ func (summarizerSvc *SummarizerService) GetSimplifications(logFiles []string) []
 				summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to get the conflicts")
 			}
 		}
-		result, err := summarizerSvc.simplifierSvc.ParseOutput(path.Join(config.Paths.Logs, logFile), simplifier_)
-		if err != nil {
-			continue
+
+		var result simplifier.Result
+		if combinedLogsLoaded {
+			result, err = summarizerSvc.simplifierSvc.ParseOutputFromCombinedLog(logFile, simplifier_)
+			if err != nil {
+				continue
+			}
+		} else {
+			result, err = summarizerSvc.simplifierSvc.ParseOutputFromFile(path.Join(config.Paths.Logs, logFile), simplifier_)
+			if err != nil {
+				continue
+			}
 		}
 
 		simplifications = append(simplifications, simplification{
