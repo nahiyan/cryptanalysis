@@ -72,6 +72,8 @@ func (combinedLogsSvc *CombinedLogsService) Generate(workers int) {
 }
 
 func (combinedLogsSvc *CombinedLogsService) Load() error {
+	log.Println("CombinedLogs: Loading all.clog")
+	startTime := time.Now()
 	combinedLogsSvc.LogFiles = map[string]*LogFileMapping{}
 	file, err := os.OpenFile("all.clog", os.O_RDONLY, 0644)
 	if err != nil {
@@ -100,8 +102,13 @@ func (combinedLogsSvc *CombinedLogsService) Load() error {
 			*currentFileSizePtr += lineSize
 		}
 	}
+	log.Printf("CombinedLogs: Load took %s", time.Since(startTime))
 
 	return nil
+}
+
+func (combinedLogsSvc *CombinedLogsService) IsLoaded() bool {
+	return len(combinedLogsSvc.LogFiles) > 0
 }
 
 func (combinedLogsSvc *CombinedLogsService) Get(name string) (mo.Option[string], error) {
