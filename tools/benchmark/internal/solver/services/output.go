@@ -4,45 +4,74 @@ import (
 	"benchmark/internal/solver"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/bitfield/script"
 )
 
-func (solverSvc *SolverService) ParseLog(logPath string, solver_ solver.Solver, solutionLiterals *[]int) (solver.Result, time.Duration, time.Duration, error) {
+func (solverSvc *SolverService) ParseLogFromFile(logPath string, solver_ solver.Solver, solutionLiterals *[]int) (solver.Result, time.Duration, time.Duration, error) {
+	file, err := os.OpenFile(logPath, os.O_RDONLY, 0644)
+	if err != nil {
+		return solver.Fail, time.Duration(0), time.Duration(0), err
+	}
+	return solverSvc.ParseLog(file, solver_, solutionLiterals)
+}
+
+func (solverSvc *SolverService) ParseLogFromCombinedLog(logFilePath string, solver_ solver.Solver, solutionLiterals *[]int) (solver.Result, time.Duration, time.Duration, error) {
+	maybeContent, err := solverSvc.combinedLogsSvc.Get(logFilePath)
+	if err != nil {
+		return solver.Fail, time.Duration(0), time.Duration(0), err
+	}
+
+	content, exists := maybeContent.Get()
+	if !exists {
+		return solver.Fail, time.Duration(0), time.Duration(0), os.ErrNotExist
+	}
+
+	reader := strings.NewReader(content)
+	return solverSvc.ParseLog(reader, solver_, solutionLiterals)
+}
+
+func (solverSvc *SolverService) ParseLog(outputReader io.Reader, solver_ solver.Solver, solutionLiterals *[]int) (solver.Result, time.Duration, time.Duration, error) {
 	switch solver_ {
 	case solver.Kissat:
-		return parseOutputWith(logPath, "s SATISFIABLE", "s UNSATISFIABLE", "c process-time:", 1, solutionLiterals)
+		return parseOutputWith(outputReader, "s SATISFIABLE", "s UNSATISFIABLE", "c process-time:", 1, solutionLiterals)
 	case solver.Cadical:
-		return parseOutputWith(logPath, "s SATISFIABLE", "s UNSATISFIABLE", "c total process time since initialization:", 1, solutionLiterals)
+		return parseOutputWith(outputReader, "s SATISFIABLE", "s UNSATISFIABLE", "c total process time since initialization:", 1, solutionLiterals)
 	case solver.Glucose:
-		return parseOutputWith(logPath, "s SATISFIABLE", "s UNSATISFIABLE", "c CPU time", 1, solutionLiterals)
+		return parseOutputWith(outputReader, "s SATISFIABLE", "s UNSATISFIABLE", "c CPU time", 1, solutionLiterals)
 	case solver.MapleSat:
-		return parseOutputWith(logPath, "SATISFIABLE", "UNSATISFIABLE", "CPU time", 1, solutionLiterals)
+		return parseOutputWith(outputReader, "SATISFIABLE", "UNSATISFIABLE", "CPU time", 1, solutionLiterals)
 	case solver.YalSat:
-		return parseOutputWith(logPath, "s SATISFIABLE", "s UNSATISFIABLE", "c total process time of", 1, solutionLiterals)
+		return parseOutputWith(outputReader, "s SATISFIABLE", "s UNSATISFIABLE", "c total process time of", 1, solutionLiterals)
 	case solver.PalSat:
-		return parseOutputWith(logPath, "s SATISFIABLE", "s UNSATISFIABLE", "c total wall clock time", 1, solutionLiterals)
+		return parseOutputWith(outputReader, "s SATISFIABLE", "s UNSATISFIABLE", "c total wall clock time", 1, solutionLiterals)
 	case solver.CryptoMiniSat:
-		return parseOutputWith(logPath, "s SATISFIABLE", "s UNSATISFIABLE", "c Total time", 0, solutionLiterals)
+		return parseOutputWith(outputReader, "s SATISFIABLE", "s UNSATISFIABLE", "c Total time", 0, solutionLiterals)
 	}
 
 	return solver.Fail, time.Duration(0), time.Duration(0), nil
 }
 
-func parseOutputWith(logPath, satText, unsatText, processTimeText string, processTimeFieldOffset int, solutionLiterals *[]int) (solver.Result, time.Duration, time.Duration, error) {
+func parseOutputWith(outputReader io.Reader, satText, unsatText, processTimeText string, processTimeFieldOffset int, solutionLiterals *[]int) (solver.Result, time.Duration, time.Duration, error) {
 	processTime := time.Duration(0)
 	runTime := time.Duration(0)
 	result := solver.Result(solver.Fail)
 
-	regexp_ := regexp.MustCompile(fmt.Sprintf("(%s)|(%s)|(%s)|(Info: Ended after)", satText, unsatText, processTimeText))
-	matches, err := script.File(logPath).MatchRegexp(regexp_).Slice()
-	if err != nil {
-		return result, processTime, runTime, err
+	output := ""
+	{
+		buf := new(strings.Builder)
+		_, err := io.Copy(buf, outputReader)
+		if err != nil {
+			return result, processTime, runTime, err
+		}
+		output = buf.String()
 	}
+
+	matches := regexp.MustCompile(fmt.Sprintf("(.*%s.*)|(.*%s.*)|(.*%s.*)|(Info: Ended after.*)", satText, unsatText, processTimeText)).FindAllString(output, len(output))
 
 	// If none of the expected matches are met
 	if len(matches) == 0 {
@@ -88,16 +117,12 @@ func parseOutputWith(logPath, satText, unsatText, processTimeText string, proces
 	// Extract the solution literals
 	if solutionLiterals != nil {
 		// TODO: Requires regexp improvement
-		regexp_ := regexp.MustCompile("(v )|(-1 )|(1 )")
-		lines, err := script.File(logPath).MatchRegexp(regexp_).Slice()
-		if err != nil {
-			return result, processTime, runTime, err
-		}
-
+		lines := regexp.MustCompile(`(v\s.*)|(-1\s.*)|(1\s.*)`).FindAllString(output, len(output))
 		for _, line := range lines {
-			if !strings.HasPrefix(line, "v ") && !strings.HasPrefix(line, "-1 ") && !strings.HasPrefix(line, "1 ") {
-				continue
-			}
+			// TODO: Cleanup
+			// if !strings.HasPrefix(line, "v ") && !strings.HasPrefix(line, "-1 ") && !strings.HasPrefix(line, "1 ") {
+			// 	continue
+			// }
 			segments := strings.Fields(line)
 			for _, segment := range segments {
 				if segment == "0" || segment == "v" {

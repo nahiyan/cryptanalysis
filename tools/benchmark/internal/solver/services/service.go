@@ -151,9 +151,22 @@ func (solverSvc *SolverService) Loop(encodings []encoder.Encoding, parameters pi
 
 func (solverSvc *SolverService) ShouldSkip(encoding encoder.Encoding, solver_ solver.Solver, maxRunTime time.Duration) bool {
 	logFilePath := encoding.GetLogPath(solverSvc.configSvc.Config.Paths.Logs, mo.Some(solver_))
-	result, _, runTime, err := solverSvc.ParseLog(logFilePath, solver_, nil)
-	if err != nil {
-		return false
+	var (
+		result  solver.Result
+		runTime time.Duration
+		err     error
+	)
+
+	if solverSvc.combinedLogsSvc.IsLoaded() {
+		result, _, runTime, err = solverSvc.ParseLogFromCombinedLog(path.Base(logFilePath), solver_, nil)
+		if err != nil {
+			return false
+		}
+	} else {
+		result, _, runTime, err = solverSvc.ParseLogFromFile(logFilePath, solver_, nil)
+		if err != nil {
+			return false
+		}
 	}
 
 	isSolved := result == solver.Unsat || result == solver.Sat
