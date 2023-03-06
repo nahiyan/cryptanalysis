@@ -1,6 +1,7 @@
 package services
 
 import (
+	services9 "benchmark/internal/combined_logs/services"
 	services6 "benchmark/internal/command/services"
 	services2 "benchmark/internal/config/services"
 	services3 "benchmark/internal/cubeset/services"
@@ -14,15 +15,16 @@ import (
 )
 
 type CuberService struct {
-	errorSvc      *services.ErrorService
-	filesystemSvc *services1.FilesystemService
-	configSvc     *services2.ConfigService
-	cubesetSvc    *services3.CubesetService
-	encodingSvc   *services4.EncodingService
-	slurmSvc      *services5.SlurmService
-	commandSvc    *services6.CommandService
-	encoderSvc    *services7.EncoderService
-	logSvc        *services8.LogService
+	errorSvc        *services.ErrorService
+	filesystemSvc   *services1.FilesystemService
+	configSvc       *services2.ConfigService
+	cubesetSvc      *services3.CubesetService
+	encodingSvc     *services4.EncodingService
+	slurmSvc        *services5.SlurmService
+	commandSvc      *services6.CommandService
+	encoderSvc      *services7.EncoderService
+	logSvc          *services8.LogService
+	combinedLogsSvc *services9.CombinedLogsService
 }
 
 func NewCuberService(injector *do.Injector) (*CuberService, error) {
@@ -35,6 +37,7 @@ func NewCuberService(injector *do.Injector) (*CuberService, error) {
 	commandSvc := do.MustInvoke[*services6.CommandService](injector)
 	encoderSvc := do.MustInvoke[*services7.EncoderService](injector)
 	logSvc := do.MustInvoke[*services8.LogService](injector)
-	svc := &CuberService{errorSvc: errorSvc, filesystemSvc: filesystemSvc, configSvc: configSvc, cubesetSvc: cubesetSvc, encodingSvc: encodingSvc, slurmSvc: slurmSvc, commandSvc: commandSvc, encoderSvc: encoderSvc, logSvc: logSvc}
+	combinedLogsSvc := do.MustInvoke[*services9.CombinedLogsService](injector)
+	svc := &CuberService{errorSvc: errorSvc, filesystemSvc: filesystemSvc, configSvc: configSvc, cubesetSvc: cubesetSvc, encodingSvc: encodingSvc, slurmSvc: slurmSvc, commandSvc: commandSvc, encoderSvc: encoderSvc, logSvc: logSvc, combinedLogsSvc: combinedLogsSvc}
 	return svc, nil
 }

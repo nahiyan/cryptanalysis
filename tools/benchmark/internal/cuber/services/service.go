@@ -53,7 +53,12 @@ func (cuberSvc *CuberService) ShouldSkip(encoding string, threshold int) bool {
 		return false
 	}
 
-	_, _, _, err := cuberSvc.ParseOutput(logFilePath)
+	var err error
+	if cuberSvc.combinedLogsSvc.IsLoaded() {
+		_, _, _, err = cuberSvc.ParseOutputFromCombinedLog(path.Base(logFilePath))
+	} else {
+		_, _, _, err = cuberSvc.ParseOutputFromFile(logFilePath)
+	}
 	return err == nil
 }
 
@@ -67,7 +72,17 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 		return err
 	}
 
-	processTime, numCubes, numRefutedLeaves, err := cuberSvc.ParseOutput(logFilePath)
+	var (
+		processTime      time.Duration
+		numCubes         int
+		numRefutedLeaves int
+	)
+
+	if cuberSvc.combinedLogsSvc.IsLoaded() {
+		processTime, numCubes, numRefutedLeaves, err = cuberSvc.ParseOutputFromCombinedLog(path.Base(logFilePath))
+	} else {
+		processTime, numCubes, numRefutedLeaves, err = cuberSvc.ParseOutputFromFile(logFilePath)
+	}
 	if err != nil {
 		return err
 	}
