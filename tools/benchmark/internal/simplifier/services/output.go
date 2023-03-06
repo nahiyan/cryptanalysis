@@ -4,6 +4,9 @@ import (
 	"benchmark/internal/simplifier"
 	"errors"
 	"fmt"
+	"io"
+	"log"
+	"os"
 	"path"
 	"regexp"
 	"strconv"
@@ -14,7 +17,31 @@ import (
 	"github.com/samber/lo"
 )
 
-func (solverSvc *SimplifierService) ParseOutput(logFilePath string, simplifier_ simplifier.Simplifier) (simplifier.Result, error) {
+func (solverSvc *SimplifierService) ParseOutputFromFile(logFilePath string, simplifier_ simplifier.Simplifier) (simplifier.Result, error) {
+	file, err := os.OpenFile(logFilePath, os.O_RDONLY, 0644)
+	if err != nil {
+		return simplifier.Result{}, err
+	}
+	return solverSvc.ParseOutput(file, logFilePath, simplifier_)
+}
+
+func (solverSvc *SimplifierService) ParseOutputFromCombinedLog(logFilePath string, simplifier_ simplifier.Simplifier) (simplifier.Result, error) {
+	maybeContent, err := solverSvc.combinedLogsSvc.Get(logFilePath)
+	if err != nil {
+		return simplifier.Result{}, err
+	}
+
+	content, exists := maybeContent.Get()
+	log.Println(exists)
+	if !exists {
+		return simplifier.Result{}, os.ErrNotExist
+	}
+
+	reader := strings.NewReader(content)
+	return solverSvc.ParseOutput(reader, logFilePath, simplifier_)
+}
+
+func (solverSvc *SimplifierService) ParseOutput(outputReader io.Reader, logFilePath string, simplifier_ simplifier.Simplifier) (simplifier.Result, error) {
 	numVarsBefore := 0
 	numVarsAfter := 0
 	numClausesBefore := 0
@@ -22,13 +49,22 @@ func (solverSvc *SimplifierService) ParseOutput(logFilePath string, simplifier_ 
 	seconds := 0.0
 	result := simplifier.Result{}
 
-	pipe := script.File(logFilePath)
+	output := ""
+	{
+		buf := new(strings.Builder)
+		_, err := io.Copy(buf, outputReader)
+		if err != nil {
+			return simplifier.Result{}, err
+		}
+		output = buf.String()
+	}
+
 	switch simplifier_ {
 	case simplifier.Satelite:
-		output, err := pipe.MatchRegexp(regexp.MustCompile("(Result)|(CPU time)|(UNSATISFIABLE)|(SATISFIABLE)")).Slice()
+		matches := regexp.MustCompile(`(Result.*)|(CPU time:\s+[0-9.]+)|(UNSATISFIABLE)|(SATISFIABLE)`).FindAllString(output, len(output))
 		// Catch if it's solved by the simplifier
 		{
-			_, isSolved := lo.Find(output, func(item string) bool {
+			_, isSolved := lo.Find(matches, func(item string) bool {
 				return item == "UNSATISFIABLE" || item == "SATISFIABLE"
 			})
 			if isSolved {
@@ -37,16 +73,14 @@ func (solverSvc *SimplifierService) ParseOutput(logFilePath string, simplifier_ 
 		}
 
 		// Initialize the parse
-		if err != nil {
-			return result, err
-		}
-		if len(output) != 2 {
+		if len(matches) != 2 {
 			return result, errors.New("invalid SatELite output")
 		}
 
 		// Parse the number of new variables and clauses
+		var err error
 		{
-			fields := strings.Fields(output[0])
+			fields := strings.Fields(matches[0])
 			if len(fields) < 8 {
 				return result, errors.New("invalid SatELite output")
 			}
@@ -63,8 +97,8 @@ func (solverSvc *SimplifierService) ParseOutput(logFilePath string, simplifier_ 
 		}
 
 		// Parse the process time
-		fields := strings.Fields(output[1])
-		if len(fields) != 4 {
+		fields := strings.Fields(matches[1])
+		if len(fields) != 2 {
 			return result, errors.New("invalid SatELite output")
 		}
 
@@ -74,9 +108,9 @@ func (solverSvc *SimplifierService) ParseOutput(logFilePath string, simplifier_ 
 		}
 	case simplifier.Cadical:
 		// See if it's solved by the simplifier
-		output, err := pipe.MatchRegexp(regexp.MustCompile("(c writing 'p cnf)|(c total process time since initialization:)|(c exit 0)")).Slice()
+		matches := regexp.MustCompile(`(c writing 'p cnf [0-9]+ [0-9]+' header)|(c total process time since initialization:\s+[0-9.]+)|(c exit 0)`).FindAllString(output, len(output))
 		{
-			_, hasSimplified := lo.Find(output, func(item string) bool {
+			_, hasSimplified := lo.Find(matches, func(item string) bool {
 				return item == "c exit 0"
 			})
 
@@ -86,24 +120,22 @@ func (solverSvc *SimplifierService) ParseOutput(logFilePath string, simplifier_ 
 		}
 
 		// Initialize the parse
-		if err != nil {
-			return result, err
-		}
-		if len(output) != 3 {
+		if len(matches) != 3 {
 			return result, errors.New("invalid CaDiCaL output")
 		}
 
 		// Parse the number of new variables and clauses
 		{
-			_, err := fmt.Sscanf(output[0], "c writing 'p cnf %d %d' header", &numVarsAfter, &numClausesAfter)
+			_, err := fmt.Sscanf(matches[0], "c writing 'p cnf %d %d' header", &numVarsAfter, &numClausesAfter)
 			if err != nil {
 				return result, errors.New("invalid CaDiCaL output")
 			}
 		}
 
 		// Parse the process time
-		fields := strings.Fields(output[1])
-		seconds, err = strconv.ParseFloat(fields[len(fields)-2], 64)
+		var err error
+		fields := strings.Fields(matches[1])
+		seconds, err = strconv.ParseFloat(fields[len(fields)-1], 64)
 		if err != nil {
 			return result, err
 		}

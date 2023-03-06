@@ -1,6 +1,7 @@
 package services
 
 import (
+	services6 "benchmark/internal/combined_logs/services"
 	services1 "benchmark/internal/config/services"
 	services4 "benchmark/internal/cube_selector/services"
 	services "benchmark/internal/error/services"
@@ -17,6 +18,7 @@ type SimplifierService struct {
 	simplificationSvc *services3.SimplificationService
 	cubeSelectorSvc   *services4.CubeSelectorService
 	logSvc            *services5.LogService
+	combinedLogsSvc   *services6.CombinedLogsService
 }
 
 func NewSimplifierService(injector *do.Injector) (*SimplifierService, error) {
@@ -26,6 +28,7 @@ func NewSimplifierService(injector *do.Injector) (*SimplifierService, error) {
 	simplificationSvc := do.MustInvoke[*services3.SimplificationService](injector)
 	cubeSelectorSvc := do.MustInvoke[*services4.CubeSelectorService](injector)
 	logSvc := do.MustInvoke[*services5.LogService](injector)
-	svc := &SimplifierService{errorSvc: errorSvc, configSvc: configSvc, filesystemSvc: filesystemSvc, simplificationSvc: simplificationSvc, cubeSelectorSvc: cubeSelectorSvc, logSvc: logSvc}
+	combinedLogsSvc := do.MustInvoke[*services6.CombinedLogsService](injector)
+	svc := &SimplifierService{errorSvc: errorSvc, configSvc: configSvc, filesystemSvc: filesystemSvc, simplificationSvc: simplificationSvc, cubeSelectorSvc: cubeSelectorSvc, logSvc: logSvc, combinedLogsSvc: combinedLogsSvc}
 	return svc, nil
 }

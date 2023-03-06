@@ -65,8 +65,18 @@ func (simplifierSvc *SimplifierService) TrackedInvoke(simplifier_ simplifier.Sim
 }
 
 func (simplifierSvc *SimplifierService) ShouldSkip(instancePath string, simplifier_ simplifier.Simplifier) bool {
+	if !simplifierSvc.filesystemSvc.FileExists(instancePath) {
+		return false
+	}
+
 	logFilePath := simplifierSvc.getLogPath(instancePath)
-	_, err := simplifierSvc.ParseOutput(logFilePath, simplifier_)
+
+	if simplifierSvc.combinedLogsSvc.IsLoaded() {
+		_, err := simplifierSvc.ParseOutputFromCombinedLog(path.Base(logFilePath), simplifier_)
+		return err == nil
+	}
+
+	_, err := simplifierSvc.ParseOutputFromFile(logFilePath, simplifier_)
 	return err == nil
 }
 
