@@ -104,10 +104,8 @@ func (solutionSvc *SolutionService) Reconstruct(solutionLiterals []int, reconstr
 		newInstance.WriteString(fmt.Sprintf("%d 0\n", literal))
 	}
 
-	script.Echo(newInstance.String()).WriteFile("/tmp/test.cnf")
-
 	// Use Kissat for solving the new instance
-	kissatCmd := fmt.Sprintf("%s -q", solutionSvc.configSvc.Config.Paths.Bin.Kissat)
+	kissatCmd := fmt.Sprintf("%s -q --time=10", solutionSvc.configSvc.Config.Paths.Bin.Kissat)
 	solution_, err := script.Echo(newInstance.String()).Exec(kissatCmd).ReplaceRegexp(regexp.MustCompile("(s SATISFIABLE)|(v)"), "").String()
 	if err != nil && err.Error() != "exit status 10" {
 		return []int{}, err
