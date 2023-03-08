@@ -110,19 +110,15 @@ func parseOutputWith(outputReader io.Reader, satText, unsatText, processTimeText
 	}
 
 	// See if it failed
-	if len(matches) != 3 {
+	if len(matches) > 2 {
 		return result, processTime, runTime, nil
 	}
 
 	// Extract the solution literals
-	if solutionLiterals != nil {
-		// TODO: Requires regexp improvement
-		lines := regexp.MustCompile(`(v\s.*)|(-1\s.*)|(1\s.*)`).FindAllString(output, len(output))
+	if solutionLiterals != nil && result == solver.Sat {
+		// TODO: Improve regexp
+		lines := regexp.MustCompile(`(?m)(^v.*)|(?m)(^-1\s.*)|(?m)(^1\s.*)`).FindAllString(output, len(output))
 		for _, line := range lines {
-			// TODO: Cleanup
-			// if !strings.HasPrefix(line, "v ") && !strings.HasPrefix(line, "-1 ") && !strings.HasPrefix(line, "1 ") {
-			// 	continue
-			// }
 			segments := strings.Fields(line)
 			for _, segment := range segments {
 				if segment == "0" || segment == "v" {
