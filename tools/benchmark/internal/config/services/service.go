@@ -52,6 +52,7 @@ func (configSvc *ConfigService) Process() {
 	// Solver
 	viper.SetDefault("Solver.Slurm.NumTaskSelectWorkers", 1000)
 	viper.SetDefault("Solver.Kissat.LocalSearch", false)
+	viper.SetDefault("Solver.Kissat.LocalSearchEffort", 50)
 	viper.SetDefault("Solver.Cadical.LocalSearchRounds", 0)
 	viper.SetDefault("Solver.CryptoMiniSat.LocalSearch", false)
 	viper.SetDefault("Solver.CryptoMiniSat.LocalSearchType", "ccnr")

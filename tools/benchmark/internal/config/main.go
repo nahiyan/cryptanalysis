@@ -39,7 +39,8 @@ type Config struct {
 		}
 
 		Kissat struct {
-			LocalSearch bool
+			LocalSearch       bool
+			LocalSearchEffort int
 		}
 
 		Cadical struct {

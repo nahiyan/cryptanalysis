@@ -62,11 +62,11 @@ func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver
 
 	// Local search
 	if solver_ == solver.Kissat && config.Solver.Kissat.LocalSearch {
-		solverArgs = append(solverArgs, "--walkinitially=true")
+		solverArgs = append(solverArgs, "--walkinitially=true", fmt.Sprintf("--walkeffort=%d", config.Solver.Kissat.LocalSearchEffort))
 	} else if solver_ == solver.Cadical && config.Solver.Cadical.LocalSearchRounds > 0 {
 		solverArgs = append(solverArgs, fmt.Sprintf("-L%d", config.Solver.Cadical.LocalSearchRounds))
 	} else if solver_ == solver.CryptoMiniSat && config.Solver.CryptoMiniSat.LocalSearch {
-		solverArgs = append(solverArgs, "--sls=1 --slstype="+config.Solver.CryptoMiniSat.LocalSearchType)
+		solverArgs = append(solverArgs, "--sls=1", "--slstype="+config.Solver.CryptoMiniSat.LocalSearchType)
 	}
 
 	// Command context
