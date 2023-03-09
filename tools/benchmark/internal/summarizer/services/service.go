@@ -134,14 +134,11 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 				)
 				if summarizerSvc.combinedLogsSvc.IsLoaded() {
 					result, processTime, runTime, err = summarizerSvc.solverSvc.ParseLogFromCombinedLog(logFile, solver_, &solutionLiterals)
-					if err != nil {
-						return
-					}
 				} else {
 					result, processTime, runTime, err = summarizerSvc.solverSvc.ParseLogFromFile(path.Join(config.Paths.Logs, logFile), solver_, &solutionLiterals)
-					if err != nil {
-						return
-					}
+				}
+				if err != nil {
+					return
 				}
 
 				solution := solution{
@@ -159,6 +156,7 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 					return
 				}
 
+				// Proceed if the solution is a SAT
 				fileName := path.Base(logFile)
 
 				// TODO: Remap SatELite simplifications
@@ -556,31 +554,43 @@ func (summarizerSvc *SummarizerService) WriteCombinationsLog(combinations map[st
 
 func (summarizerSvc *SummarizerService) Run(workers int) {
 	startTime := time.Now()
-	files, err := os.ReadDir(summarizerSvc.configSvc.Config.Paths.Logs)
-	summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to find the log files")
 
 	solutionLogFiles := []string{}
 	cubesetLogFiles := []string{}
 	simplificationLogFiles := []string{}
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		fileName := file.Name()
-		if path.Ext(fileName) != ".log" {
-			continue
-		}
 
-		regexp_ := regexp.MustCompile(fmt.Sprintf("(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)", solver.Kissat, simplifier.Cadical, solver.CryptoMiniSat, solver.Glucose, solver.MapleSat, solver.YalSat, solver.PalSat))
-		if regexp_.Match([]byte(fileName)) {
-			solutionLogFiles = append(solutionLogFiles, fileName)
-		} else if strings.Contains(fileName, "march") {
-			cubesetLogFiles = append(cubesetLogFiles, fileName)
-		} else if strings.Contains(fileName, "satelite") || strings.Contains(fileName, "cadical_") {
-			simplificationLogFiles = append(simplificationLogFiles, fileName)
+	// Get the file entries
+	fileEntries := []string{}
+	if summarizerSvc.combinedLogsSvc.IsLoaded() {
+		for entry := range summarizerSvc.combinedLogsSvc.LogFiles {
+			fileEntries = append(fileEntries, entry)
+		}
+	} else {
+		files, err := os.ReadDir(summarizerSvc.configSvc.Config.Paths.Logs)
+		summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to find the log files")
+		for _, file := range files {
+			if file.IsDir() {
+				continue
+			}
+			fileName := file.Name()
+			if path.Ext(fileName) != ".log" {
+				continue
+			}
+
+			fileEntries = append(fileEntries, fileName)
 		}
 	}
-	log.Printf("Processed %d items\n", len(files))
+	for _, fileEntry := range fileEntries {
+		regexp_ := regexp.MustCompile(fmt.Sprintf("(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)", solver.Kissat, simplifier.Cadical, solver.CryptoMiniSat, solver.Glucose, solver.MapleSat, solver.YalSat, solver.PalSat))
+		if regexp_.Match([]byte(fileEntry)) {
+			solutionLogFiles = append(solutionLogFiles, fileEntry)
+		} else if strings.Contains(fileEntry, "march") {
+			cubesetLogFiles = append(cubesetLogFiles, fileEntry)
+		} else if strings.Contains(fileEntry, "satelite") || strings.Contains(fileEntry, "cadical_") {
+			simplificationLogFiles = append(simplificationLogFiles, fileEntry)
+		}
+	}
+	log.Printf("Processed %d items\n", len(fileEntries))
 
 	cubesets := summarizerSvc.GetCubesets(cubesetLogFiles)
 	summarizerSvc.WriteCubesetsLog(cubesets)
