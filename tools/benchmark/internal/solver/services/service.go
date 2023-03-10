@@ -130,7 +130,7 @@ func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver
 		}
 
 		runtimeSeconds := time.Since(startTime).Round(time.Millisecond).Seconds()
-		script.Echo(fmt.Sprintf("\nInfo: Ended after %.2f seconds", runtimeSeconds)).AppendFile(logFilePath)
+		script.Echo(fmt.Sprintf("\nInfo: Ended after %.2f seconds with exit code %d", runtimeSeconds, exitCode)).AppendFile(logFilePath)
 	})
 
 	return result, exitCode
