@@ -101,7 +101,7 @@ func parseOutputWith(outputReader io.Reader, satText, unsatText, processTimeText
 		}
 
 		pieces := strings.Fields(match)
-		runTime_, err := strconv.ParseFloat(pieces[len(pieces)-2], 64)
+		runTime_, err := strconv.ParseFloat(pieces[3], 64)
 		if err != nil {
 			return result, processTime, runTime, errors.New("failed to parse runtime")
 		}
@@ -110,7 +110,7 @@ func parseOutputWith(outputReader io.Reader, satText, unsatText, processTimeText
 	}
 
 	// See if it failed
-	if len(matches) > 2 {
+	if len(matches) != 3 {
 		return result, processTime, runTime, nil
 	}
 
