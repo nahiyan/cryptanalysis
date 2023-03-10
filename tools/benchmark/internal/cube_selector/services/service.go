@@ -132,7 +132,11 @@ func (cubeSelectorSvc *CubeSelectorService) Select(cubesets []string, parameters
 		}
 	}
 
-	log.Println("Cube selector: randomly selected", len(encodings), "cubes")
+	if isRandom {
+		log.Println("Cube selector: randomly selected", len(encodings), "cubes")
+	} else {
+		log.Println("Cube selector: selected", len(encodings), "cubes")
+	}
 	return encodings
 }
 
