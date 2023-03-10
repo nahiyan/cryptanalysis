@@ -156,6 +156,10 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 					return
 				}
 
+				if len(solutionLiterals) == 0 {
+					log.Println("Summarizer: WARNING; failed to retrieve solution literals from", logFile)
+				}
+
 				// Proceed if the solution is a SAT
 				fileName := path.Base(logFile)
 
