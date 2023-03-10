@@ -36,7 +36,7 @@ func TestOverall(t *testing.T) {
 					},
 				),
 			},
-			Solver:     solver.Glucose,
+			Solver:     solver.YalSat,
 			MaxRuntime: time.Duration(30) * time.Second,
 		},
 	})
@@ -90,8 +90,8 @@ func TestOverall(t *testing.T) {
 			t.Fatal("Cube info. should exist")
 		}
 		// Solver
-		if task.Solver != solver.Glucose {
-			t.Fatalf("Expected Glucose, got %s", task.Solver)
+		if task.Solver != solver.YalSat {
+			t.Fatalf("Expected YalSAT, got %s", task.Solver)
 		}
 		// Max. Runtime
 		if task.MaxRuntime.Seconds() != 30 {
