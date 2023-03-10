@@ -20,6 +20,50 @@ type Task struct {
 	MaxRuntime time.Duration
 }
 
+func solverToUint8(solver_ solver.Solver) uint8 {
+	switch solver_ {
+	case solver.Kissat:
+		return uint8(0)
+	case solver.Cadical:
+		return uint8(1)
+	case solver.MapleSat:
+		return uint8(2)
+	case solver.Glucose:
+		return uint8(3)
+	case solver.CryptoMiniSat:
+		return uint8(4)
+	case solver.YalSat:
+		return uint8(5)
+	case solver.PalSat:
+		return uint8(6)
+	}
+
+	log.Fatal("Solver: couldn't identify the SAT solver for the task")
+	return uint8(0)
+}
+
+func uint8ToSolver(solver_ uint8) solver.Solver {
+	switch solver_ {
+	case 0:
+		return solver.Kissat
+	case 1:
+		return solver.Cadical
+	case 2:
+		return solver.MapleSat
+	case 3:
+		return solver.Glucose
+	case 4:
+		return solver.CryptoMiniSat
+	case 5:
+		return solver.YalSat
+	case 6:
+		return solver.PalSat
+	}
+
+	log.Fatal("Solver: couldn't identify the SAT solver for the task")
+	return solver.Kissat
+}
+
 func (solverSvc *SolverService) AddTasks(tasks []Task) (string, error) {
 	// Tasks file
 	name := solverSvc.randomSvc.RandString(10)
@@ -42,6 +86,7 @@ func (solverSvc *SolverService) AddTasks(tasks []Task) (string, error) {
 
 	addressAccumulator := 0
 	for _, task := range tasks {
+		log.Println("Solver: Add task ", task)
 		cubeThreshold := 0
 		cubeIndex := 0
 		if cube, exists := task.Encoding.Cube.Get(); exists {
@@ -61,18 +106,7 @@ func (solverSvc *SolverService) AddTasks(tasks []Task) (string, error) {
 
 		// Solver
 		solverBytes := make([]byte, 1)
-		switch task.Solver {
-		case solver.Kissat:
-			solverBytes[0] = uint8(0)
-		case solver.Cadical:
-			solverBytes[0] = uint8(1)
-		case solver.MapleSat:
-			solverBytes[0] = uint8(2)
-		case solver.Glucose:
-			solverBytes[0] = uint8(3)
-		case solver.CryptoMiniSat:
-			solverBytes[0] = uint8(4)
-		}
+		solverBytes[0] = solverToUint8(task.Solver)
 		tasksWriter.Write(solverBytes)
 
 		// Timeout
@@ -160,19 +194,7 @@ func (solverSvc *SolverService) GetTask(tasksSetPath string, index int) (Task, e
 	}
 
 	// Get the solver
-
-	switch solver_ {
-	case 0:
-		task.Solver = solver.Kissat
-	case 1:
-		task.Solver = solver.Cadical
-	case 2:
-		task.Solver = solver.MapleSat
-	case 3:
-		task.Solver = solver.Glucose
-	case 4:
-		task.Solver = solver.CryptoMiniSat
-	}
+	task.Solver = uint8ToSolver(solver_)
 
 	return task, nil
 }
