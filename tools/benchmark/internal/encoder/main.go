@@ -11,6 +11,13 @@ import (
 
 type AdderType string
 type Encoder string
+type Function string
+
+// Function
+const (
+	Md4 = "md4"
+	Md5 = "md5"
+)
 
 // Encoders
 const (
@@ -45,7 +52,7 @@ type DobbertinInfo struct {
 
 type InstanceInfo struct {
 	Encoder        Encoder
-	Function       string
+	Function       Function
 	Steps          int
 	AdderType      AdderType
 	IsXorEnabled   bool

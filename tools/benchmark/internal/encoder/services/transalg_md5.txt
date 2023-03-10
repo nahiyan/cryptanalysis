@@ -1,0 +1,170 @@
+__in bit M[16][32];
+__out bit Hash[4][32];
+
+bit A[32] = 0x67452301;
+bit B[32] = 0xEFCDAB89;
+bit C[32] = 0x98BADCFE;
+bit D[32] = 0x10325476;
+
+bit F(bit X[32], bit Y[32], bit Z[32])
+{
+	return (X&Y)|(!X&Z);
+}
+
+bit G(bit X[32], bit Y[32], bit Z[32])
+{
+	return (X&Z)|(Y&!Z);
+}
+
+bit H(bit X[32], bit Y[32], bit Z[32])
+{
+	return X^Y^Z;
+}
+
+bit I(bit X[32], bit Y[32], bit Z[32])
+{
+	return Y^(X|!Z);
+}
+
+// @return b + ((a + F(b, c, d) + M + t) <<< s)
+bit FF(bit a[32], bit b[32], bit c[32], bit d[32], bit M[32], int s, bit t[32])
+{
+	a = sum(sum(sum(a, F(b, c, d), 32), M, 32), t, 32);
+	return b + (a <<< s);
+}
+
+// @return b + ((a + G(b, c, d) + M + t) <<< s)
+bit GG(bit a[32], bit b[32], bit c[32], bit d[32], bit M[32], int s, bit t[32])
+{
+	a = sum(sum(sum(a, G(b, c, d), 32), M, 32), t, 32);
+	return b + (a <<< s);
+}
+
+// @return b + ((a + H(b, c, d) + M + t) <<< s)
+bit HH(bit a[32], bit b[32], bit c[32], bit d[32], bit M[32], int s, bit t[32])
+{
+	a = sum(sum(sum(a, H(b, c, d), 32), M, 32), t, 32);
+	return b + (a <<< s);
+}
+
+// @return b + ((a + I(b, c, d) + M + t) <<< s)
+bit II(bit a[32], bit b[32], bit c[32], bit d[32], bit M[32], int s, bit t[32])
+{
+	a = sum(sum(sum(a, I(b, c, d), 32), M, 32), t, 32);
+	return b + (a <<< s);
+}
+
+void main()
+{
+    bit a[32] = A;
+    bit b[32] = B;
+    bit c[32] = C;
+    bit d[32] = D;
+
+    // Step 1: FF(a,b,c,d,M_j,s,t_j) 1-16
+
+	{{ step 1 "a = FF(a, b, c, d, M[0], 7, 0xd76aa478);" }}
+	{{ step 2 "d = FF(d, a, b, c, M[1], 12, 0xe8c7b756);" }}
+	{{ step 3 "c = FF(c, d, a, b, M[2], 17, 0x242070db);" }}
+	{{ step 4 "b = FF(b, c, d, a, M[3], 22, 0xc1bdceee);" }}
+
+	{{ step 5 "a = FF(a, b, c, d, M[4], 7, 0xf57c0faf);" }}
+	{{ step 6 "d = FF(d, a, b, c, M[5], 12, 0x4787c62a);" }}
+	{{ step 7 "c = FF(c, d, a, b, M[6], 17, 0xa8304613);" }}
+	{{ step 8 "b = FF(b, c, d, a, M[7], 22, 0xfd469501);" }}
+	
+	{{ step 9 "a = FF(a, b, c, d, M[8], 7, 0x698098d8);" }}
+	{{ step 10 "d = FF(d, a, b, c, M[9], 12, 0x8b44f7af);" }}
+	{{ step 11 "c = FF(c, d, a, b, M[10], 17, 0xffff5bb1);" }}
+	{{ step 12 "b = FF(b, c, d, a, M[11], 22, 0x895cd7be);" }}
+
+	{{ step 13 "a = FF(a, b, c, d, M[12], 7, 0x6b901122);" }}
+	{{ step 14 "d = FF(d, a, b, c, M[13], 12, 0xfd987193);" }}
+	{{ step 15 "c = FF(c, d, a, b, M[14], 17, 0xa679438e);" }}
+	{{ step 16 "b = FF(b, c, d, a, M[15], 22, 0x49b40821);" }}
+
+	// Step 2: GG(a,b,c,d,M_j,s,t_j) 17-32
+
+	{{ step 17 "a = GG(a, b, c, d, M[1], 5, 0xf61e2562);" }}
+	{{ step 18 "d = GG(d, a, b, c, M[6], 9, 0xc040b340);" }}
+	{{ step 19 "c = GG(c, d, a, b, M[11], 14, 0x265e5a51);" }}
+	{{ step 20 "b = GG(b, c, d, a, M[0], 20, 0xe9b6c7aa);" }}
+
+	{{ step 21 "a = GG(a, b, c, d, M[5], 5, 0xd62f105d);" }}
+	{{ step 22 "d = GG(d, a, b, c, M[10], 9, 0x02441453);" }}
+	{{ step 23 "c = GG(c, d, a, b, M[15], 14, 0xd8a1e681);" }}
+	{{ step 24 "b = GG(b, c, d, a, M[4], 20, 0xe7d3fbc8);" }}
+
+	{{ step 25 "a = GG(a, b, c, d, M[9], 5, 0x21e1cde6);" }}
+	{{ step 26 "d = GG(d, a, b, c, M[14], 9, 0xc33707d6);" }}
+	{{ step 27 "c = GG(c, d, a, b, M[3], 14, 0xf4d50d87);" }}
+	{{ step 28 "b = GG(b, c, d, a, M[8], 20, 0x455a14ed);" }}
+
+	{{ step 29 "a = GG(a, b, c, d, M[13], 5, 0xa9e3e905);" }}
+	{{ step 30 "d = GG(d, a, b, c, M[2], 9, 0xfcefa3f8);" }}
+	{{ step 31 "c = GG(c, d, a, b, M[7], 14, 0x676f02d9);" }}
+	{{ step 32 "b = GG(b, c, d, a, M[12], 20, 0x8d2a4c8a);" }}
+
+	// Step 3: HH(a,b,c,d,M_j,s,t_j) 33-48
+
+	{{ step 33 "a = HH(a, b, c, d, M[5], 4, 0xfffa3942);" }}
+	{{ step 34 "d = HH(d, a, b, c, M[8], 11, 0x8771f681);" }}
+	{{ step 35 "c = HH(c, d, a, b, M[11], 16, 0x6d9d6122);" }}
+	{{ step 36 "b = HH(b, c, d, a, M[14], 23, 0xfde5380c);" }}
+
+	{{ step 37 "a = HH(a, b, c, d, M[1], 4, 0xa4beea44);" }}
+	{{ step 38 "d = HH(d, a, b, c, M[4], 11, 0x4bdecfa9);" }}
+	{{ step 39 "c = HH(c, d, a, b, M[7], 16, 0xf6bb4b60);" }}
+	{{ step 40 "b = HH(b, c, d, a, M[10], 23, 0xbebfbc70);" }}
+
+	{{ step 41 "a = HH(a, b, c, d, M[13], 4, 0x289b7ec6);" }}
+	{{ step 42 "d = HH(d, a, b, c, M[0], 11, 0xeaa127fa);" }}
+	{{ step 43 "c = HH(c, d, a, b, M[3], 16, 0xd4ef3085);" }}
+	{{ step 44 "b = HH(b, c, d, a, M[6], 23, 0x04881d05);" }}
+
+	{{ step 45 "a = HH(a, b, c, d, M[9], 4, 0xd9d4d039);" }}
+	{{ step 46 "d = HH(d, a, b, c, M[12], 11, 0xe6db99e5);" }}
+	{{ step 47 "c = HH(c, d, a, b, M[15], 16, 0x1fa27cf8);" }}
+	{{ step 48 "b = HH(b, c, d, a, M[2], 23, 0xc4ac5665);" }}
+
+	// Step 4: II(a,b,c,d,M_j,s,t_j) 49-64
+
+	{{ step 49 "a = II(a, b, c, d, M[0], 6, 0xf4292244);" }}
+	{{ step 50 "d = II(d, a, b, c, M[7], 10, 0x432aff97);" }}
+	{{ step 51 "c = II(c, d, a, b, M[14], 15, 0xab9423a7);" }}
+	{{ step 52 "b = II(b, c, d, a, M[5], 21, 0xfc93a039);" }}
+
+	{{ step 53 "a = II(a, b, c, d, M[12], 6, 0x655b59c3);" }}
+	{{ step 54 "d = II(d, a, b, c, M[3], 10, 0x8f0ccc92);" }}
+	{{ step 55 "c = II(c, d, a, b, M[10], 15, 0xffeff47d);" }}
+	{{ step 56 "b = II(b, c, d, a, M[1], 21, 0x85845dd1);" }}
+
+	{{ step 57 "a = II(a, b, c, d, M[8], 6, 0x6fa87e4f);" }}
+	{{ step 58 "d = II(d, a, b, c, M[15], 10, 0xfe2ce6e0);" }}
+	{{ step 59 "c = II(c, d, a, b, M[6], 15, 0xa3014314);" }}
+	{{ step 60 "b = II(b, c, d, a, M[13], 21, 0x4e0811a1);" }}
+
+	{{ step 61 "a = II(a, b, c, d, M[4], 6, 0xf7537e82);" }}
+	{{ step 62 "d = II(d, a, b, c, M[11], 10, 0xbd3af235);" }}
+	{{ step 63 "c = II(c, d, a, b, M[2], 15, 0x2ad7d2bb);" }}
+	{{ step 64 "b = II(b, c, d, a, M[9], 21, 0xeb86d391);" }}
+    
+    Hash[0] = a;
+    Hash[1] = b;
+    Hash[2] = c;
+    Hash[3] = d;
+
+    {{ if eq $.OneTargetHash true -}}
+    // 1^(128)
+    assert(Hash[0]);
+    assert(Hash[1]);
+    assert(Hash[2]);
+    assert(Hash[3]);
+    {{- else }}
+    // 0^(128)
+    assert(!Hash[0]);
+    assert(!Hash[1]);
+    assert(!Hash[2]);
+    assert(!Hash[3]);
+    {{- end }}
+}

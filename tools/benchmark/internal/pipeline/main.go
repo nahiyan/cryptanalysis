@@ -19,6 +19,7 @@ type Solver string
 
 type EncodeParams struct {
 	Encoder       encoder.Encoder
+	Function      encoder.Function
 	Xor           []int
 	Dobbertin     []int
 	DobbertinBits []int

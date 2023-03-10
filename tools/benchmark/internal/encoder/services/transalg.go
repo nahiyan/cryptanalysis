@@ -17,7 +17,10 @@ import (
 )
 
 //go:embed transalg.txt
-var layout string
+var layoutMd4 string
+
+//go:embed transalg_md5.txt
+var layoutMd5 string
 
 func (encoderSvc *EncoderService) GenerateTransalgCode(instanceInfo encoder.InstanceInfo, dobbertinConstant uint32) (string, error) {
 	tmpl := template.New("transalg.txt").Funcs(map[string]interface{}{
@@ -79,7 +82,7 @@ func (encoderSvc *EncoderService) GenerateTransalgCode(instanceInfo encoder.Inst
 			return code
 		},
 	})
-	tmpl, err := tmpl.Parse(layout)
+	tmpl, err := tmpl.Parse(layoutMd4)
 	if err != nil {
 		return "", err
 	}
@@ -132,6 +135,30 @@ func (encoderSvc *EncoderService) GenerateTransalgCode(instanceInfo encoder.Inst
 	return code, nil
 }
 
+func (encoderSvc *EncoderService) GenerateTransalgMd5Code(instanceInfo encoder.InstanceInfo) (string, error) {
+	tmpl := template.New("transalg_md5.txt").Funcs(map[string]interface{}{
+		"step": func(step int, body string) string {
+			if step <= instanceInfo.Steps {
+				return body
+			}
+			return ""
+		},
+	})
+	tmpl, err := tmpl.Parse(layoutMd5)
+	if err != nil {
+		return "", err
+	}
+
+	var buffer bytes.Buffer
+	tmpl.Execute(&buffer, map[string]interface{}{
+		"Steps":         instanceInfo.Steps,
+		"OneTargetHash": instanceInfo.TargetHash == "ffffffffffffffffffffffffffffffff",
+	})
+	code := buffer.String()
+
+	return code, nil
+}
+
 // TODO: Reduce shared redundant code with SaeedE invokation
 func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.EncodeParams) []encoder.Encoding {
 	err := encoderSvc.filesystemSvc.PrepareDir("tmp")
@@ -151,8 +178,16 @@ func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.EncodeParam
 			return
 		}
 
-		var dobbertinConstant uint32 = math.MaxUint32
-		transalgCode, err := encoderSvc.GenerateTransalgCode(instanceInfo, dobbertinConstant)
+		var (
+			dobbertinConstant uint32 = math.MaxUint32
+			transalgCode      string
+			err               error
+		)
+		if parameters.Function == encoder.Md4 {
+			transalgCode, err = encoderSvc.GenerateTransalgCode(instanceInfo, dobbertinConstant)
+		} else if parameters.Function == encoder.Md5 {
+			transalgCode, err = encoderSvc.GenerateTransalgMd5Code(instanceInfo)
+		}
 		encoderSvc.errorSvc.Fatal(err, "Encoder: failed to generate Transalg code")
 		transalgFileName := fmt.Sprintf("%s.alg", encoderSvc.randomSvc.RandString(16))
 		transalgFilePath := path.Join(encoderSvc.configSvc.Config.Paths.Tmp, transalgFileName)

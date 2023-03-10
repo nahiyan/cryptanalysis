@@ -201,7 +201,7 @@ func (encoderSvc *EncoderService) LoopThroughVariation(params pipeline.EncodePar
 
 							cb(encoder.InstanceInfo{
 								Encoder:      params.Encoder,
-								Function:     "md4",
+								Function:     params.Function,
 								Steps:        steps,
 								TargetHash:   hash,
 								AdderType:    adderType,
@@ -239,15 +239,20 @@ func (encoderSvc *EncoderService) Run(parameters pipeline.EncodeParams) []encode
 	err := encoderSvc.filesystemSvc.PrepareDir(encoderSvc.configSvc.Config.Paths.Encodings)
 	encoderSvc.errorSvc.Fatal(err, "Encoder: failed to prepare directory for storing the encodings")
 
+	// TODO: Add MD5 to SaeedE
+	if parameters.Function != encoder.Md4 && parameters.Function != encoder.Md5 {
+		log.Fatal("Encoder: function not supported")
+	}
+
 	switch parameters.Encoder {
 	case encoder.SaeedE:
 		encodings := encoderSvc.InvokeSaeedE(parameters)
 		log.Println("Encoder: saeed_e", encodings)
 		return encodings
 	case encoder.Transalg:
-		promises := encoderSvc.InvokeTransalg(parameters)
-		log.Println("Encoder: transalg", promises)
-		return promises
+		encodings := encoderSvc.InvokeTransalg(parameters)
+		log.Println("Encoder: transalg", encodings)
+		return encodings
 	}
 
 	panic("Encoder not found: " + parameters.Encoder)
