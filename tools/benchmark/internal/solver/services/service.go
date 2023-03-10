@@ -214,7 +214,7 @@ func (solverSvc *SolverService) RunSlurm(encodings []encoder.Encoding, parameter
 		counter++
 	})
 	pool.StopAndWait()
-	log.Printf("Solver: Skipped %d tasks", len(encodings)-len(tasks))
+	log.Printf("Solver: Skipped %d tasks", (counter-1)-len(tasks))
 
 	tasksSetPath, err := solverSvc.AddTasks(tasks)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to generate the taskset file")
