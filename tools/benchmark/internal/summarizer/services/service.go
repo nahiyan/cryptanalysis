@@ -95,17 +95,18 @@ func (summarizerSvc *SummarizerService) GetCubesets(logFiles []string) []cubeset
 	return cubesets
 }
 
-func parseSolutionLogName(name string) (encoder.Encoder, int, string, error) {
-	match := regexp.MustCompile("[a-z_]+_md4_[0-9]+_[a-z0-9]+_").FindString(name)
-	encoder_ := encoder.Encoder(strings.Split(match, "_md4")[0])
-	segments := strings.Split(match[len(encoder_):], "_")
-	step, err := strconv.Atoi(segments[2])
+func parseSolutionLogName(name string) (encoder.Encoder, encoder.Function, int, string, error) {
+	matches := regexp.MustCompile("([a-z_]+)_([md45]+)_([0-9]+)_([a-z0-9]+)_").FindAllStringSubmatch(name, len(name))
+	groups := matches[0][1:]
+	encoder_ := encoder.Encoder(groups[0])
+	function := encoder.Function(groups[1])
+	step, err := strconv.Atoi(groups[2])
 	if err != nil {
-		return encoder.Encoder(""), 0, "", err
+		return encoder.Encoder(""), encoder.Md4, 0, "", err
 	}
-	targetHash := segments[3]
+	targetHash := groups[3]
 
-	return encoder_, step, targetHash, nil
+	return encoder_, function, step, targetHash, nil
 }
 
 func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers int) []solution {
@@ -156,11 +157,11 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 					return
 				}
 
+				// The follow parts are executed only if it's a SAT solution
 				if len(solutionLiterals) == 0 {
 					log.Println("Summarizer: WARNING; failed to retrieve solution literals from", logFile)
 				}
 
-				// Proceed if the solution is a SAT
 				fileName := path.Base(logFile)
 
 				// TODO: Remap SatELite simplifications
@@ -180,17 +181,24 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 				summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed extract message from the solution literal")
 
 				// Take the steps derived from the instance name
-				_, step, targetHash, err := parseSolutionLogName(fileName)
+				_, function, step, targetHash, err := parseSolutionLogName(fileName)
 				summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to extract information from the log file name")
 
 				// Verify the solution
-				hash, err := summarizerSvc.md4Svc.Run(message, step, false)
-				summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the hash")
+				var hash string
+				if function == encoder.Md4 {
+					hash, err = summarizerSvc.md4Svc.Run(message, step, false)
+					summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the md4 hash")
+				} else if function == encoder.Md5 {
+					hash, err = summarizerSvc.md5Svc.Run(message, step, false)
+					summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the md5 hash")
+				}
 				solution.verified = hash == targetHash
 				if solution.verified {
 					solution.message = hex.EncodeToString(message)
 				}
 
+				// Add the solution to the list
 				lock.Lock()
 				solutions = append(solutions, solution)
 				lock.Unlock()
