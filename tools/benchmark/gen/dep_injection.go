@@ -234,7 +234,7 @@ func main() {
 		// TODO: Rename to summarize
 		{
 			Name:         "summarizer",
-			Dependencies: []string{"error", "encoder", "config", "cuber", "solver", "simplifier", "solution", "md4", "combined_logs"},
+			Dependencies: []string{"error", "encoder", "config", "cuber", "solver", "simplifier", "solution", "md4", "md5", "combined_logs"},
 			Type:         Service,
 		},
 		// TODO: Rename to simplify
@@ -250,6 +250,11 @@ func main() {
 		},
 		{
 			Name:         "md4",
+			Dependencies: []string{"error", "config"},
+			Type:         Service,
+		},
+		{
+			Name:         "md5",
 			Dependencies: []string{"error", "config"},
 			Type:         Service,
 		},
