@@ -1,5 +1,6 @@
 package config
 
+// Important: Register new SAT Solver here
 type Config struct {
 	Paths struct {
 		Bin struct {
