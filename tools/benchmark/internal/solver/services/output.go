@@ -35,6 +35,7 @@ func (solverSvc *SolverService) ParseLogFromCombinedLog(logFilePath string, solv
 	return solverSvc.ParseLog(reader, solver_, solutionLiterals)
 }
 
+// Important: Register new SAT Solver here
 func (solverSvc *SolverService) ParseLog(outputReader io.Reader, solver_ solver.Solver, solutionLiterals *[]int) (solver.Result, time.Duration, time.Duration, error) {
 	switch solver_ {
 	case solver.Kissat:

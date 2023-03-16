@@ -20,6 +20,7 @@ type Task struct {
 	MaxRuntime time.Duration
 }
 
+// Important: Register new SAT Solver here
 func solverToUint8(solver_ solver.Solver) uint8 {
 	switch solver_ {
 	case solver.Kissat:
@@ -42,6 +43,7 @@ func solverToUint8(solver_ solver.Solver) uint8 {
 	return uint8(0)
 }
 
+// Important: Register new SAT Solver here
 func uint8ToSolver(solver_ uint8) solver.Solver {
 	switch solver_ {
 	case 0:

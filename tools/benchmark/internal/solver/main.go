@@ -18,6 +18,7 @@ type Solution struct {
 	Checksum     string
 }
 
+// Important: Register new SAT Solver here
 const (
 	CryptoMiniSat = "cryptominisat"
 	Cadical       = "cadical"

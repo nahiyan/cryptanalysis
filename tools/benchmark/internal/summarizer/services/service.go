@@ -592,6 +592,8 @@ func (summarizerSvc *SummarizerService) Run(workers int) {
 			fileEntries = append(fileEntries, fileName)
 		}
 	}
+
+	// Important: Register new SAT Solver here
 	for _, fileEntry := range fileEntries {
 		regexp_ := regexp.MustCompile(fmt.Sprintf("(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)", solver.Kissat, simplifier.Cadical, solver.CryptoMiniSat, solver.Glucose, solver.MapleSat, solver.YalSat, solver.PalSat))
 		if regexp_.Match([]byte(fileEntry)) {

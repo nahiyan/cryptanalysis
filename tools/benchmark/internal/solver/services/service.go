@@ -21,6 +21,7 @@ import (
 	"github.com/samber/mo"
 )
 
+// Important: Register new SAT Solver here
 func (solverSvc *SolverService) GetCmdInfo(solver_ solver.Solver, solutionPath string) (string, []string) {
 	config := solverSvc.configSvc.Config
 

@@ -15,6 +15,7 @@ func (configSvc *ConfigService) Init() {
 	configSvc.Process()
 }
 
+// Important: Register new SAT Solver here
 func (configSvc *ConfigService) Process() {
 	configFilePath := "./config.toml"
 

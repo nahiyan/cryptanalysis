@@ -13,6 +13,7 @@ import (
 	"github.com/samber/mo"
 )
 
+// Important: Register new SAT Solver here
 func TestOverall(t *testing.T) {
 	svc := SolverService{
 		configSvc: &services.ConfigService{},
