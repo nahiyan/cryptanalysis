@@ -40,6 +40,20 @@ func TestOverall(t *testing.T) {
 			Solver:     solver.YalSat,
 			MaxRuntime: time.Duration(30) * time.Second,
 		},
+		{
+			Encoding: encoder.Encoding{
+				BasePath: "lorem_ipsum.cnf",
+			},
+			Solver:     solver.LSTechMaple,
+			MaxRuntime: time.Duration(5000) * time.Second,
+		},
+		{
+			Encoding: encoder.Encoding{
+				BasePath: "lorem_ipsum.cnf",
+			},
+			Solver:     solver.KissatCF,
+			MaxRuntime: time.Duration(5000) * time.Second,
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -106,9 +120,33 @@ func TestOverall(t *testing.T) {
 
 	// Task 3
 	{
-		_, err := svc.GetTask(tasksSetPath, 3)
+		task, err := svc.GetTask(tasksSetPath, 3)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if task.Solver != solver.LSTechMaple {
+			t.Fatalf("Expected LSTech_Maple but got %s", task.Solver)
+		}
+	}
+
+	// Task 4
+	{
+		task, err := svc.GetTask(tasksSetPath, 4)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if task.Solver != solver.KissatCF {
+			t.Fatalf("Expected Kissat_CF but got %s", task.Solver)
+		}
+	}
+
+	// Task 5
+	{
+		_, err := svc.GetTask(tasksSetPath, 5)
 		if err == nil {
-			t.Fatal("The call to fetch task 3 should fail")
+			t.Fatal("The call to fetch task 5 should fail")
 		}
 
 		if !errors.Is(err, io.EOF) {

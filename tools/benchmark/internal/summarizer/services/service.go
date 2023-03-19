@@ -164,6 +164,7 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 
 				fileName := path.Base(logFile)
 
+				// TODO: Drop support for SatELite
 				// TODO: Remap SatELite simplifications
 				// Reconstruct CaDiCaL simplifications
 				if strings.Contains(name, simplifier.Cadical+"_c") {
@@ -595,7 +596,7 @@ func (summarizerSvc *SummarizerService) Run(workers int) {
 
 	// Important: Register new SAT Solver here
 	for _, fileEntry := range fileEntries {
-		regexp_ := regexp.MustCompile(fmt.Sprintf("(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)", solver.Kissat, simplifier.Cadical, solver.CryptoMiniSat, solver.Glucose, solver.MapleSat, solver.YalSat, solver.PalSat))
+		regexp_ := regexp.MustCompile(fmt.Sprintf("(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)", solver.Kissat, simplifier.Cadical, solver.CryptoMiniSat, solver.Glucose, solver.MapleSat, solver.YalSat, solver.PalSat, solver.LSTechMaple, solver.KissatCF))
 		if regexp_.Match([]byte(fileEntry)) {
 			solutionLogFiles = append(solutionLogFiles, fileEntry)
 		} else if strings.Contains(fileEntry, "march") {

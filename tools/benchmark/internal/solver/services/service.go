@@ -46,6 +46,11 @@ func (solverSvc *SolverService) GetCmdInfo(solver_ solver.Solver, solutionPath s
 	case solver.PalSat:
 		binPath = config.Paths.Bin.PalSat
 		args += "--witness=1"
+	case solver.LSTechMaple:
+		binPath = config.Paths.Bin.LSTechMaple
+	case solver.KissatCF:
+		binPath = config.Paths.Bin.KissatCF
+		args += "-v"
 	}
 
 	args_ := strings.Fields(args)
@@ -234,7 +239,7 @@ func (solverSvc *SolverService) RunSlurm(encodings []encoder.Encoding, parameter
 		numConcurrentTasks,
 		1,
 		1,
-		300,
+		config.Slurm.WorkerMemory,
 		timeout)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to create slurm job file")
 

@@ -37,6 +37,10 @@ func solverToUint8(solver_ solver.Solver) uint8 {
 		return uint8(5)
 	case solver.PalSat:
 		return uint8(6)
+	case solver.LSTechMaple:
+		return uint8(7)
+	case solver.KissatCF:
+		return uint8(8)
 	}
 
 	log.Fatal("Solver: couldn't identify the SAT solver for the task")
@@ -60,6 +64,10 @@ func uint8ToSolver(solver_ uint8) solver.Solver {
 		return solver.YalSat
 	case 6:
 		return solver.PalSat
+	case 7:
+		return solver.LSTechMaple
+	case 8:
+		return solver.KissatCF
 	}
 
 	log.Fatal("Solver: couldn't identify the SAT solver for the task")

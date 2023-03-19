@@ -28,6 +28,8 @@ func (configSvc *ConfigService) Process() {
 	viper.SetDefault("Paths.Bin.XnfSat", "xnfsat")
 	viper.SetDefault("Paths.Bin.YalSat", "yalsat")
 	viper.SetDefault("Paths.Bin.PalSat", "palsat")
+	viper.SetDefault("Paths.Bin.LSTechMaple", "lstech_maple")
+	viper.SetDefault("Paths.Bin.KissatCF", "kissat_cf")
 	viper.SetDefault("Paths.Bin.March", "march_cu")
 	viper.SetDefault("Paths.Bin.Satelite", "satelite")
 	viper.SetDefault("Paths.Bin.SolutionAnalyzer", "solution_analyzer")
@@ -49,6 +51,7 @@ func (configSvc *ConfigService) Process() {
 	// Slurm
 	viper.SetDefault("Slurm.MaxJobs", 1000)
 	viper.SetDefault("Slurm.WorkerTimeMul", 1)
+	viper.SetDefault("Slurm.WorkerMemory", 300)
 
 	// Solver
 	viper.SetDefault("Solver.Slurm.NumTaskSelectWorkers", 1000)

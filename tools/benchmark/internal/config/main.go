@@ -12,6 +12,8 @@ type Config struct {
 			XnfSat           string
 			YalSat           string
 			PalSat           string
+			LSTechMaple      string
+			KissatCF         string
 			March            string
 			Satelite         string
 			Verifier         string
@@ -32,6 +34,7 @@ type Config struct {
 	Slurm struct {
 		MaxJobs       int
 		WorkerTimeMul float64
+		WorkerMemory  int
 	}
 
 	Solver struct {

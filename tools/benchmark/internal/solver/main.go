@@ -28,6 +28,8 @@ const (
 	XnfSat        = "xnfsat"
 	YalSat        = "yalsat"
 	PalSat        = "palsat"
+	LSTechMaple   = "lstech_maple"
+	KissatCF      = "kissat_cf"
 )
 
 const (

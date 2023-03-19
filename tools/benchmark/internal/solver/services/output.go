@@ -52,6 +52,10 @@ func (solverSvc *SolverService) ParseLog(outputReader io.Reader, solver_ solver.
 		return parseOutputWith(outputReader, "s SATISFIABLE", "s UNSATISFIABLE", "c total wall clock time", 1, solutionLiterals)
 	case solver.CryptoMiniSat:
 		return parseOutputWith(outputReader, "s SATISFIABLE", "s UNSATISFIABLE", "c Total time", 0, solutionLiterals)
+	case solver.LSTechMaple:
+		return parseOutputWith(outputReader, "s SATISFIABLE", "s UNSATISFIABLE", "c CPU time", 1, solutionLiterals)
+	case solver.KissatCF:
+		return parseOutputWith(outputReader, "s SATISFIABLE", "s UNSATISFIABLE", "c process-time:", 1, solutionLiterals)
 	}
 
 	return solver.Fail, time.Duration(0), time.Duration(0), nil
