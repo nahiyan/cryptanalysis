@@ -187,10 +187,6 @@ void MD4::encode()
     }
 
     int R = rounds, r = rounds % 4;
-    // cnf.fixedValue(out[0], *q[R + (4 - r) % 4]);
-    // cnf.fixedValue(out[1], *q[R + (3 - r) % 4]);
-    // cnf.fixedValue(out[2], *q[R + (6 - r) % 4]);
-    // cnf.fixedValue(out[3], *q[R + (5 - r) % 4]);
     cnf.eq(out[0], q[R + (4 - r) % 4]);
     cnf.eq(out[1], q[R + (3 - r) % 4]);
     cnf.eq(out[2], q[R + (6 - r) % 4]);
