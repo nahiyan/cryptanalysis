@@ -96,7 +96,7 @@ func (summarizerSvc *SummarizerService) GetCubesets(logFiles []string) []cubeset
 }
 
 func parseSolutionLogName(name string) (encoder.Encoder, encoder.Function, int, string, error) {
-	matches := regexp.MustCompile("([a-z_]+)_([md45]+)_([0-9]+)_([a-z0-9]+)_").FindAllStringSubmatch(name, len(name))
+	matches := regexp.MustCompile("([a-z_]+)_([md45]+)_([0-9]+)_([a-z0-9]+)[_.]").FindAllStringSubmatch(name, len(name))
 	groups := matches[0][1:]
 	encoder_ := encoder.Encoder(groups[0])
 	function := encoder.Function(groups[1])
@@ -197,6 +197,10 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 				solution.verified = hash == targetHash
 				if solution.verified {
 					solution.message = hex.EncodeToString(message)
+				}
+
+				if fileName == "transalg_md5_28_ffffffffffffffffffffffffffffffff_dobbertin0.cnf.cadical_c100.cnf.march_n6660.cubes.cube11132.kissat.log" {
+					log.Printf("%08x", message)
 				}
 
 				// Add the solution to the list
