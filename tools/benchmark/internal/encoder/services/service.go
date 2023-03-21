@@ -180,36 +180,47 @@ func (encoderSvc *EncoderService) LoopThroughVariation(params pipeline.EncodePar
 		for _, hash := range params.Hashes {
 			for _, xorOption := range params.Xor {
 				for _, adderType := range params.Adders {
-					for _, dobbertin := range params.Dobbertin {
-						// TODO: Ignore dobbertin stuff for MD5
-						for _, dobbertinBits := range params.DobbertinBits {
-							// Skip any dobbertin bit variation when dobbertin's attack isn't on
-							if dobbertin == 0 && dobbertinBits != 32 {
-								continue
-							}
+					if params.Function == encoder.Md4 {
+						for _, dobbertin := range params.Dobbertin {
+							// TODO: Ignore dobbertin stuff for MD5
+							for _, dobbertinBits := range params.DobbertinBits {
+								// Skip any dobbertin bit variation when dobbertin's attack isn't on
+								if dobbertin == 0 && dobbertinBits != 32 {
+									continue
+								}
 
-							// Skip dobbertin's attacks when steps count < 27
-							if steps < 27 && dobbertin == 1 {
-								continue
-							}
+								// Skip dobbertin's attacks when steps count < 27
+								if steps < 27 && dobbertin == 1 {
+									continue
+								}
 
-							dobbertin_ := mo.None[encoder.DobbertinInfo]()
-							if dobbertin == 1 {
-								dobbertin_ = mo.Some(encoder.DobbertinInfo{
-									Bits: dobbertinBits,
+								dobbertin_ := mo.None[encoder.DobbertinInfo]()
+								if dobbertin == 1 {
+									dobbertin_ = mo.Some(encoder.DobbertinInfo{
+										Bits: dobbertinBits,
+									})
+								}
+
+								cb(encoder.InstanceInfo{
+									Encoder:      params.Encoder,
+									Function:     params.Function,
+									Steps:        steps,
+									TargetHash:   hash,
+									AdderType:    adderType,
+									IsXorEnabled: xorOption == 1,
+									Dobbertin:    dobbertin_,
 								})
 							}
-
-							cb(encoder.InstanceInfo{
-								Encoder:      params.Encoder,
-								Function:     params.Function,
-								Steps:        steps,
-								TargetHash:   hash,
-								AdderType:    adderType,
-								IsXorEnabled: xorOption == 1,
-								Dobbertin:    dobbertin_,
-							})
 						}
+					} else if params.Function == encoder.Md5 {
+						cb(encoder.InstanceInfo{
+							Encoder:      params.Encoder,
+							Function:     params.Function,
+							Steps:        steps,
+							TargetHash:   hash,
+							AdderType:    adderType,
+							IsXorEnabled: xorOption == 1,
+						})
 					}
 				}
 			}
