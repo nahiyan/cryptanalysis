@@ -27,6 +27,7 @@ type EncodeParams struct {
 	Hashes        []string
 	Steps         []int
 	Solvers       []Solver
+	Redundant     bool
 }
 type SolveParams struct {
 	Solvers   []solver.Solver

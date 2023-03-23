@@ -19,7 +19,7 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.EncodeParams)
 		encodings = append(encodings, encoder.Encoding{BasePath: encodingPath})
 
 		// Skip if encoding already exists
-		if encoderSvc.filesystemSvc.FileExists(encodingPath) {
+		if !parameters.Redundant && encoderSvc.ShouldSkip(encodingPath) {
 			log.Println("Encoder: skipped", encodingPath)
 			return
 		}

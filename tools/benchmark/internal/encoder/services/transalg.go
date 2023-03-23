@@ -159,6 +159,10 @@ func (encoderSvc *EncoderService) GenerateTransalgMd5Code(instanceInfo encoder.I
 	return code, nil
 }
 
+func (encoderSvc *EncoderService) ShouldSkip(encodingPath string) bool {
+	return encoderSvc.filesystemSvc.FileExists(encodingPath)
+}
+
 // TODO: Reduce shared redundant code with SaeedE invokation
 func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.EncodeParams) []encoder.Encoding {
 	err := encoderSvc.filesystemSvc.PrepareDir("tmp")
@@ -173,7 +177,7 @@ func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.EncodeParam
 		encodings = append(encodings, encoder.Encoding{BasePath: encodingPath})
 
 		// Skip if encoding already exists
-		if encoderSvc.filesystemSvc.FileExists(encodingPath) {
+		if !parameters.Redundant && encoderSvc.ShouldSkip(encodingPath) {
 			log.Println("Encoder: skipped", encodingPath)
 			return
 		}
