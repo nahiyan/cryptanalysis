@@ -199,10 +199,6 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 					solution.message = hex.EncodeToString(message)
 				}
 
-				if fileName == "transalg_md5_28_ffffffffffffffffffffffffffffffff_dobbertin0.cnf.cadical_c100.cnf.march_n6660.cubes.cube11132.kissat.log" {
-					log.Printf("%08x", message)
-				}
-
 				// Add the solution to the list
 				lock.Lock()
 				solutions = append(solutions, solution)
