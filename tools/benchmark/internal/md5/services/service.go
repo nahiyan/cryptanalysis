@@ -4,14 +4,11 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"log"
 )
 
 func leftRotate(x, s uint32) uint32 {
 	return (x<<s)&0xffffffff | (x >> (32 - s))
-}
-
-func sum(a, b uint32) uint32 {
-	return uint32(a + b)
 }
 
 func f(x, y, z uint32) uint32 {
@@ -31,22 +28,22 @@ func i(x, y, z uint32) uint32 {
 }
 
 func ff(a, b, c, d, m, s, t uint32) uint32 {
-	a = sum(sum(sum(a, f(b, c, d)), m), t)
+	a = a + f(b, c, d) + m + t
 	return b + leftRotate(a, s)
 }
 
 func gg(a, b, c, d, m, s, t uint32) uint32 {
-	a = sum(sum(sum(a, g(b, c, d)), m), t)
+	a = a + g(b, c, d) + m + t
 	return b + leftRotate(a, s)
 }
 
 func hh(a, b, c, d, m, s, t uint32) uint32 {
-	a = sum(sum(sum(a, h(b, c, d)), m), t)
+	a = a + h(b, c, d) + m + t
 	return b + leftRotate(a, s)
 }
 
 func ii(a, b, c, d, m, s, t uint32) uint32 {
-	a = sum(sum(sum(a, i(b, c, d)), m), t)
+	a = a + i(b, c, d) + m + t
 	return b + leftRotate(a, s)
 }
 
