@@ -178,8 +178,8 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 				}
 
 				// Extract the message from the solution
-				message, err := summarizerSvc.solutionSvc.ExtractMessage(solutionLiterals)
-				summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed extract message from the solution literal")
+				message, err := summarizerSvc.solutionSvc.ExtractFromLiterals(solutionLiterals[:512])
+				summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed extract the message from the solution literal")
 
 				// Take the steps derived from the instance name
 				_, function, step, targetHash, err := parseSolutionLogName(fileName)

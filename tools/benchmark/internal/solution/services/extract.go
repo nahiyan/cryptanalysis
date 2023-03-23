@@ -3,16 +3,19 @@ package services
 import (
 	"encoding/hex"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
 	"github.com/samber/lo"
 )
 
-func (solutionSvc *SolutionService) ExtractMessage(solutionLiterals []int) ([]byte, error) {
+func (solutionSvc *SolutionService) ExtractFromLiterals(literals []int) ([]byte, error) {
 	var messageBuilder strings.Builder
-	for i := 0; i < 16; i++ {
-		word := solutionLiterals[i*32 : i*32+32]
+	log.Println(len(literals), len(literals)/32)
+	for i := 0; i < len(literals)/32; i++ {
+		word := literals[i*32 : i*32+32]
+		// log.Println(word)
 		word_ := lo.Reduce(word, func(acc string, bit int, _ int) string {
 			if bit > 1 {
 				return "1" + acc
