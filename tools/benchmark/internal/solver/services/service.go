@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"strings"
 	"sync"
 	"time"
 
@@ -22,48 +21,49 @@ import (
 )
 
 // Important: Register new SAT Solver here
-func (solverSvc *SolverService) GetCmdInfo(solver_ solver.Solver, solutionPath string) (string, []string) {
+func (solverSvc *SolverService) GetCmdInfo(solver_ solver.Solver, solutionPath string, timeout int) (string, []string) {
 	config := solverSvc.configSvc.Config
 
 	var binPath string
-	args := ""
+	args := []string{}
 	switch solver_ {
 	case solver.Kissat:
 		binPath = config.Paths.Bin.Kissat
+		args = append(args, fmt.Sprintf("--time=%d", timeout))
 	case solver.Cadical:
 		binPath = config.Paths.Bin.Cadical
+		args = append(args, "-t", fmt.Sprintf("%d", timeout))
 	case solver.CryptoMiniSat:
 		binPath = config.Paths.Bin.CryptoMiniSat
+		args = append(args, "--maxtime", fmt.Sprintf("%d", timeout))
 	case solver.MapleSat:
 		binPath = config.Paths.Bin.MapleSat
-		args += "-model"
+		args = append(args, "-model", fmt.Sprintf("-cpu-lim=%d", timeout))
 	case solver.Glucose:
 		binPath = config.Paths.Bin.Glucose
-		args += "-model"
+		args = append(args, "-model", fmt.Sprintf("-cpu-lim=%d", timeout))
 	case solver.YalSat:
 		binPath = config.Paths.Bin.YalSat
-		args += "--witness=1"
+		args = append(args, "--witness=1")
 	case solver.PalSat:
 		binPath = config.Paths.Bin.PalSat
-		args += "--witness=1"
+		args = append(args, "--witness=1")
 	case solver.LSTechMaple:
 		binPath = config.Paths.Bin.LSTechMaple
+		args = append(args, fmt.Sprintf("-cpu-lim=%d", timeout))
 	case solver.KissatCF:
 		binPath = config.Paths.Bin.KissatCF
-		args += "-v"
+		args = append(args, "-v")
 	}
 
-	args_ := strings.Fields(args)
-
-	return binPath, args_
+	return binPath, args
 }
 
 func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver.Solver, timeout int) (solver.Result, int) {
 	config := solverSvc.configSvc.Config
-	errorSvc := solverSvc.errorSvc
 	solutionsDir := solverSvc.configSvc.Config.Paths.Solutions
 	solutionPath := path.Join(solutionsDir, path.Base(encoding.GetName())+"."+string(solver_)+".sol")
-	binPath, solverArgs := solverSvc.GetCmdInfo(solver_, solutionPath)
+	binPath, solverArgs := solverSvc.GetCmdInfo(solver_, solutionPath, timeout)
 	duration := time.Duration(timeout) * time.Second
 
 	// Local search
@@ -115,29 +115,17 @@ func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver
 	err = solverSvc.filesystemSvc.WriteFromPipe(stdoutPipe, logFilePath)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to write from pipe")
 
-	err = cmd.Wait()
-	var (
-		result   solver.Result = solver.Fail
-		exitCode int
-	)
-	errorSvc.Handle(err, func(err error) {
-		exiterr, ok := err.(*exec.ExitError)
-		if !ok {
-			return
-		}
+	cmd.Wait()
+	exitCode := cmd.ProcessState.ExitCode()
+	result := solver.Result(solver.Fail)
+	if exitCode == 10 {
+		result = solver.Sat
+	} else if exitCode == 20 {
+		result = solver.Unsat
+	}
 
-		exitCode = exiterr.ExitCode()
-		if exitCode == 10 {
-			result = solver.Sat
-		} else if exitCode == 20 {
-			result = solver.Unsat
-		} else {
-			log.Println(err)
-		}
-
-		runtimeSeconds := time.Since(startTime).Round(time.Millisecond).Seconds()
-		script.Echo(fmt.Sprintf("\nInfo: Ended after %.2f seconds with exit code %d", runtimeSeconds, exitCode)).AppendFile(logFilePath)
-	})
+	runtimeSeconds := time.Since(startTime).Round(time.Millisecond).Seconds()
+	script.Echo(fmt.Sprintf("\nInfo: Ended after %.2f seconds with exit code %d", runtimeSeconds, exitCode)).AppendFile(logFilePath)
 
 	return result, exitCode
 }

@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"log"
 )
 
 func leftRotate(x, s uint32) uint32 {
