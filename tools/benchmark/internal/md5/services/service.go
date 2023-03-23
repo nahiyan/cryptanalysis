@@ -77,7 +77,7 @@ func (md4Svc *Md5Service) Run(message_ []byte, steps int, addChainingVars bool) 
 	var c uint32 = c_
 	var d uint32 = d_
 
-	// Step 1: ff(a,b,c,d,M_j,s,t_j) 1-16
+	// Round 1: ff(a,b,c,d,M_j,s,t_j) 1-16
 
 	if steps >= 1 {
 		a = ff(a, b, c, d, message[0], 7, 0xd76aa478)
@@ -131,7 +131,7 @@ func (md4Svc *Md5Service) Run(message_ []byte, steps int, addChainingVars bool) 
 		b = ff(b, c, d, a, message[15], 22, 0x49b40821)
 	}
 
-	// Step 2: gg(a,b,c,d,M_j,s,t_j) 17-32
+	// Round 2: gg(a,b,c,d,M_j,s,t_j) 17-32
 
 	if steps >= 17 {
 		a = gg(a, b, c, d, message[1], 5, 0xf61e2562)
@@ -185,7 +185,7 @@ func (md4Svc *Md5Service) Run(message_ []byte, steps int, addChainingVars bool) 
 		b = gg(b, c, d, a, message[12], 20, 0x8d2a4c8a)
 	}
 
-	// Step 3: hh(a,b,c,d,M_j,s,t_j) 33-48
+	// Round 3: hh(a,b,c,d,M_j,s,t_j) 33-48
 
 	if steps >= 33 {
 		a = hh(a, b, c, d, message[5], 4, 0xfffa3942)
@@ -239,7 +239,7 @@ func (md4Svc *Md5Service) Run(message_ []byte, steps int, addChainingVars bool) 
 		b = hh(b, c, d, a, message[2], 23, 0xc4ac5665)
 	}
 
-	// Step 4: ii(a,b,c,d,M_j,s,t_j) 49-64
+	// Round 4: ii(a,b,c,d,M_j,s,t_j) 49-64
 
 	if steps >= 49 {
 		a = ii(a, b, c, d, message[0], 6, 0xf4292244)

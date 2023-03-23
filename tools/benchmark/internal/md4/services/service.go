@@ -111,7 +111,6 @@ func (md4Svc *Md4Service) Run(message_ []byte, steps int, addChainingVars bool) 
 		c += c_
 		d += d_
 	}
-	// fmt.Println("Final", a, b, c, d)
 	digest_ := make([]byte, 16)
 	binary.BigEndian.PutUint32(digest_, a)
 	binary.BigEndian.PutUint32(digest_[4:], b)
