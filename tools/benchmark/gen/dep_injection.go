@@ -107,7 +107,7 @@ func GenerateProvider(provider Provider) {
 
 	err := f.Save(fmt.Sprintf(
 		"../internal/%s/services/init.gen.go",
-		strcase.ToSnakeWithIgnore(provider.Name, "md4")))
+		strcase.ToSnakeWithIgnore(provider.Name, "md4 sha256")))
 	if err != nil {
 		log.Fatal("Failed to save: ", provider.Name, ". ", err)
 	}
@@ -234,7 +234,7 @@ func main() {
 		// TODO: Rename to summarize
 		{
 			Name:         "summarizer",
-			Dependencies: []string{"error", "encoder", "config", "cuber", "solver", "simplifier", "solution", "md4", "md5", "combined_logs"},
+			Dependencies: []string{"error", "encoder", "config", "cuber", "solver", "simplifier", "solution", "md4", "md5", "sha256", "combined_logs"},
 			Type:         Service,
 		},
 		// TODO: Rename to simplify
@@ -255,6 +255,11 @@ func main() {
 		},
 		{
 			Name:         "md5",
+			Dependencies: []string{"error", "config"},
+			Type:         Service,
+		},
+		{
+			Name:         "sha256",
 			Dependencies: []string{"error", "config"},
 			Type:         Service,
 		},

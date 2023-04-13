@@ -22,6 +22,9 @@ var layoutMd4 string
 //go:embed transalg_md5.txt
 var layoutMd5 string
 
+//go:embed transalg_sha256.txt
+var layoutSha256 string
+
 func (encoderSvc *EncoderService) GenerateTransalgCode(instanceInfo encoder.InstanceInfo, dobbertinConstant uint32) (string, error) {
 	tmpl := template.New("transalg.txt").Funcs(map[string]interface{}{
 		"inc": func(i int) int {
@@ -159,6 +162,23 @@ func (encoderSvc *EncoderService) GenerateTransalgMd5Code(instanceInfo encoder.I
 	return code, nil
 }
 
+func (encoderSvc *EncoderService) GenerateTransalgSha256Code(instanceInfo encoder.InstanceInfo) (string, error) {
+	tmpl := template.New("transalg_sha256.txt")
+	tmpl, err := tmpl.Parse(layoutSha256)
+	if err != nil {
+		return "", err
+	}
+
+	var buffer bytes.Buffer
+	tmpl.Execute(&buffer, map[string]interface{}{
+		"Steps":         instanceInfo.Steps,
+		"OneTargetHash": instanceInfo.TargetHash == "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+	})
+	code := buffer.String()
+
+	return code, nil
+}
+
 func (encoderSvc *EncoderService) ShouldSkip(encodingPath string) bool {
 	return encoderSvc.filesystemSvc.FileExists(encodingPath)
 }
@@ -191,6 +211,8 @@ func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.EncodeParam
 			transalgCode, err = encoderSvc.GenerateTransalgCode(instanceInfo, dobbertinConstant)
 		} else if parameters.Function == encoder.Md5 {
 			transalgCode, err = encoderSvc.GenerateTransalgMd5Code(instanceInfo)
+		} else if parameters.Function == encoder.Sha256 {
+			transalgCode, err = encoderSvc.GenerateTransalgSha256Code(instanceInfo)
 		}
 		encoderSvc.errorSvc.Fatal(err, "Encoder: failed to generate Transalg code")
 		transalgFileName := fmt.Sprintf("%s.alg", encoderSvc.randomSvc.RandString(16))

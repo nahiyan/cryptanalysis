@@ -80,8 +80,10 @@ func (encoderSvc *EncoderService) ProcessInstanceName(instanceName string) (enco
 		mainSegment = strings.TrimPrefix(mainSegment, string(info.Encoder)+"_")
 
 		// Function
-		if strings.HasPrefix(mainSegment, "md4") {
-			info.Function = "md4"
+		if strings.HasPrefix(mainSegment, encoder.Md4) {
+			info.Function = encoder.Md4
+		} else if strings.HasPrefix(mainSegment, encoder.Sha256) {
+			info.Function = encoder.Sha256
 		}
 		mainSegment = strings.TrimPrefix(mainSegment, string(info.Function)+"_")
 
@@ -212,7 +214,7 @@ func (encoderSvc *EncoderService) LoopThroughVariation(params pipeline.EncodePar
 								}
 							}
 						}
-					} else if params.Function == encoder.Md5 {
+					} else if params.Function == encoder.Md5 || params.Function == encoder.Sha256 {
 						cb(encoder.InstanceInfo{
 							Encoder:      params.Encoder,
 							Function:     params.Function,
@@ -252,7 +254,7 @@ func (encoderSvc *EncoderService) Run(parameters pipeline.EncodeParams) []encode
 	encoderSvc.errorSvc.Fatal(err, "Encoder: failed to prepare directory for storing the encodings")
 
 	// TODO: Add MD5 to SaeedE
-	if parameters.Function != encoder.Md4 && parameters.Function != encoder.Md5 {
+	if parameters.Function != encoder.Md4 && parameters.Function != encoder.Md5 && parameters.Function != encoder.Sha256 {
 		log.Fatal("Encoder: function not supported")
 	}
 

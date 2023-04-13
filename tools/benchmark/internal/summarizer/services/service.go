@@ -96,7 +96,7 @@ func (summarizerSvc *SummarizerService) GetCubesets(logFiles []string) []cubeset
 }
 
 func parseSolutionLogName(name string) (encoder.Encoder, encoder.Function, int, string, error) {
-	matches := regexp.MustCompile("([a-z_]+)_([md45]+)_([0-9]+)_([a-z0-9]+)[_.]").FindAllStringSubmatch(name, len(name))
+	matches := regexp.MustCompile("([a-z_]+)_(md4|md5|sha256)_([0-9]+)_([a-z0-9]+)[_.]").FindAllStringSubmatch(name, len(name))
 	groups := matches[0][1:]
 	encoder_ := encoder.Encoder(groups[0])
 	function := encoder.Function(groups[1])
@@ -192,6 +192,9 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 					summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the md4 hash")
 				} else if function == encoder.Md5 {
 					hash, err = summarizerSvc.md5Svc.Run(message, step, false)
+					summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the md5 hash")
+				} else if function == encoder.Sha256 {
+					hash, err = summarizerSvc.sha256Svc.Run(message, step, false)
 					summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the md5 hash")
 				}
 				solution.verified = hash == targetHash

@@ -15,8 +15,9 @@ type Function string
 
 // Function
 const (
-	Md4 = "md4"
-	Md5 = "md5"
+	Md4    = "md4"
+	Md5    = "md5"
+	Sha256 = "sha256"
 )
 
 // Encoders

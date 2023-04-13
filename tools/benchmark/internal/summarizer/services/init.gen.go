@@ -1,13 +1,14 @@
 package services
 
 import (
-	services9 "benchmark/internal/combined_logs/services"
+	services10 "benchmark/internal/combined_logs/services"
 	services2 "benchmark/internal/config/services"
 	services3 "benchmark/internal/cuber/services"
 	services1 "benchmark/internal/encoder/services"
 	services "benchmark/internal/error/services"
 	services7 "benchmark/internal/md4/services"
 	services8 "benchmark/internal/md5/services"
+	services9 "benchmark/internal/sha256/services"
 	services5 "benchmark/internal/simplifier/services"
 	services6 "benchmark/internal/solution/services"
 	services4 "benchmark/internal/solver/services"
@@ -24,7 +25,8 @@ type SummarizerService struct {
 	solutionSvc     *services6.SolutionService
 	md4Svc          *services7.Md4Service
 	md5Svc          *services8.Md5Service
-	combinedLogsSvc *services9.CombinedLogsService
+	sha256Svc       *services9.Sha256Service
+	combinedLogsSvc *services10.CombinedLogsService
 }
 
 func NewSummarizerService(injector *do.Injector) (*SummarizerService, error) {
@@ -37,7 +39,8 @@ func NewSummarizerService(injector *do.Injector) (*SummarizerService, error) {
 	solutionSvc := do.MustInvoke[*services6.SolutionService](injector)
 	md4Svc := do.MustInvoke[*services7.Md4Service](injector)
 	md5Svc := do.MustInvoke[*services8.Md5Service](injector)
-	combinedLogsSvc := do.MustInvoke[*services9.CombinedLogsService](injector)
-	svc := &SummarizerService{errorSvc: errorSvc, encoderSvc: encoderSvc, configSvc: configSvc, cuberSvc: cuberSvc, solverSvc: solverSvc, simplifierSvc: simplifierSvc, solutionSvc: solutionSvc, md4Svc: md4Svc, md5Svc: md5Svc, combinedLogsSvc: combinedLogsSvc}
+	sha256Svc := do.MustInvoke[*services9.Sha256Service](injector)
+	combinedLogsSvc := do.MustInvoke[*services10.CombinedLogsService](injector)
+	svc := &SummarizerService{errorSvc: errorSvc, encoderSvc: encoderSvc, configSvc: configSvc, cuberSvc: cuberSvc, solverSvc: solverSvc, simplifierSvc: simplifierSvc, solutionSvc: solutionSvc, md4Svc: md4Svc, md5Svc: md5Svc, sha256Svc: sha256Svc, combinedLogsSvc: combinedLogsSvc}
 	return svc, nil
 }

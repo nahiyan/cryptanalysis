@@ -1,7 +1,7 @@
 package injector
 
 import (
-	services22 "benchmark/internal/combined_logs/services"
+	services23 "benchmark/internal/combined_logs/services"
 	services15 "benchmark/internal/command/services"
 	services "benchmark/internal/config/services"
 	services14 "benchmark/internal/cube_selector/services"
@@ -11,13 +11,14 @@ import (
 	services13 "benchmark/internal/encoding/services"
 	services2 "benchmark/internal/error/services"
 	services3 "benchmark/internal/filesystem/services"
-	services21 "benchmark/internal/log/services"
+	services22 "benchmark/internal/log/services"
 	services10 "benchmark/internal/marshalling/services"
 	services19 "benchmark/internal/md4/services"
 	services20 "benchmark/internal/md5/services"
 	services4 "benchmark/internal/pipeline/services"
 	services9 "benchmark/internal/random/services"
 	services5 "benchmark/internal/schema/services"
+	services21 "benchmark/internal/sha256/services"
 	services18 "benchmark/internal/simplification/services"
 	services17 "benchmark/internal/simplifier/services"
 	services8 "benchmark/internal/slurm/services"
@@ -50,7 +51,8 @@ func New() *do.Injector {
 	do.Provide(injector, services18.NewSimplificationService)
 	do.Provide(injector, services19.NewMd4Service)
 	do.Provide(injector, services20.NewMd5Service)
-	do.Provide(injector, services21.NewLogService)
-	do.Provide(injector, services22.NewCombinedLogsService)
+	do.Provide(injector, services21.NewSha256Service)
+	do.Provide(injector, services22.NewLogService)
+	do.Provide(injector, services23.NewCombinedLogsService)
 	return injector
 }

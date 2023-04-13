@@ -1,0 +1,161 @@
+__in bit M[16][32];
+
+__out bit Hash[8][32];
+
+bit A[32] = 0x6A09E667;
+bit B[32] = 0xBB67AE85;
+bit C[32] = 0x3C6EF372;
+bit D[32] = 0xA54FF53A;
+bit E[32] = 0x510E527F;
+bit F[32] = 0x9B05688C;
+bit G[32] = 0x1F83D9AB;
+bit H[32] = 0x5BE0CD19;
+
+bit W[64][32];
+
+bit K[64][32];
+
+void init()
+{
+	K[0]  = 0x428A2F98;
+	K[1]  = 0x71374491;
+	K[2]  = 0xB5C0FBCF;
+	K[3]  = 0xE9B5DBA5;
+	K[4]  = 0x3956C25B;
+	K[5]  = 0x59F111F1;
+	K[6]  = 0x923F82A4;
+	K[7]  = 0xAB1C5ED5;
+	K[8]  = 0xD807AA98;
+	K[9]  = 0x12835B01;
+	K[10] = 0x243185BE;
+	K[11] = 0x550C7DC3;
+	K[12] = 0x72BE5D74;
+	K[13] = 0x80DEB1FE;
+	K[14] = 0x9BDC06A7;
+	K[15] = 0xC19BF174;
+	K[16] = 0xE49B69C1;
+	K[17] = 0xEFBE4786;
+	K[18] = 0x0FC19DC6;
+	K[19] = 0x240CA1CC;
+	K[20] = 0x2DE92C6F;
+	K[21] = 0x4A7484AA;
+	K[22] = 0x5CB0A9DC;
+	K[23] = 0x76F988DA;
+	K[24] = 0x983E5152;
+	K[25] = 0xA831C66D;
+	K[26] = 0xB00327C8;
+	K[27] = 0xBF597FC7;
+	K[28] = 0xC6E00BF3;
+	K[29] = 0xD5A79147;
+	K[30] = 0x06CA6351;
+	K[31] = 0x14292967;
+	K[32] = 0x27B70A85;
+	K[33] = 0x2E1B2138;
+	K[34] = 0x4D2C6DFC;
+	K[35] = 0x53380D13;
+	K[36] = 0x650A7354;
+	K[37] = 0x766A0ABB;
+	K[38] = 0x81C2C92E;
+	K[39] = 0x92722C85;
+	K[40] = 0xA2BFE8A1;
+	K[41] = 0xA81A664B;
+	K[42] = 0xC24B8B70;
+	K[43] = 0xC76C51A3;
+	K[44] = 0xD192E819;
+	K[45] = 0xD6990624;
+	K[46] = 0xF40E3585;
+	K[47] = 0x106AA070;
+	K[48] = 0x19A4C116;
+	K[49] = 0x1E376C08;
+	K[50] = 0x2748774C;
+	K[51] = 0x34B0BCB5;
+	K[52] = 0x391C0CB3;
+	K[53] = 0x4ED8AA4A;
+	K[54] = 0x5B9CCA4F;
+	K[55] = 0x682E6FF3;
+	K[56] = 0x748F82EE;
+	K[57] = 0x78A5636F;
+	K[58] = 0x84C87814;
+	K[59] = 0x8CC70208;
+	K[60] = 0x90BEFFFA;
+	K[61] = 0xA4506CEB;
+	K[62] = 0xBEF9A3F7;
+	K[63] = 0xC67178F2;
+}
+
+void main()
+{
+	init();
+
+	int i;
+	for(i = 0; i < 16; i = i + 1)
+	{
+		W[i] = M[i];
+	}
+
+	for(i = 16; i < {{.Steps}}; i = i + 1)
+	{
+		__mem bit s0[32] = (W[i-15] >>> 7) ^ (W[i-15] >>> 18) ^ (W[i-15] >> 3);
+		__mem bit s1[32] = (W[i-2] >>> 17) ^ (W[i-2] >>> 19) ^ (W[i-2] >> 10);
+		W[i] = sum(W[i-16],sum(s0, sum(W[i-7], s1, 32), 32),32);
+	}
+
+	bit a[32] = A;
+	bit b[32] = B;
+	bit c[32] = C;
+	bit d[32] = D;
+	bit e[32] = E;
+	bit f[32] = F;
+	bit g[32] = G;
+	bit h[32] = H;
+
+	for(i = 0; i < {{.Steps}}; i = i + 1)
+	{
+		__mem bit s0[32] = (a >>> 2) ^ (a >>> 13) ^ (a >>> 22);
+		__mem bit ma[32] = (a & b) ^ (a & c) ^ (b & c);
+		bit t2[32] = sum(s0, ma, 32);
+		__mem bit s1[32] = (e >>> 6) ^ (e >>> 11) ^ (e >>> 25);
+		__mem bit ch[32] = (e & f) ^ (!e & g);
+		bit t1[32] = sum(h, sum(s1, sum(ch, sum(K[i], W[i], 32), 32), 32), 32);
+
+		h = g;
+		g = f;
+		f = e;
+		e = sum(d, t1, 32);
+		d = c;
+		c = b;
+		b = a;
+		a = sum(t1, t2, 32);
+	}
+
+	Hash[0] = a;
+	Hash[1] = b;
+	Hash[2] = c;
+	Hash[3] = d;
+	Hash[4] = e;
+	Hash[5] = f;
+	Hash[6] = g;
+	Hash[7] = h;
+
+	{{ if eq $.OneTargetHash true -}}
+    // 1^(128)
+	assert(Hash[0]);
+	assert(Hash[1]);
+	assert(Hash[2]);
+	assert(Hash[3]);
+	assert(Hash[4]);
+	assert(Hash[5]);
+	assert(Hash[6]);
+	assert(Hash[7]);
+	{{- else }}
+    // 0^(128)
+    assert(!Hash[0]);
+	assert(!Hash[1]);
+	assert(!Hash[2]);
+	assert(!Hash[3]);
+	assert(!Hash[4]);
+	assert(!Hash[5]);
+	assert(!Hash[6]);
+	assert(!Hash[7]);
+    {{- end }}
+}
