@@ -207,7 +207,7 @@ func main() {
 		// TODO: Rename to cube
 		{
 			Name:         "cuber",
-			Dependencies: []string{"error", "filesystem", "config", "cubeset", "encoding", "slurm", "command", "encoder", "log", "combined_logs"},
+			Dependencies: []string{"error", "filesystem", "config", "cubeset", "encoding", "slurm", "command", "encoder", "log", "combined_logs", "simplifier", "solver", "cube_selector", "random"},
 			Type:         Service,
 		},
 		{
