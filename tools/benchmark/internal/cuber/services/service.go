@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -20,11 +21,15 @@ import (
 
 type InvokeParameters struct {
 	Encoding         string
+	ThresholdType    cuber.ThresholdType
 	Threshold        int
 	Timeout          time.Duration
 	MaxCubes         int
 	MinCubes         int
 	MinRefutedLeaves int
+	Suffix           string
+	MaxVariable      int
+	SkipLogs         bool
 }
 
 type InvokeControl struct {
@@ -39,14 +44,26 @@ func (cuberSvc *CuberService) getLogFilePath(cubeFilePath string) string {
 	return logFilePath
 }
 
-func (cuberSvc *CuberService) CubesFilePath(encoding string, threshold int) string {
-	cubesetFileName := path.Base(encoding) + fmt.Sprintf(".march_n%d.cubes", threshold)
+func (cuberSvc *CuberService) CubesFilePath(encoding string, thresholdType cuber.ThresholdType, threshold int, suffix string) string {
+	thresholdChar := "n"
+	if thresholdType == cuber.CutoffDepth {
+		thresholdChar = "d"
+	}
+
+	var cubesetFileName string
+	if len(suffix) == 0 {
+		cubesetFileName = path.Base(encoding) + fmt.Sprintf(".march_%s%d.cubes", thresholdChar, threshold)
+	} else {
+		newBaseEncoding := regexp.MustCompile(`.march.+`).ReplaceAllString(path.Base(encoding), "")
+		cubesetFileName = newBaseEncoding + fmt.Sprintf(".march_%s.cubes", suffix)
+	}
+
 	cubesFilePath := path.Join(cuberSvc.configSvc.Config.Paths.Cubesets, cubesetFileName)
 	return cubesFilePath
 }
 
-func (cuberSvc *CuberService) ShouldSkip(encoding string, threshold int) bool {
-	cubesFilePath := cuberSvc.CubesFilePath(encoding, threshold)
+func (cuberSvc *CuberService) ShouldSkip(encoding string, thresholdType cuber.ThresholdType, threshold int, hash string) bool {
+	cubesFilePath := cuberSvc.CubesFilePath(encoding, thresholdType, threshold, hash)
 	logFilePath := cuberSvc.getLogFilePath(cubesFilePath)
 
 	if exists := cuberSvc.filesystemSvc.FileExistsNonEmpty(cubesFilePath); !exists {
@@ -70,6 +87,11 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 	cubesFilePath, logFilePath, err := cuberSvc.Invoke(parameters, control)
 	if err != nil {
 		return err
+	}
+
+	if parameters.SkipLogs {
+		*control.CubesetPaths = append(*control.CubesetPaths, cubesFilePath)
+		return nil
 	}
 
 	var (
@@ -106,7 +128,7 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 		return cuber.ErrCubesetViolatedConstraints
 	}
 
-	*control.CubesetPaths = append(*control.CubesetPaths, cuberSvc.CubesFilePath(parameters.Encoding, parameters.Threshold))
+	*control.CubesetPaths = append(*control.CubesetPaths, cubesFilePath)
 
 	return nil
 }
@@ -118,8 +140,16 @@ func (cuberSvc *CuberService) Invoke(parameters InvokeParameters, control Invoke
 	ctx, cancel := context.WithTimeout(context.Background(), parameters.Timeout)
 	defer cancel()
 
-	cubesFilePath := cuberSvc.CubesFilePath(parameters.Encoding, parameters.Threshold)
-	cmd := exec.CommandContext(ctx, config.Paths.Bin.March, parameters.Encoding, "-o", cubesFilePath, "-n", strconv.Itoa(parameters.Threshold))
+	var thresholdArg string
+	if parameters.ThresholdType == cuber.CutoffDepth {
+		thresholdArg = "-d"
+	} else {
+		thresholdArg = "-n"
+	}
+
+	cubesFilePath := cuberSvc.CubesFilePath(parameters.Encoding, parameters.ThresholdType, parameters.Threshold, parameters.Suffix)
+	cmd := exec.CommandContext(ctx, config.Paths.Bin.March, parameters.Encoding, "-o", cubesFilePath, thresholdArg, strconv.Itoa(parameters.Threshold), "-m", strconv.Itoa(parameters.MaxVariable))
+	log.Println(cmd)
 	cuberSvc.commandSvc.AddToGroup(control.CommandGroup, cmd)
 
 	stdoutPipe, err := cmd.StdoutPipe()
@@ -129,9 +159,15 @@ func (cuberSvc *CuberService) Invoke(parameters InvokeParameters, control Invoke
 	if err := cmd.Start(); err != nil {
 		return "", "", err
 	}
-	logFilePath := cuberSvc.getLogFilePath(cubesFilePath)
-	cuberSvc.filesystemSvc.WriteFromPipe(stdoutPipe, logFilePath)
+
+	logFilePath := ""
+	if !parameters.SkipLogs {
+		logFilePath = cuberSvc.getLogFilePath(cubesFilePath)
+		cuberSvc.filesystemSvc.WriteFromPipe(stdoutPipe, logFilePath)
+	}
+
 	if err := cmd.Wait(); err != nil {
+		log.Println("Exit code", cmd.ProcessState.ExitCode(), cmd)
 		return "", "", err
 	}
 
@@ -177,9 +213,9 @@ func (cuberSvc *CuberService) Run(encodings []encoder.Encoding, parameters pipel
 	log.Println("Cuber: started")
 
 	cuberSvc.Loop(encodings, parameters, func(encoding string, threshold, timeout int) {
-		if cuberSvc.ShouldSkip(encoding, threshold) {
+		if cuberSvc.ShouldSkip(encoding, cuber.CutoffVars, threshold, "") {
 			log.Println("Cuber: skipped", threshold, encoding)
-			cubesFilePaths = append(cubesFilePaths, cuberSvc.CubesFilePath(encoding, threshold))
+			cubesFilePaths = append(cubesFilePaths, cuberSvc.CubesFilePath(encoding, cuber.CutoffVars, threshold, ""))
 			return
 		}
 
@@ -192,6 +228,7 @@ func (cuberSvc *CuberService) Run(encodings []encoder.Encoding, parameters pipel
 				// TODO: Simplify
 				err := cuberSvc.TrackedInvoke(InvokeParameters{
 					Encoding:         encoding,
+					ThresholdType:    cuber.CutoffVars,
 					Threshold:        threshold,
 					Timeout:          time.Duration(timeout) * time.Second,
 					MaxCubes:         parameters.MaxCubes,
