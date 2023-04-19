@@ -1,6 +1,7 @@
 package encoder
 
 import (
+	"benchmark/internal/cuber"
 	"benchmark/internal/solver"
 	"errors"
 	"fmt"
@@ -65,8 +66,9 @@ type InstanceInfo struct {
 }
 
 type Cube struct {
-	Index     int
-	Threshold int
+	Index         int
+	ThresholdType cuber.ThresholdType
+	Threshold     int
 }
 
 type Encoding struct {
@@ -84,7 +86,12 @@ func (encoding Encoding) GetLogPath(logsDir string, solver_ mo.Option[solver.Sol
 	}
 
 	if cube, exists := encoding.Cube.Get(); exists {
-		logFilePath := basePathInLogsDir + fmt.Sprintf(".march_n%d.cubes.cube%d%s.log", cube.Threshold, cube.Index, solver__)
+		thresholdArg := "n"
+		if cube.ThresholdType == cuber.CutoffDepth {
+			thresholdArg = "d"
+		}
+
+		logFilePath := basePathInLogsDir + fmt.Sprintf(".march_%s%d.cubes.cube%d%s.log", thresholdArg, cube.Threshold, cube.Index, solver__)
 		return logFilePath
 	}
 
@@ -93,7 +100,12 @@ func (encoding Encoding) GetLogPath(logsDir string, solver_ mo.Option[solver.Sol
 
 func (encoding Encoding) GetName() string {
 	if cube, exists := encoding.Cube.Get(); exists {
-		return path.Join(encoding.BasePath + fmt.Sprintf(".march_n%d.cube%d", cube.Threshold, cube.Index))
+		thresholdType := "n"
+		if cube.ThresholdType == cuber.CutoffDepth {
+			thresholdType = "d"
+		}
+
+		return path.Join(encoding.BasePath + fmt.Sprintf(".march_%s%d.cubes.cube%d", thresholdType, cube.Threshold, cube.Index))
 	}
 
 	return encoding.BasePath[:len(encoding.BasePath)-4]
@@ -105,7 +117,12 @@ func (encoding Encoding) GetCubesetPath(cubesetDir string) (string, error) {
 		return "", errors.New("encoding isn't cubed")
 	}
 
-	cubesetPath := path.Join(cubesetDir, path.Base(encoding.BasePath)+fmt.Sprintf(".march_n%d.cubes", cube.Threshold))
+	thresholdType := "n"
+	if cube.ThresholdType == cuber.CutoffDepth {
+		thresholdType = "d"
+	}
+
+	cubesetPath := path.Join(cubesetDir, path.Base(encoding.BasePath)+fmt.Sprintf(".march_%s%d.cubes", thresholdType, cube.Threshold))
 
 	return cubesetPath, nil
 }
