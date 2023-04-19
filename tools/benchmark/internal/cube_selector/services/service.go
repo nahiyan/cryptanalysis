@@ -1,6 +1,8 @@
 package services
 
 import (
+	cubeselector "benchmark/internal/cube_selector"
+	"benchmark/internal/cuber"
 	"benchmark/internal/encoder"
 	"benchmark/internal/pipeline"
 	"bufio"
@@ -11,17 +13,13 @@ import (
 	"math/rand"
 	"os"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/samber/lo"
 	"github.com/samber/mo"
-)
-
-const (
-	Random   = "random"
-	Specific = "specific"
 )
 
 func (cubeSelectorSvc *CubeSelectorService) RandomCubes(cubesCount, selectionSize, offset int, seed int64) []int {
@@ -42,7 +40,7 @@ func (cubeSelectorSvc *CubeSelectorService) RandomCubes(cubesCount, selectionSiz
 }
 
 // TODO: See if it should be in the cubesets or cuber module
-func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(encodingFilePath, cubesetFilePath string, cubeIndex int, output io.Writer) error {
+func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(encodingFilePath string, cubesetPath string, cubeIndex int, output io.Writer) error {
 	// * 1. Read the instance
 	instanceReader, err := os.OpenFile(encodingFilePath, os.O_RDONLY, 0644)
 	if err != nil {
@@ -52,7 +50,7 @@ func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(encodingFilePath, c
 	instanceScanner := bufio.NewScanner(instanceReader)
 
 	// * 2. Get the cube from the binary
-	cubeLiterals, err := cubeSelectorSvc.cubesetSvc.GetCube(cubesetFilePath, cubeIndex)
+	cubeLiterals, err := cubeSelectorSvc.cubesetSvc.GetCube(cubesetPath, cubeIndex)
 	if err != nil {
 		return err
 	}
@@ -83,7 +81,7 @@ func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(encodingFilePath, c
 	return nil
 }
 
-func (cubeSelectorSvc *CubeSelectorService) Select(cubesets []string, parameters pipeline.CubeSelectParams, isRandom bool) []encoder.Encoding {
+func (cubeSelectorSvc *CubeSelectorService) Select(cubesets []string, parameters pipeline.CubeSelectParams) []encoder.Encoding {
 	encodings := []encoder.Encoding{}
 	for _, cubeset := range cubesets {
 		// Generate the binary cubeset file
@@ -100,21 +98,29 @@ func (cubeSelectorSvc *CubeSelectorService) Select(cubesets []string, parameters
 			encodingPath = path.Join(cubeSelectorSvc.configSvc.Config.Paths.Encodings, path.Base(strings.Join(segments[:len(segments)-2], ".")))
 		}
 
-		cubesCount, err := cubeSelectorSvc.filesystemSvc.CountLines(cubeset)
-		cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to count lines "+cubeset)
-
 		var cubeIndices []int
-		if isRandom {
+		if parameters.Type == cubeselector.Random {
+			cubesCount, err := cubeSelectorSvc.filesystemSvc.CountLines(cubeset)
+			cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to count lines "+cubeset)
+
 			cubeIndices = cubeSelectorSvc.RandomCubes(cubesCount, parameters.Quantity, parameters.Offset, parameters.Seed)
 		} else {
 			cubeIndices = parameters.Indices
 		}
 
 		threshold := 0
+		thresholdType := cuber.ThresholdType(cuber.CutoffVars)
 		{
-			segments := strings.Split(cubeset, ".")
-			segment := segments[len(segments)-2][7:]
-			threshold, err = strconv.Atoi(segment)
+			matches := regexp.MustCompile(`march_([nd])(\d+)`).FindAllStringSubmatch(cubeset, 2)
+
+			thresholdType_ := matches[0][1]
+			threshold_ := matches[0][2]
+
+			if thresholdType_ == "d" {
+				thresholdType = cuber.CutoffDepth
+			}
+			var err error
+			threshold, err = strconv.Atoi(threshold_)
 			cubeSelectorSvc.errorSvc.Fatal(err, "Cube selector: failed to get the threshold of "+cubeset)
 		}
 
@@ -123,8 +129,9 @@ func (cubeSelectorSvc *CubeSelectorService) Select(cubesets []string, parameters
 				BasePath: encodingPath,
 				Cube: mo.Some(
 					encoder.Cube{
-						Index:     cubeIndex,
-						Threshold: threshold,
+						Index:         cubeIndex,
+						Threshold:     threshold,
+						ThresholdType: thresholdType,
 					},
 				),
 			}
@@ -132,7 +139,7 @@ func (cubeSelectorSvc *CubeSelectorService) Select(cubesets []string, parameters
 		}
 	}
 
-	if isRandom {
+	if parameters.Type == cubeselector.Random {
 		log.Println("Cube selector: randomly selected", len(encodings), "cubes")
 	} else {
 		log.Println("Cube selector: selected", len(encodings), "cubes")
@@ -143,10 +150,10 @@ func (cubeSelectorSvc *CubeSelectorService) Select(cubesets []string, parameters
 func (cubeSelectorSvc *CubeSelectorService) Run(cubesets []string, parameters pipeline.CubeSelectParams) []encoder.Encoding {
 	encodings := []encoder.Encoding{}
 	switch parameters.Type {
-	case Random:
-		encodings = cubeSelectorSvc.Select(cubesets, parameters, true)
-	case Specific:
-		encodings = cubeSelectorSvc.Select(cubesets, parameters, false)
+	case cubeselector.Random:
+		encodings = cubeSelectorSvc.Select(cubesets, parameters)
+	case cubeselector.Specific:
+		encodings = cubeSelectorSvc.Select(cubesets, parameters)
 	}
 
 	return encodings
