@@ -21,44 +21,8 @@ import (
 )
 
 func (cuberSvc *CuberService) EncodingsFromCubes(encodingPath, cubesetPath string, depth int) []string {
-	// cubesCount, err := cuberSvc.filesystemSvc.CountLines(cubesetPath)
-	// cuberSvc.errorSvc.Fatal(err, "Inc. cuber: failed to count cubes")
-
-	// literals := []int{}
-	// file, err := os.Open(cubesetPath)
-	// scanner := bufio.NewScanner(file)
-	// for scanner.Scan() {
-	// 	line := scanner.Text()
-	// 	line[2:len(line)-2]
-
-	// }
-
-	// Generate encodings for the assumption cubes
-	// encodings := cuberSvc.cubeSelectorSvc.Select([]string{cubesetPath}, pipeline.CubeSelectParams{
-	// 	Type:     cubeselector.Random,
-	// 	Quantity: cubesCount,
-	// })
-	// for _, encoding := range encodings {
-	// 	// if cuberSvc.filesystemSvc.FileExists(encoding.GetName() + ".cnf") {
-	// 	// 	continue
-	// 	// }
-
-	// 	cube, exists := encoding.Cube.Get()
-	// 	if !exists {
-	// 		log.Fatal("Inc. cuber: failed to get the cube index")
-	// 	}
-	// 	cubeIndex := cube.Index
-
-	// encodingWriter, err := os.OpenFile(encoding.GetName()+".cnf", os.O_CREATE|os.O_WRONLY, 0644)
-	// cuberSvc.errorSvc.Fatal(err, "Inc. cuber: failed to write encoding from cube")
-
-	// 	err = cuberSvc.cubeSelectorSvc.EncodingFromCube(encodingPath, mo.Left[string, []int](cubesetPath), cubeIndex, encodingWriter)
-	// 	cuberSvc.errorSvc.Fatal(err, "Inc. cuber: failed to write encoding from cube")
-	// }
-
 	var encodings []string
 	for i := 1; i <= 2; i++ {
-		// newBaseEncoding := regexp.MustCompile(`.march.+`).ReplaceAllString(path.Base(cubesetPath), "")
 		newBaseEncoding := path.Base(cubesetPath)
 		newEncodingsPath := path.Join(cuberSvc.configSvc.Config.Paths.Encodings, newBaseEncoding+fmt.Sprintf(".cube%d.cnf", i-1))
 
@@ -97,14 +61,6 @@ func (cuberSvc *CuberService) Depth1Cube(encodingPath string, cubeParams pipelin
 
 	return cubesetPaths[0]
 }
-
-// func getSignatureHash(depth, index int) string {
-// 	signature := fmt.Sprintf("%d_%d", depth, index)
-// 	h := sha1.New()
-// 	h.Write([]byte(signature))
-// 	hash := fmt.Sprintf("%x", h.Sum([]byte{}))
-// 	return hash
-// }
 
 func adjoinCubes(cubesTree [][]int) string {
 	bt := BinaryTree{}
@@ -195,19 +151,6 @@ func (cuberSvc *CuberService) RunIncremental(encodings []encoder.Encoding, cubeP
 			cubesTree = append(cubesTree, make([]int, 2))
 			addToCubesTree(cubesTree, cubesetPath, 0, 0)
 
-			// io.Copy(debugFile, script.File(cubesetPath).Reader)
-			// for i := range newEncodings {
-			// 	cube, exists := newEncodings[i].Cube.Get()
-			// 	if !exists {
-			// 		continue
-			// 	}
-
-			// 	cube.Hash = getSignatureHash(1, i)
-			// }
-			// sample = append(sample, newEncodings...)
-
-			// log.Printf("Depth 0: %d instances", len(sample))
-
 			// Each iteration will result in a 1 level deeper cubing
 			for depth := 1; depth < endDepth+1; depth++ {
 				pool := pond.New(cubeParams.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
@@ -227,14 +170,6 @@ func (cuberSvc *CuberService) RunIncremental(encodings []encoder.Encoding, cubeP
 							cubeIndex, _ := strconv.Atoi(matches[0][2])
 							index := cubesetIndex*2 + cubeIndex
 							suffix := fmt.Sprintf("inc_d%di%d", depth, index)
-							// if cuberSvc.ShouldSkip(newEncoding.GetName()+".cnf", cuber.CutoffDepth, 1, hash) {
-							// 	encodings := cuberSvc.EncodingsFromCubes(newEncoding.GetName()+".cnf", cubesetPath)
-							// 	lock.Lock()
-							// 	newEncodings = append(newEncodings, encodings...)
-							// 	sample = append(sample, encodings...)
-							// 	lock.Unlock()
-							// 	return
-							// }
 
 							cubesetPath := cuberSvc.Depth1Cube(previousEncoding, cubeParams, suffix)
 							err := cuberSvc.cubesetSvc.BinEncode(cubesetPath)
@@ -266,14 +201,6 @@ func (cuberSvc *CuberService) RunIncremental(encodings []encoder.Encoding, cubeP
 
 				previousEncodings = newEncodings
 				previousCubesets = newCubesets
-
-				// if len(sample) >= 100 {
-				// 	for i := range sample {
-				// 		sample[i].BasePath = sample[i].GetName() + ".cnf"
-				// 		sample[i].Cube = mo.None[encoder.Cube]()
-				// 	}
-				// 	cuberSvc.solverSvc.Run(sample[len(sample)-100:], false, solveParams)
-				// }
 
 				cubes := adjoinCubes(cubesTree)
 				newCubesFilePath := path.Join(cuberSvc.configSvc.Config.Paths.Cubesets, path.Base(fmt.Sprintf("%s.march_d%d.cubes", encodingPath, depth+1)))
