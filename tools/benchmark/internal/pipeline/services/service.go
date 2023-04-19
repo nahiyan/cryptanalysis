@@ -3,7 +3,6 @@ package services
 import (
 	"benchmark/internal/encoder"
 	"benchmark/internal/pipeline"
-	"benchmark/internal/solver"
 	"log"
 )
 
@@ -28,6 +27,8 @@ func getInputType(pipe *pipeline.Pipe) InputOutputType {
 		return ListOfEncodings
 	case pipeline.Cube:
 		return ListOfEncodings
+	case pipeline.IncrementalCube:
+		return ListOfEncodings
 	case pipeline.CubeSelect:
 		return ListOfCubesets
 	case pipeline.Simplify:
@@ -46,6 +47,8 @@ func getOutputType(pipe *pipeline.Pipe) InputOutputType {
 	case pipeline.SlurmSolve:
 		return ListOfSlurmJobSolutions
 	case pipeline.Cube:
+		return ListOfCubesets
+	case pipeline.IncrementalCube:
 		return ListOfCubesets
 	case pipeline.CubeSelect:
 		return ListOfEncodings
@@ -82,57 +85,7 @@ func (pipelineSvc *PipelineService) Loop(pipes []pipeline.Pipe, handler LoopHand
 	}
 }
 
-func (pipelineSvc *PipelineService) TestRun(pipes []pipeline.Pipe) {
-	encodeParameters := pipeline.EncodeParams{
-		Xor:           []int{0},
-		Dobbertin:     []int{0},
-		DobbertinBits: []int{32},
-		Adders:        []encoder.AdderType{encoder.Espresso},
-		Hashes:        []string{"ffffffffffffffffffffffffffffffff", "00000000000000000000000000000000"},
-		Steps:         []int{16},
-	}
-
-	solveParameters := pipeline.SolveParams{
-		Solvers: []solver.Solver{solver.Kissat, solver.MapleSat},
-		Timeout: 5,
-		Workers: 16,
-	}
-
-	cubeParameters := pipeline.CubeParams{
-		Timeout:    5,
-		Thresholds: []int{2170, 2160},
-	}
-
-	cubeSelectParameters := pipeline.CubeSelectParams{
-		Type:     "random",
-		Quantity: 3,
-		Seed:     1,
-	}
-
-	newPipeline := make([]pipeline.Pipe, 0)
-	for _, pipe := range pipes {
-		newPipe := pipeline.Pipe{Type: pipe.Type}
-
-		switch pipe.Type {
-		case pipeline.Encode:
-			newPipe.EncodeParams = encodeParameters
-		case pipeline.Solve:
-			newPipe.SolveParams = solveParameters
-		case pipeline.SlurmSolve:
-			newPipe.SolveParams = solveParameters
-		case pipeline.Cube:
-			newPipe.CubeParams = cubeParameters
-		case pipeline.CubeSelect:
-			newPipe.CubeSelectParams = cubeSelectParameters
-		}
-
-		newPipeline = append(newPipeline, newPipe)
-	}
-
-	pipelineSvc.RealRun(newPipeline)
-}
-
-func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
+func (pipelineSvc *PipelineService) RunPipes(pipes []pipeline.Pipe) {
 	var lastValue interface{}
 	pipelineSvc.Loop(pipes, func(pipe, nextPipe *pipeline.Pipe) {
 		switch pipe.Type {
@@ -150,17 +103,25 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 		case pipeline.Simplify:
 			input, ok := lastValue.([]encoder.Encoding)
 			if !ok {
-				log.Fatal("Simplifier expects a list of encodings promises")
+				log.Fatal("Simplifier expects a list of encodings")
 			}
 			lastValue = pipelineSvc.simplifierSvc.Run(input, pipe.SimplifyParams)
 
 		case pipeline.Cube:
 			input, ok := lastValue.([]encoder.Encoding)
 			if !ok {
-				log.Fatal("Cuber expects a list of encoding promises")
+				log.Fatal("Cuber expects a list of encodings")
 			}
 
 			lastValue = pipelineSvc.cuberSvc.Run(input, pipe.CubeParams)
+
+		case pipeline.IncrementalCube:
+			input, ok := lastValue.([]encoder.Encoding)
+			if !ok {
+				log.Fatal("Incremental cuber expects a list of encodings")
+			}
+
+			lastValue = pipelineSvc.cuberSvc.RunIncremental(input, pipe.CubeParams, pipe.SimplifyParams, pipe.SolveParams)
 
 		case pipeline.CubeSelect:
 			input, ok := lastValue.([]string)
@@ -185,6 +146,5 @@ func (pipelineSvc *PipelineService) RealRun(pipes []pipeline.Pipe) {
 
 func (pipelineSvc *PipelineService) Run(pipes []pipeline.Pipe) {
 	pipelineSvc.Validate(pipes)
-	// pipelineSvc.TestRun(pipes)
-	pipelineSvc.RealRun(pipes)
+	pipelineSvc.RunPipes(pipes)
 }

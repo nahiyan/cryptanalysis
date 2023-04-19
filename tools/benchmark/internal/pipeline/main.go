@@ -1,17 +1,20 @@
 package pipeline
 
 import (
+	cubeselector "benchmark/internal/cube_selector"
+	"benchmark/internal/cuber"
 	"benchmark/internal/encoder"
 	"benchmark/internal/solver"
 )
 
 const (
-	Encode     = "encode"
-	Simplify   = "simplify"
-	Cube       = "cube"
-	CubeSelect = "cube_select"
-	Solve      = "solve"
-	SlurmSolve = "slurm_solve"
+	Encode          = "encode"
+	Simplify        = "simplify"
+	Cube            = "cube"
+	IncrementalCube = "inc_cube"
+	CubeSelect      = "cube_select"
+	Solve           = "solve"
+	SlurmSolve      = "slurm_solve"
 )
 
 type Type string
@@ -41,13 +44,15 @@ type CubeParams struct {
 	MinCubes         int
 	MinRefutedLeaves int
 	MinThreshold     int
-	Thresholds       []int
-	Workers          int
-	Timeout          int
+	// TODO: Add support for cutoff depth apart from in increamental cubing
+	ThresholdType cuber.ThresholdType
+	Thresholds    []int
+	Workers       int
+	Timeout       int
 }
 
 type CubeSelectParams struct {
-	Type     string
+	Type     cubeselector.CubeSelectionType
 	Quantity int
 	Seed     int64
 	Offset   int
