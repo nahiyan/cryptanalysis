@@ -2,6 +2,7 @@ package services
 
 import (
 	"benchmark/internal/config/services"
+	"benchmark/internal/cuber"
 	"benchmark/internal/encoder"
 	"benchmark/internal/solver"
 	"errors"
@@ -53,6 +54,20 @@ func TestOverall(t *testing.T) {
 			},
 			Solver:     solver.KissatCF,
 			MaxRuntime: time.Duration(5000) * time.Second,
+		},
+		{
+			Encoding: encoder.Encoding{
+				BasePath: "transalg_md4_41_00000000000000000000000000000000_dobbertin31.cnf.cadical_c1000000.cnf",
+				Cube: mo.Some(
+					encoder.Cube{
+						Threshold:     1234,
+						Index:         11000000,
+						ThresholdType: cuber.CutoffDepth,
+					},
+				),
+			},
+			Solver:     solver.YalSat,
+			MaxRuntime: time.Duration(30) * time.Second,
 		},
 	})
 	if err != nil {
@@ -144,9 +159,31 @@ func TestOverall(t *testing.T) {
 
 	// Task 5
 	{
-		_, err := svc.GetTask(tasksSetPath, 5)
-		if err == nil {
+		task, err := svc.GetTask(tasksSetPath, 5)
+		if err != nil {
 			t.Fatal("The call to fetch task 5 should fail")
+		}
+
+		if cube, exists := task.Encoding.Cube.Get(); exists {
+			if cube.Threshold != 1234 {
+				t.Fatalf("Expected threshold = 1234, got %d", cube.Threshold)
+			}
+			if cube.Index != 11000000 {
+				t.Fatalf("Expected index = 11000000, got %d", cube.Index)
+			}
+			if cube.ThresholdType != cuber.CutoffDepth {
+				t.Fatalf("Expected threshold type of cutoff_depth, got %s", cube.ThresholdType)
+			}
+		} else {
+			t.Fatal("Cube info. should exist")
+		}
+	}
+
+	// Task 6
+	{
+		_, err := svc.GetTask(tasksSetPath, 6)
+		if err == nil {
+			t.Fatal("The call to fetch task 6 should fail")
 		}
 
 		if !errors.Is(err, io.EOF) {

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"benchmark/internal/cuber"
 	"benchmark/internal/encoder"
 	"benchmark/internal/solver"
 	"bufio"
@@ -74,6 +75,30 @@ func uint8ToSolver(solver_ uint8) solver.Solver {
 	return solver.Kissat
 }
 
+// Important: Register new threshold type here
+func thresholdTypeToUint8(thresholdType cuber.ThresholdType) uint8 {
+	switch thresholdType {
+	case cuber.CutoffVars:
+		return uint8(0)
+	case cuber.CutoffDepth:
+		return uint8(1)
+	}
+
+	return uint8(0)
+}
+
+// Important: Register new threshold type here
+func uint8ToThresholdType(thresholdType_ uint8) cuber.ThresholdType {
+	switch thresholdType_ {
+	case 0:
+		return cuber.CutoffVars
+	case 1:
+		return cuber.CutoffDepth
+	}
+
+	return cuber.CutoffVars
+}
+
 func (solverSvc *SolverService) AddTasks(tasks []Task) (string, error) {
 	// Tasks file
 	name := solverSvc.randomSvc.RandString(10)
@@ -98,11 +123,18 @@ func (solverSvc *SolverService) AddTasks(tasks []Task) (string, error) {
 	for _, task := range tasks {
 		log.Println("Solver: Add task ", task)
 		cubeThreshold := 0
+		cubeThresholdType := cuber.ThresholdType(cuber.CutoffVars)
 		cubeIndex := 0
 		if cube, exists := task.Encoding.Cube.Get(); exists {
+			cubeThresholdType = cube.ThresholdType
 			cubeThreshold = cube.Threshold
 			cubeIndex = cube.Index
 		}
+
+		// Threshold type
+		thresholdTypeBytes := make([]byte, 1)
+		thresholdTypeBytes[0] = thresholdTypeToUint8(cubeThresholdType)
+		tasksWriter.Write(thresholdTypeBytes)
 
 		// Threshold
 		thresholdBytes := make([]byte, 2)
@@ -130,7 +162,7 @@ func (solverSvc *SolverService) AddTasks(tasks []Task) (string, error) {
 		tasksWriter.Write(basePathBytes)
 
 		// Add the ending address to the maps
-		bytesCount := len(thresholdBytes) + len(indexBytes) + len(solverBytes) + len(timeoutBytes) + len(basePathBytes)
+		bytesCount := len(thresholdTypeBytes) + len(thresholdBytes) + len(indexBytes) + len(solverBytes) + len(timeoutBytes) + len(basePathBytes)
 		addressAccumulator += bytesCount
 		addressBytes := make([]byte, 4)
 		binary.BigEndian.PutUint32(addressBytes, uint32(addressAccumulator))
@@ -189,17 +221,19 @@ func (solverSvc *SolverService) GetTask(tasksSetPath string, index int) (Task, e
 	}
 
 	// Construct the task
-	cubeThreshold := int(binary.BigEndian.Uint16(taskBytes[0:2]))
-	cubeIndex := int(binary.BigEndian.Uint32(taskBytes[2:6]))
-	solver_ := uint8(taskBytes[6])
-	task.MaxRuntime = time.Duration(int(binary.BigEndian.Uint32(taskBytes[7:11]))) * time.Second
-	basePath := string(taskBytes[11:])
+	cubeThresholdType := uint8ToThresholdType(taskBytes[0])
+	cubeThreshold := int(binary.BigEndian.Uint16(taskBytes[1:3]))
+	cubeIndex := int(binary.BigEndian.Uint32(taskBytes[3:7]))
+	solver_ := uint8(taskBytes[7])
+	task.MaxRuntime = time.Duration(int(binary.BigEndian.Uint32(taskBytes[8:12]))) * time.Second
+	basePath := string(taskBytes[12:])
 
 	task.Encoding.BasePath = basePath
 	if cubeIndex != 0 && cubeThreshold != 0 {
 		task.Encoding.Cube = mo.Some(encoder.Cube{
-			Threshold: cubeThreshold,
-			Index:     cubeIndex,
+			Threshold:     cubeThreshold,
+			Index:         cubeIndex,
+			ThresholdType: cubeThresholdType,
 		})
 	}
 
