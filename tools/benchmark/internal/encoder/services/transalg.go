@@ -16,7 +16,7 @@ import (
 	"github.com/samber/lo"
 )
 
-//go:embed transalg.txt
+//go:embed transalg_md4.txt
 var layoutMd4 string
 
 //go:embed transalg_md5.txt
@@ -26,7 +26,7 @@ var layoutMd5 string
 var layoutSha256 string
 
 func (encoderSvc *EncoderService) GenerateTransalgCode(instanceInfo encoder.InstanceInfo, dobbertinConstant uint32) (string, error) {
-	tmpl := template.New("transalg.txt").Funcs(map[string]interface{}{
+	tmpl := template.New("transalg_md4.txt").Funcs(map[string]interface{}{
 		"inc": func(i int) int {
 			return i + 1
 		},
