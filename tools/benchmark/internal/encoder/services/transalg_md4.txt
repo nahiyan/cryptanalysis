@@ -23,35 +23,29 @@ bit H(bit X[32], bit Y[32], bit Z[32])
 }
 
 // Round 1, (a + F(b, c, d) + M) <<< s
-bit FF(bit a[32], bit b[32], bit c[32], bit d[32], bit M[32], int s, int i)
+bit FF(bit a[32], bit b[32], bit c[32], bit d[32], bit M[32], int s)
 {
     a = sum(sum(a, F(b, c, d), 32), M, 32);
-    return a <<< s;
+    return (a <<< s);
 }
 
 // Round 2, (a + G(b, c, d) + M + 0x5A827999) <<< s
-bit GG(bit a[32], bit b[32], bit c[32], bit d[32], bit M[32], int s, int i)
+bit GG(bit a[32], bit b[32], bit c[32], bit d[32], bit M[32], int s)
 {
     a = sum(sum(sum(a, G(b, c, d), 32), M, 32), 0x5A827999, 32);
-    return a <<< s;
+    return (a <<< s);
 }
 
 // Round 3, (a + H(b, c, d) + M + 0x6ED9EBA1) <<< s
-bit HH(bit a[32], bit b[32], bit c[32], bit d[32], bit M[32], int s, int index)
+bit HH(bit a[32], bit b[32], bit c[32], bit d[32], bit M[32], int s)
 {
-    bit h[32] = H(b, c, d);
-    if (index == 32) {
-        for (int i = 0; i < 32; i = i + 1) {
-            assert(!h[i]);
-        }
-    }
-    
-    a = sum(sum(sum(a, h, 32), M, 32), 0x6ED9EBA1, 32);
-    return a <<< s;
+    a = sum(sum(sum(a, H(b, c, d), 32), M, 32), 0x6ED9EBA1, 32);
+    return (a <<< s);
 }
 
 void main()
 {
+
     bit a[32] = A;
     bit b[32] = B;
     bit c[32] = C;
@@ -67,7 +61,7 @@ void main()
 
     // Round 3
     {{- end }}
-    {{ index $.Registers (quo $i 4) }} = {{ function $i }}({{ index $.Registers (quo $i 4) }}, {{ index $.Registers (add (quo $i 4) 4) }}, {{ index $.Registers (add (quo $i 4) 8) }}, {{ index $.Registers (add (quo $i 4) 12) }}, M[{{ $item }}], {{ index $.n $i }}, {{ add $i 1 }}); // Step {{ inc $i }}
+    {{ index $.Registers (quo $i 4) }} = {{ function $i }}({{ index $.Registers (quo $i 4) }}, {{ index $.Registers (add (quo $i 4) 4) }}, {{ index $.Registers (add (quo $i 4) 8) }}, {{ index $.Registers (add (quo $i 4) 12) }}, M[{{ $item }}], {{ index $.n $i }}); // Step {{ inc $i }}
     {{- dobbertinsConstraint $i (index $.Registers (quo $i 4)) }}
     {{- end }}
     
