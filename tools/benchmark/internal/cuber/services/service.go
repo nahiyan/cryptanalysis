@@ -148,7 +148,7 @@ func (cuberSvc *CuberService) Invoke(parameters InvokeParameters, control Invoke
 	}
 
 	cubesFilePath := cuberSvc.CubesFilePath(parameters.Encoding, parameters.ThresholdType, parameters.Threshold, parameters.Suffix)
-	cmd := exec.CommandContext(ctx, config.Paths.Bin.March, parameters.Encoding, "-o", cubesFilePath, thresholdArg, strconv.Itoa(parameters.Threshold), "-m", strconv.Itoa(parameters.MaxVariable))
+	cmd := exec.CommandContext(ctx, config.Paths.Bin.March, parameters.Encoding, "-o", cubesFilePath, thresholdArg, strconv.Itoa(parameters.Threshold))
 	log.Println(cmd)
 	cuberSvc.commandSvc.AddToGroup(control.CommandGroup, cmd)
 
