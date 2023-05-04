@@ -25,7 +25,7 @@ var layoutMd5 string
 //go:embed transalg_sha256.txt
 var layoutSha256 string
 
-func (encoderSvc *EncoderService) GenerateTransalgCode(instanceInfo encoder.InstanceInfo, dobbertinConstant uint32) (string, error) {
+func (encoderSvc *EncoderService) GenerateTransalgMd4Code(instanceInfo encoder.InstanceInfo, dobbertinConstant uint32) (string, error) {
 	tmpl := template.New("transalg_md4.txt").Funcs(map[string]interface{}{
 		"inc": func(i int) int {
 			return i + 1
@@ -208,7 +208,7 @@ func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.EncodeParam
 			err               error
 		)
 		if parameters.Function == encoder.Md4 {
-			transalgCode, err = encoderSvc.GenerateTransalgCode(instanceInfo, dobbertinConstant)
+			transalgCode, err = encoderSvc.GenerateTransalgMd4Code(instanceInfo, dobbertinConstant)
 		} else if parameters.Function == encoder.Md5 {
 			transalgCode, err = encoderSvc.GenerateTransalgMd5Code(instanceInfo)
 		} else if parameters.Function == encoder.Sha256 {
