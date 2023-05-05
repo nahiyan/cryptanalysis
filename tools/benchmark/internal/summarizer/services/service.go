@@ -139,6 +139,9 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 					result, processTime, runTime, err = summarizerSvc.solverSvc.ParseLogFromFile(path.Join(config.Paths.Logs, logFile), solver_, &solutionLiterals)
 				}
 				if err != nil {
+					if strings.Contains(err.Error(), "too many open files") {
+						log.Fatal("Summarizer: " + err.Error())
+					}
 					return
 				}
 
