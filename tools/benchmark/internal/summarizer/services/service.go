@@ -495,7 +495,10 @@ func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, f
 
 			formattedMessage := strings.Builder{}
 			for j := 0; j < 128; j += 8 {
-				formattedMessage.WriteString(message[j:j+8] + " ")
+				formattedMessage.WriteString(message[j : j+8])
+				if j != 120 {
+					formattedMessage.WriteString(" ")
+				}
 			}
 
 			file.WriteString(fmt.Sprintf("%d. %s\n", i+1, formattedMessage.String()))
