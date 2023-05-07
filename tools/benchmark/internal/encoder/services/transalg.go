@@ -25,64 +25,35 @@ var layoutMd5 string
 //go:embed transalg_sha256.txt
 var layoutSha256 string
 
-func (encoderSvc *EncoderService) GenerateTransalgMd4Code(instanceInfo encoder.InstanceInfo, dobbertinConstant uint32) (string, error) {
+func (encoderSvc *EncoderService) GenerateTransalgMd4Code(instanceInfo encoder.InstanceInfo) (string, error) {
+	dobbertinSteps := []int{
+		13, 14, 15,
+		17, 18, 19,
+		21, 22, 23,
+		25, 26, 27,
+	}
+	dobbertinInfo, dobbertinAttackEnabled := instanceInfo.Dobbertin.Get()
+
 	tmpl := template.New("transalg_md4.txt").Funcs(map[string]interface{}{
-		"inc": func(i int) int {
-			return i + 1
-		},
-		"quo": func(i int, q int) int {
-			return i % q
-		},
-		"add": func(i int, b int) int {
-			return i + b
-		},
-		"function": func(i int) string {
-			if i < 16 {
-				return "FF"
-			}
-			if i < 32 {
-				return "GG"
-			}
+		"step": func(step int, body string) string {
+			if step <= instanceInfo.Steps {
+				dobbertinConstraint := ""
+				if dobbertinAttackEnabled && lo.Contains(dobbertinSteps, step) {
+					registers := []byte{'a', 'd', 'c', 'b'}
+					register := registers[(step-1)%4]
 
-			return "HH"
-		},
-		"dobbertinsConstraint": func(i int, register string) string {
-			dobbertinIndices := []int{
-				12, 13, 14,
-				16, 17, 18,
-				20, 21, 22,
-				24, 25, 26,
-			}
+					if step == 13 && dobbertinInfo.Bits < 32 {
+						for i := 0; i < dobbertinInfo.Bits; i++ {
+							dobbertinConstraint += fmt.Sprintf("\n\tassert(!(%c[%d] ^ K[%d]));", register, i, i)
+						}
+					} else {
+						dobbertinConstraint = fmt.Sprintf("\n\tassert(!(%c ^ K));", register)
+					}
+				}
 
-			if _, exists := lo.Find(dobbertinIndices, func(index int) bool {
-				return i == index
-			}); exists && i != 12 {
-				return fmt.Sprintf("\n\tassert(!(%s ^ K));", register)
+				return body + fmt.Sprintf(" // Step %d", step) + dobbertinConstraint
 			}
-
-			dobbertinInfo, exists := instanceInfo.Dobbertin.Get()
-			if !exists {
-				return ""
-			}
-
-			if i != 12 {
-				return ""
-			}
-
-			bits := dobbertinInfo.Bits
-			if bits == 0 {
-				return ""
-			}
-
-			if bits == 32 {
-				return fmt.Sprintf("\n\tassert(!(%s ^ K));", register)
-			}
-
-			code := "\n"
-			for j := 0; j < bits; j += 1 {
-				code += fmt.Sprintf("\tassert(%s[%d]);\n", register, j)
-			}
-			return code
+			return ""
 		},
 	})
 	tmpl, err := tmpl.Parse(layoutMd4)
@@ -90,47 +61,10 @@ func (encoderSvc *EncoderService) GenerateTransalgMd4Code(instanceInfo encoder.I
 		return "", err
 	}
 
-	m := []int{
-		0, 1, 2, 3,
-		4, 5, 6, 7,
-		8, 9, 10, 11,
-		12, 13, 14, 15,
-		0, 4, 8, 12,
-		1, 5, 9, 13,
-		2, 6, 10, 14,
-		3, 7, 11, 15,
-		0, 8, 4, 12,
-		2, 10, 6, 14,
-		1, 9, 5, 13,
-		3, 11, 7, 15}
-	n := []int{
-		3, 7, 11, 19,
-		3, 7, 11, 19,
-		3, 7, 11, 19,
-		3, 7, 11, 19,
-		3, 5, 9, 13,
-		3, 5, 9, 13,
-		3, 5, 9, 13,
-		3, 5, 9, 13,
-		3, 9, 11, 15,
-		3, 9, 11, 15,
-		3, 9, 11, 15,
-		3, 9, 11, 15}
-
-	registers := []string{
-		"a", "d", "c", "b",
-		"b", "a", "d", "c",
-		"c", "b", "a", "d",
-		"d", "c", "b", "a",
-	}
-
 	var buffer bytes.Buffer
-	steps := instanceInfo.Steps
 	tmpl.Execute(&buffer, map[string]interface{}{
-		"DobbertinConstant": fmt.Sprintf("0x%x", dobbertinConstant),
-		"m":                 m[:steps],
-		"n":                 n[:steps],
-		"Registers":         registers,
+		"Steps":             instanceInfo.Steps,
+		"DobbertinConstant": math.MaxUint32,
 		"OneTargetHash":     instanceInfo.TargetHash == "ffffffffffffffffffffffffffffffff",
 	})
 	code := buffer.String()
@@ -142,7 +76,7 @@ func (encoderSvc *EncoderService) GenerateTransalgMd5Code(instanceInfo encoder.I
 	tmpl := template.New("transalg_md5.txt").Funcs(map[string]interface{}{
 		"step": func(step int, body string) string {
 			if step <= instanceInfo.Steps {
-				return body
+				return body + fmt.Sprintf(" // Step %d", step)
 			}
 			return ""
 		},
@@ -203,12 +137,11 @@ func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.EncodeParam
 		}
 
 		var (
-			dobbertinConstant uint32 = math.MaxUint32
-			transalgCode      string
-			err               error
+			transalgCode string
+			err          error
 		)
 		if parameters.Function == encoder.Md4 {
-			transalgCode, err = encoderSvc.GenerateTransalgMd4Code(instanceInfo, dobbertinConstant)
+			transalgCode, err = encoderSvc.GenerateTransalgMd4Code(instanceInfo)
 		} else if parameters.Function == encoder.Md5 {
 			transalgCode, err = encoderSvc.GenerateTransalgMd5Code(instanceInfo)
 		} else if parameters.Function == encoder.Sha256 {
