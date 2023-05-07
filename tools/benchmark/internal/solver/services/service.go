@@ -151,6 +151,7 @@ func (solverSvc *SolverService) ShouldSkip(encoding encoder.Encoding, solver_ so
 		err     error
 	)
 
+	// TODO: Abort on error for too many files open
 	if solverSvc.combinedLogsSvc.IsLoaded() {
 		result, _, runTime, err = solverSvc.ParseLogFromCombinedLog(path.Base(logFilePath), solver_, nil)
 		if err != nil {
@@ -231,6 +232,7 @@ func (solverSvc *SolverService) RunSlurm(encodings []encoder.Encoding, parameter
 		timeout)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to create slurm job file")
 
+	// TODO: Show how many tasks are scheduled in total
 	jobId, err := solverSvc.slurmSvc.ScheduleJob(jobFilePath, nil)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to schedule the job")
 	log.Printf("Solver: scheduled job with ID %d with %d tasks per worker\n", jobId, tasksPerWorker)
