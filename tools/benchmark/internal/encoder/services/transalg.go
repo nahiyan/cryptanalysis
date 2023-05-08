@@ -37,6 +37,7 @@ func (encoderSvc *EncoderService) GenerateTransalgMd4Code(instanceInfo encoder.I
 	tmpl := template.New("transalg_md4.txt").Funcs(map[string]interface{}{
 		"step": func(step int, body string) string {
 			if step <= instanceInfo.Steps {
+				// Construct the Dobbertin's constraint
 				dobbertinConstraint := ""
 				if dobbertinAttackEnabled && lo.Contains(dobbertinSteps, step) {
 					registers := []byte{'a', 'd', 'c', 'b'}
