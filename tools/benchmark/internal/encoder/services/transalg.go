@@ -40,19 +40,46 @@ func (encoderSvc *EncoderService) GenerateTransalgMd4Code(instanceInfo encoder.I
 				// Construct the Dobbertin's constraint
 				dobbertinConstraint := ""
 				if dobbertinAttackEnabled && lo.Contains(dobbertinSteps, step) {
+					// Required for constructing the constraints
 					registers := []byte{'a', 'd', 'c', 'b'}
 					register := registers[(step-1)%4]
 
-					if step == 13 && dobbertinInfo.Bits < 32 {
-						for i := 0; i < dobbertinInfo.Bits; i++ {
-							dobbertinConstraint += fmt.Sprintf("\n\tassert(!(%c[%d] ^ K[%d]));", register, i, i)
+					// _, stepIndex, _ := lo.FindIndexOf[int](dobbertinSteps, func(i int) bool {
+					// 	return step == i
+					// })
+
+					// if step == 13 && dobbertinInfo.Bits < 32 {
+					// 	for i := 0; i < dobbertinInfo.Bits; i++ {
+					// 		dobbertinConstraint += fmt.Sprintf("\n\tassert(!(%c[%d] ^ K[%d]));", register, i, i)
+					// 	}
+					// } else {
+					// 	dobbertinConstraint = fmt.Sprintf("\n\tassert(!(%c ^ a_13));", register)
+					// }
+					if step != 13 {
+						for _, dobbertinStep := range dobbertinSteps {
+							if dobbertinStep != step && dobbertinStep <= instanceInfo.Steps {
+								for i := 0; i < dobbertinInfo.Bits; i++ {
+									// dobbertinConstraint += fmt.Sprintf("\n\tassert(!(%c[%d] ^ K[%d]));", register, i, i)
+									dobbertinConstraint += fmt.Sprintf("\n\tassert(!(%c_%d[%d] ^ %c_%d[%d]));", register, step, i, registers[(dobbertinStep-1)%4], dobbertinStep, i)
+								}
+								// dobbertinConstraint += fmt.Sprintf("\n\tassert(!(%c_%d ^ %c_%d));", register, step, registers[(dobbertinStep-1)%4], dobbertinStep)
+								break
+							}
 						}
 					} else {
-						dobbertinConstraint = fmt.Sprintf("\n\tassert(!(%c ^ K));", register)
+						for i := 0; i < 0; i++ {
+							dobbertinConstraint += fmt.Sprintf("\n\tassert(!(a_13[%d] ^ K[%d]));", i, i)
+						}
 					}
 				}
 
-				return body + fmt.Sprintf(" // Step %d", step) + dobbertinConstraint
+				// TODO: Construct the XOR operand constraint
+				xorConstraints := ""
+				// if step >= 33 && step <= 48 {
+				// 	log.Printf("")
+				// }
+
+				return body + fmt.Sprintf(" // Step %d", step) + dobbertinConstraint + xorConstraints
 			}
 			return ""
 		},

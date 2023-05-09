@@ -2,11 +2,6 @@ __in bit M[16][32];
 bit K[32] = {{ .DobbertinConstant }};
 __out bit Hash[4][32];
 
-bit A[32] = 0x67452301;
-bit B[32] = 0xEFCDAB89;
-bit C[32] = 0x98BADCFE;
-bit D[32] = 0x10325476;
-
 bit F(bit X[32], bit Y[32], bit Z[32])
 {
     return (X & Y) | (!X & Z);
@@ -46,10 +41,23 @@ bit HH(bit a[32], bit b[32], bit c[32], bit d[32], bit M[32], int s)
 void main()
 {
 
-    bit a[32] = A;
-    bit b[32] = B;
-    bit c[32] = C;
-    bit d[32] = D;
+    bit a[32] = 0x67452301;
+    bit b[32] = 0xEFCDAB89;
+    bit c[32] = 0x98BADCFE;
+    bit d[32] = 0x10325476;
+
+    bit a_13[32];
+    bit d_14[32];
+    bit c_15[32];
+    bit a_17[32];
+    bit d_18[32];
+    bit c_19[32];
+    bit a_21[32];
+    bit d_22[32];
+    bit c_23[32];
+    bit a_25[32];
+    bit d_26[32];
+    bit c_27[32];
 
     // Round 1: FF(a,b,c,d,M_j,s) 1-16
 
@@ -68,36 +76,36 @@ void main()
 	{{ step 11 "c = FF(c, d, a, b, M[10], 11);" }}
 	{{ step 12 "b = FF(b, c, d, a, M[11], 19);" }}
 
-	{{ step 13 "a = FF(a, b, c, d, M[12], 3);" }}
-	{{ step 14 "d = FF(d, a, b, c, M[13], 7);" }}
-	{{ step 15 "c = FF(c, d, a, b, M[14], 11);" }}
-	{{ step 16 "b = FF(b, c, d, a, M[15], 19);" }}
+	{{ step 13 "a_13 = FF(a, b, c, d, M[12], 3);" }}
+	{{ step 14 "d_14 = FF(d, a_13, b, c, M[13], 7);" }}
+	{{ step 15 "c_15 = FF(c, d_14, a_13, b, M[14], 11);" }}
+	{{ step 16 "b = FF(b, c_15, d_14, a_13, M[15], 19);" }}
 
 	// Round 2: GG(a,b,c,d,M_j,s) 17-32
 
-	{{ step 17 "a = GG(a, b, c, d, M[0], 3);" }}
-	{{ step 18 "d = GG(d, a, b, c, M[4], 5);" }}
-	{{ step 19 "c = GG(c, d, a, b, M[8], 9);" }}
-	{{ step 20 "b = GG(b, c, d, a, M[12], 13);" }}
+	{{ step 17 "a_17 = GG(a_13, b, c_15, d_14, M[0], 3);" }}
+	{{ step 18 "d_18 = GG(d_14, a_17, b, c_15, M[4], 5);" }}
+	{{ step 19 "c_19 = GG(c_15, d_18, a_17, b, M[8], 9);" }}
+	{{ step 20 "b = GG(b, c_19, d_18, a_17, M[12], 13);" }}
 
-	{{ step 21 "a = GG(a, b, c, d, M[1], 3);" }}
-	{{ step 22 "d = GG(d, a, b, c, M[5], 5);" }}
-	{{ step 23 "c = GG(c, d, a, b, M[9], 9);" }}
-	{{ step 24 "b = GG(b, c, d, a, M[13], 13);" }}
+	{{ step 21 "a_21 = GG(a_17, b, c_19, d_18, M[1], 3);" }}
+	{{ step 22 "d_22 = GG(d_18, a_21, b, c_19, M[5], 5);" }}
+	{{ step 23 "c_23 = GG(c_19, d_22, a_21, b, M[9], 9);" }}
+	{{ step 24 "b = GG(b, c_23, d_22, a_21, M[13], 13);" }}
 
-	{{ step 25 "a = GG(a, b, c, d, M[2], 3);" }}
-	{{ step 26 "d = GG(d, a, b, c, M[6], 5);" }}
-	{{ step 27 "c = GG(c, d, a, b, M[10], 9);" }}
-	{{ step 28 "b = GG(b, c, d, a, M[14], 13);" }}
+	{{ step 25 "a_25 = GG(a_21, b, c_23, d_22, M[2], 3);" }}
+	{{ step 26 "d_26 = GG(d_22, a_25, b, c_23, M[6], 5);" }}
+	{{ step 27 "c_27 = GG(c_23, d_26, a_25, b, M[10], 9);" }}
+	{{ step 28 "b = GG(b, c_27, d_26, a_25, M[14], 13);" }}
 
-	{{ step 29 "a = GG(a, b, c, d, M[3], 3);" }}
-	{{ step 30 "d = GG(d, a, b, c, M[7], 5);" }}
-	{{ step 31 "c = GG(c, d, a, b, M[11], 9);" }}
+	{{ step 29 "a = GG(a_25, b, c_27, d_26, M[3], 3);" }}
+	{{ step 30 "d = GG(d_26, a, b, c_27, M[7], 5);" }}
+	{{ step 31 "c = GG(c_27, d, a, b, M[11], 9);" }}
 	{{ step 32 "b = GG(b, c, d, a, M[15], 13);" }}
 
 	// Round 3: HH(a,b,c,d,M_j,s) 33-48
 
-	{{ step 33 "a = HH(a, b, c, d, M[0], 3);" }}
+	{{ step 33 "a = HH(a, b, c, d, M[0], 3); assert((c & d) | (b & d) | (b & c) | (!b & !c & !d));" }}
 	{{ step 34 "d = HH(d, a, b, c, M[8], 9);" }}
 	{{ step 35 "c = HH(c, d, a, b, M[4], 11);" }}
 	{{ step 36 "b = HH(b, c, d, a, M[12], 15);" }}
@@ -124,15 +132,10 @@ void main()
 
     {{ if eq $.OneTargetHash true -}}
     // 1^(128)
-    assert(Hash[0]);
-    assert(Hash[1]);
-    assert(Hash[2]);
-    assert(Hash[3]);
+	//assert(!Hash[0]);
+	assert(Hash[0] & Hash[1] & Hash[2] & Hash[3]);
     {{- else }}
     // 0^(128)
-    assert(!Hash[0]);
-    assert(!Hash[1]);
-    assert(!Hash[2]);
-    assert(!Hash[3]);
+    assert(!Hash[0] & !Hash[1] & !Hash[2] & !Hash[3]);
     {{- end }}
 }
