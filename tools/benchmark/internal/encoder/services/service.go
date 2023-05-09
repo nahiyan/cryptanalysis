@@ -187,9 +187,9 @@ func (encoderSvc *EncoderService) LoopThroughVariation(params pipeline.EncodePar
 							// TODO: Ignore dobbertin stuff for MD5
 							for _, dobbertinBits := range params.DobbertinBits {
 								// Skip dobbertin's attacks when steps count < 27
-								if steps < 27 && dobbertin == 1 {
-									continue
-								}
+								// if steps < 27 && dobbertin == 1 {
+								// 	continue
+								// }
 
 								dobbertin_ := mo.None[encoder.DobbertinInfo]()
 								if dobbertin == 1 {
