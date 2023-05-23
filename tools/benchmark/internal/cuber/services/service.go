@@ -148,7 +148,7 @@ func (cuberSvc *CuberService) Invoke(parameters InvokeParameters, control Invoke
 	}
 
 	cubesFilePath := cuberSvc.CubesFilePath(parameters.Encoding, parameters.ThresholdType, parameters.Threshold, parameters.Suffix)
-	cmd := exec.CommandContext(ctx, config.Paths.Bin.March, parameters.Encoding, "-o", cubesFilePath, thresholdArg, strconv.Itoa(parameters.Threshold))
+	cmd := exec.CommandContext(ctx, config.Paths.Bin.March, parameters.Encoding, thresholdArg, strconv.Itoa(parameters.Threshold), "-o", cubesFilePath)
 	log.Println(cmd)
 	cuberSvc.commandSvc.AddToGroup(control.CommandGroup, cmd)
 
@@ -182,13 +182,20 @@ func (cuberSvc *CuberService) Loop(encodings []encoder.Encoding, parameters pipe
 			freeVariables := encodingInfo.FreeVariables
 			cuberSvc.errorSvc.Fatal(err, "Cuber: failed to process the encoding")
 
-			stepSize := 10
+			stepChange := parameters.StepChange
+			if stepChange == 0 {
+				stepChange = 10
+			}
 			// Initial threshold is the nearest multiple of step size less than the num. of free variables
-			threshold := int(math.Floor(float64(freeVariables)/float64(stepSize)) * float64(stepSize))
+			threshold := int(math.Floor(float64(freeVariables)/float64(stepChange)) * float64(stepChange))
+			if parameters.InitialThreshold != 0 {
+				threshold = parameters.InitialThreshold
+			}
 
-			for {
+			// Try 100 different thresholds
+			for i := 0; i < 100; i++ {
 				thresholds = append(thresholds, int(threshold))
-				threshold -= stepSize
+				threshold -= stepChange
 
 				if threshold <= 0 {
 					break

@@ -44,6 +44,8 @@ type CubeParams struct {
 	MinCubes         int
 	MinRefutedLeaves int
 	MinThreshold     int
+	StepChange       int
+	InitialThreshold int
 	// TODO: Add support for cutoff depth apart from in increamental cubing
 	ThresholdType cuber.ThresholdType
 	Thresholds    []int
