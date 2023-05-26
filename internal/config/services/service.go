@@ -3,6 +3,7 @@ package services
 import (
 	"cryptanalysis/internal/config"
 	"log"
+	"os"
 
 	"github.com/spf13/viper"
 )
@@ -18,6 +19,11 @@ func (configSvc *ConfigService) Init() {
 // Important: Register new SAT Solver here
 func (configSvc *ConfigService) Process() {
 	configFilePath := "./config.toml"
+	selfPath, err := os.Executable()
+	if err != nil {
+		log.Fatal("Failed to get own path")
+	}
+	log.Println(selfPath)
 
 	// Binaries
 	viper.SetDefault("Paths.Bin.CryptoMiniSat", "cryptominisat")
@@ -31,11 +37,10 @@ func (configSvc *ConfigService) Process() {
 	viper.SetDefault("Paths.Bin.LSTechMaple", "lstech_maple")
 	viper.SetDefault("Paths.Bin.KissatCF", "kissat_cf")
 	viper.SetDefault("Paths.Bin.March", "march_cu_pc")
-	viper.SetDefault("Paths.Bin.Satelite", "satelite")
 	viper.SetDefault("Paths.Bin.SolutionAnalyzer", "solution_analyzer")
 	viper.SetDefault("Paths.Bin.NejatiEncoder", "nejati_encoder")
 	viper.SetDefault("Paths.Bin.Transalg", "transalg")
-	viper.SetDefault("Paths.Bin.cryptanalysis", "cryptanalysis")
+	viper.SetDefault("Paths.Bin.Self", selfPath)
 
 	// Database
 	viper.SetDefault("Paths.Database", "database.db")

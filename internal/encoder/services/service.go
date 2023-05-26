@@ -167,13 +167,6 @@ func (encoderSvc *EncoderService) ProcessInstanceName(instanceName string) (enco
 		})
 	}
 
-	// SatELite Simplification
-	if index := strings.Index(instanceName, ".satelite"); index != -1 {
-		info.Simplification = mo.Some(encoder.SimplificationInfo{
-			Simplifier: simplifier.Satelite,
-		})
-	}
-
 	return info, nil
 }
 

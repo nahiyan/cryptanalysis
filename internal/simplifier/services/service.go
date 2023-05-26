@@ -5,6 +5,7 @@ import (
 	"cryptanalysis/internal/pipeline"
 	"cryptanalysis/internal/simplifier"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -42,8 +43,7 @@ func (simplifierSvc *SimplifierService) TrackedInvoke(simplifier_ simplifier.Sim
 		simplifierBinPath = config.Paths.Bin.Cadical
 		args = append(args, "-o", outputFilePath, "-e", outputFilePath+".rs.txt", "-c", strconv.Itoa(conflicts))
 	} else {
-		simplifierBinPath = config.Paths.Bin.Satelite
-		args = append(args, outputFilePath, outputFilePath+".var_map.txt", "+pre")
+		log.Fatal("Simplifier not supported")
 	}
 
 	cmd := exec.Command(simplifierBinPath, args...)
@@ -87,17 +87,11 @@ func (simplifierSvc *SimplifierService) RunWith(simplifier_ simplifier.Simplifie
 
 	for _, encoding := range encodings {
 		conflictsList := parameters.Conflicts
-		if simplifier_ == simplifier.Satelite {
-			conflictsList = []int{0}
-		}
-
 		for _, conflicts := range conflictsList {
 			var outputFilePath string
 			switch simplifier_ {
 			case simplifier.Cadical:
 				outputFilePath = fmt.Sprintf("%s.cadical_c%d.cnf", encoding.BasePath, conflicts)
-			case simplifier.Satelite:
-				outputFilePath = fmt.Sprintf("%s.satelite.cnf", encoding.BasePath)
 			}
 			simplifiedEncodings = append(simplifiedEncodings, encoder.Encoding{BasePath: outputFilePath})
 
@@ -131,8 +125,6 @@ func (simplifierSvc *SimplifierService) Run(encodings []encoder.Encoding, parame
 	switch parameters.Name {
 	case simplifier.Cadical:
 		return simplifierSvc.RunWith(simplifier.Cadical, encodings, parameters)
-	case simplifier.Satelite:
-		return simplifierSvc.RunWith(simplifier.Satelite, encodings, parameters)
 	}
 
 	return []encoder.Encoding{}

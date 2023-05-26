@@ -187,22 +187,6 @@ func TestProcessInstanceName(t *testing.T) {
 	}
 
 	{
-		info, _ := encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf.satelite.cnf.march_n810.cubes.cube8.cnf")
-		simplificationInfo, exists := info.Simplification.Get()
-		if !exists {
-			t.Error("expected simplification info, got none")
-		}
-
-		if simplificationInfo.Simplifier != "satelite" {
-			t.Errorf("expected satelite, got %s", simplificationInfo.Simplifier)
-		}
-
-		if simplificationInfo.Conflicts != 0 {
-			t.Errorf("expected conflicts = 0, got %d", simplificationInfo.Conflicts)
-		}
-	}
-
-	{
 		info, _ := encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_espresso_00000000000000000000000000000000_dobbertin32.cnf.satelite.cnf.march_n810.cubes.cube8.cnf")
 		if info.TargetHash != "00000000000000000000000000000000" {
 			t.Errorf("expected target hash = 00000000000000000000000000000000, got %s", info.TargetHash)

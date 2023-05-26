@@ -60,52 +60,6 @@ func (solverSvc *SimplifierService) ParseOutput(outputReader io.Reader, logFileP
 	}
 
 	switch simplifier_ {
-	case simplifier.Satelite:
-		matches := regexp.MustCompile(`(Result.*)|(CPU time:\s+[0-9.]+)|(UNSATISFIABLE)|(SATISFIABLE)`).FindAllString(output, len(output))
-		// Catch if it's solved by the simplifier
-		{
-			_, isSolved := lo.Find(matches, func(item string) bool {
-				return item == "UNSATISFIABLE" || item == "SATISFIABLE"
-			})
-			if isSolved {
-				return result, errors.New("instance found to be solved by SatELite")
-			}
-		}
-
-		// Initialize the parse
-		if len(matches) != 2 {
-			return result, errors.New("invalid SatELite output")
-		}
-
-		// Parse the number of new variables and clauses
-		var err error
-		{
-			fields := strings.Fields(matches[0])
-			if len(fields) < 8 {
-				return result, errors.New("invalid SatELite output")
-			}
-
-			numVarsAfter, err = strconv.Atoi(fields[3])
-			if err != nil {
-				return result, err
-			}
-
-			numClausesAfter, err = strconv.Atoi(fields[5])
-			if err != nil {
-				return result, err
-			}
-		}
-
-		// Parse the process time
-		fields := strings.Fields(matches[1])
-		if len(fields) != 2 {
-			return result, errors.New("invalid SatELite output")
-		}
-
-		seconds, err = strconv.ParseFloat(fields[len(fields)-2], 64)
-		if err != nil {
-			return result, err
-		}
 	case simplifier.Cadical:
 		// See if it's solved by the simplifier
 		matches := regexp.MustCompile(`(c writing 'p cnf [0-9]+ [0-9]+' header)|(c total process time since initialization:\s+[0-9.]+)|(c exit 0)`).FindAllString(output, len(output))

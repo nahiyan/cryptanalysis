@@ -167,8 +167,6 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 
 				fileName := path.Base(logFile)
 
-				// TODO: Drop support for SatELite
-				// TODO: Remap SatELite simplifications
 				// Reconstruct CaDiCaL simplifications
 				if strings.Contains(name, simplifier.Cadical+"_c") {
 					segments := strings.Split(fileName, ".")
@@ -608,7 +606,7 @@ func (summarizerSvc *SummarizerService) Run(workers int) {
 			solutionLogFiles = append(solutionLogFiles, fileEntry)
 		} else if strings.Contains(fileEntry, "march") {
 			cubesetLogFiles = append(cubesetLogFiles, fileEntry)
-		} else if strings.Contains(fileEntry, "satelite") || strings.Contains(fileEntry, "cadical_") {
+		} else if strings.Contains(fileEntry, "cadical_") {
 			simplificationLogFiles = append(simplificationLogFiles, fileEntry)
 		}
 	}

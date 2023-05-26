@@ -3,20 +3,13 @@ package simplifier
 import "time"
 
 const (
-	Cadical  = "cadical"
-	Satelite = "satelite"
+	Cadical = "cadical"
 )
 
 type CadicalOutput struct {
 	FreeVariables int
 	Clauses       int
 	Eliminations  int
-	ProcessTime   time.Duration
-}
-
-type SateliteOutput struct {
-	FreeVariables int
-	Clauses       int
 	ProcessTime   time.Duration
 }
 

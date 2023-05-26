@@ -31,13 +31,12 @@ func (slurmSvc *SlurmService) GenerateJob(command string, numTasks, nodes, cpuCo
 
 	timeout_ := math.Round(float64(timeout) * config.Slurm.WorkerTimeMul)
 	if err := tmpl.Execute(jobFile, map[string]interface{}{
-		"Nodes":            nodes,
-		"CpuCores":         cpuCores,
-		"Memory":           memory,
-		"Timeout":          timeout_,
-		"cryptanalysisBin": config.Paths.Bin.Self,
-		"Command":          command,
-		"NumTasks":         numTasks,
+		"Nodes":    nodes,
+		"CpuCores": cpuCores,
+		"Memory":   memory,
+		"Timeout":  timeout_,
+		"Command":  command,
+		"NumTasks": numTasks,
 	}); err != nil {
 		return "", err
 	}

@@ -15,7 +15,6 @@ type Config struct {
 			LSTechMaple   string
 			KissatCF      string
 			March         string
-			Satelite      string
 			NejatiEncoder string
 			Self          string
 			Transalg      string
