@@ -1,33 +1,148 @@
-# MD4 Inversion
+# MD4, MD5, and SHA-256 Cryptanalysis
 
-This repository houses various SAT DIMACS CNF encoders, tools for benchmarks using numerous SAT solvers, and techniques such as the [Dobbertin's attack](https://link.springer.com/content/pdf/10.1007/3-540-69710-1_19.pdf) and [Cube and Conquer using a Lookahead Solver](https://www.cs.utexas.edu/~marijn/publications/cube.pdf).
+This repository houses a cryptanalysis tool aimed at (pre-image and collision) attacking hash functions, namely MD4, MD5, and SHA-256, using SAT solvers. Techniques such as the [Dobbertin's attack](https://link.springer.com/content/pdf/10.1007/3-540-69710-1_19.pdf) and [Cube and Conquer using a Lookahead Solver](https://www.cs.utexas.edu/~marijn/publications/cube.pdf) are used to exploit the weakness of hash functions and increase feasibility of the attacks.
 
-# Progress
+# Prerequisities
+
+To use the cryptanalysis tool, the following executables may be required (depending on your use-case):
+
+- [Kissat](https://github.com/arminbiere/kissat) as `kissat`
+- [CaDiCaL](https://github.com/arminbiere/cadical) as `cadical`
+- [March](https://github.com/BrianLi009/PhysicsCheck/tree/master/gen_cubes/march_cu) as `march_cu_pc` (suffixed with "_pc" for "PhysicsCheck")
+- [Transalg](https://gitlab.com/transalg/transalg) as `transalg`
+- [CryptoMiniSAT](https://github.com/msoos/cryptominisat) as `cryptominisat`
+- [MapleSAT](https://github.com/nahiyan/maplesat) as `maplesat`
+- [Glucose](https://github.com/mi-ki/glucose-syrup) as `glucose`
+- [NejatiEncoder](https://github.com/nahiyan/cryptanalysis/tree/master/encoders/nejati) as `nejati_encoder`
+- [xnfSAT](https://github.com/Vtec234/xnfsat) as `xnfsat`
+
+Other 3rd party dependencies may be required on use-case, such as `lstech_maple`, `kissat_cf`, `yalsat`, `palsat, etc.
+
+# Building
+
+> You'll require Go 1.18 or newer to build this tool.
+
+Run `go build` in the root directory of this repository to build the `cryptanalysis` executable.
+
+Available commands and arguments can be found via the `--help` flag. For example, `cryptanalysis run --help` will show the instructions for the "run" command.
+
+# Running
+
+All queries to the cryptanalysis tool are provided through a schema file written in [TOML](https://toml.io/en/). A pipeline can be declared in the schema with each pipe defining the operation and its configuration.
+
+For example, here's the following schema file instructs the cryptanalysis tool to encode and solve:
+
+```toml
+[[pipeline]]
+type = "encode"
+[pipeline.EncodeParams]
+encoder = "transalg"
+function = "md4"
+xor = [0]
+dobbertin = [1]
+dobbertinBits = [32]
+adders = ["espresso"]
+hashes = ["ffffffffffffffffffffffffffffffff"]
+steps = [43]
+
+[[pipeline]]
+type = "solve"
+[pipeline.SolveParams]
+solvers = ["kissat"]
+timeout = 10000
+workers = 16
+```
+
+The pipeline can be run by executing `cryptanalysis run <schema-file>`, where `<schema-fle>` is the placeholder to the file path, e.g. schema.toml. The pipeline propagates top-down sequentially.
+
+A pipeline for encode > simplify > cube > select (cubes) > solve can be defined like this:
+
+```toml
+[[pipeline]]
+type = "encode"
+[pipeline.EncodeParams]
+encoder = "transalg"
+function = "md4"
+xor = [0]
+dobbertin = [1]
+dobbertinBits = [32]
+adders = ["espresso"]
+hashes = ["ffffffffffffffffffffffffffffffff"]
+steps = [43]
+
+[[pipeline]]
+type = "simplify"
+[pipeline.SimplifyParams]
+name = "cadical"
+conflicts = [100]
+workers = 1
+
+[[pipeline]]
+type = "cube"
+[pipeline.CubeParams]
+# thresholds = [130]
+initialThreshold = 10
+stepChange = -10
+maxCubes = 10000000
+minRefutedLeaves = 500
+workers = 12
+timeout = 28800
+
+[[pipeline]]
+type = "cube_select"
+[pipeline.CubeSelectParams]
+type = "random"
+quantity = 1000
+seed = 1
+
+[[pipeline]]
+type = "solve"
+[pipeline.SolveParams]
+solvers = ["kissat"]
+timeout = 10000
+workers = 16
+```
+
+This will encode a 43-step MD4 with all-one target hash and Dobbertin's constraints. Afterwards, CaDiCaL will simplify the instance till 100 conflicts. Cubing will be done till reaching cubesets of 10M cubes while only keeping cubesets of at least 500 refuted leaves. Then, from each cubeset, 1000 cubes will be selected in random order with a seed of 1 (you can exclude the quantity to select all the cubes). Finally, the instances will be solved by Kissat with a timeout of 10000s in 16 workers (16 processes of Kissat will be spawned at a time).
+
+# Encoders
+
+The following SAT encoders are integrated into the cryptanalysis tool for generating the SAT encodings.
+
+## Transalg
+
+[Transalg](https://gitlab.com/transalg/transalg), a SAT encoder that takes the problem definition as a high-level C-like code to generate DIMACS CNF, has been utilized to encode attacks on MD4, MD5, and SHA-256.
+
+## Nejati
+
+Saeed Nejati wrote his [own encoders and verifiers](https://github.com/saeednj/SAT-encoding) for MD4, SHA-256, etc. However, this repository holds a modified and trimmed-down version of his project.
+
+### Building
+
+Run `make` in the `encoders/nejati/crypto` directory, which should produce an executable named `main`. The documentation for using the encoder can be found through the `--help` or `-h` flag. However, manual invokation is unnecessary as the cryptanalysis tool will handle it directly.
+
+The following set of features is a subset of all that are available:
+
+- XOR clauses
+- Specification of the target hash
+- Counter chain, dot matrix, and espresso adders
+- Trimmed n-step version of the hash function
+- Dobbertin's attack in MD4
+- Relaxation of one Dobbertin's constraint out of the 12 by $W - 32$ bits, where $W$ is the word size that is always 32
+
+> Important: The cryptanalysis tool recognizes (by default) the binary as `nejati_encoder` in the system's environment.
+
+# Techniques
 
 ## Dobbertin's Attack
 
-16-39 steps of MD4 on hashes with all set and unset message bits have been inverted for the targets hashes with all set and unset bits. SAT solvers, such as Kissat, CaDiCaL, MapleSAT, Glucose, and CryptoMiniSAT, XNFSAT with/without XOR clauses have been tried out and compared visually using a cactus plot.
+Exploiting the majority function in MD4, Dobbertin's constraints are encoded into the SAT problem to reduce the search space by containing values of 3 registers into 1 and making some of the pre-image words derivable with BCP before the CDCL phase. This makes it feasible to invert MD4 up to 43 steps.
 
 ## Cube and Conquer
 
-On top of the Dobbertin's attack, cube and conquer is being experimented for encodings generated using both TRANSALG and Saeed's encoder with variation of adders, CNF simplification techniques, cutoff variables for cubing, random sampling for estimation, etc. March is used for generating the cubes, while CaDiCaL and SatELite is used for the simplification.
+Cube and conquer is a popular technique for generating assumption cubes that can be solved in parallel by CDCL solvers. The lookahead solver, March, is used for generating the cubes, while CaDiCaL is used for the simplification beforehand.
 
-# Tools
-
-## Encodings Generator
-
-### Saeed Nejati
-
-To use the encodings generator written by Saeed Nejati, compile it first by running `make` in the `encoders/saeed/crypto` directory, which should produce an executable named `main`. The documentation for using the encoder can be found through the `--help` or `-h` flag.
-
-So far, for the research, we'll be looking at the following variations of encodings:
-
-- With and without XOR
-- Target hash with all set and unset bits
-- Adders such as counter chain, dot matrix, and espresso
-- n-step versions of MD4 with n ranging from 16 to 48
-- With and without Dobbertin's attack
-- Relaxation of one Dobbertin's constraint out of the 12 by $W - 32$ bits, where $W$ is the word size that is always 32
+> Important: Please note that the version of March used is a modified version housed in the [PhysicsCheck repository](https://github.com/BrianLi009/PhysicsCheck/tree/b1212848392673eac93ba437017ef6979e2775f0/gen_cubes/march_cu). By default, March is assumed to be available as `march_cu_pc` ("pc" for PhysicsCheck) in the system's environment.
 
 ## Benchmark Tool
 
@@ -42,53 +157,8 @@ The benchmark tool is the heart of the project for experimenting with MD4 invers
 
 To build the tool, just run `go build`, assuming that you have Go installed in your system already. As with any Go source code, you can run the code using `go run main.go`. For further documentation, simply call with the `--help` flag.
 
-## Solution Analyzer
-
-Once an instance is solved, a solutions output is generated, which holds all the variables that must be true/false to satisfy the constraints provided through the CNF. However, since there may be thousands of variables, it can be hard to read. The solutions analyzer, written in Rust, takes the solution file and presents the variables within the given ranges as bytes in binary (or other preferred bases). Moreover, it can normalize the solution to a specific format - currently MapleSAT's format is supported as the normalization target. The normalization feature is being used by the benchmark tool for every solution before it gets fed into the validator.
-
-### Build and Run
-
-To build and run the analyzer, ensure that you have [Cargo](https://doc.rust-lang.org/cargo/) installed and invoke the `cargo run` command in the `scripts/solution_analyzer` directory, or build the binary as a release build using `cargo build --release` and run it using `./target/release/solution_analyzer`.
-
-The rest of the documentation can be accessed through the `--help` flag.
-
-#### Normalization
-
-To normalize a solution, which resides in /tmp/solution.sol, just run `solution_analyzer /tmp/solution.sol normalize`, and you should get a dump of the normalized version. You can pipe it to a file (existent or not) to save the normalization version to a file, like this: `solution_analyzer solution.sol > solution-normalized.sol`.
-
-#### Summarization
-
-So, for example, if you have a solutions file in `scripts/solution_analyzer/md4.sol`, you may want to run `solution_analyzer scripts/solution_analyzer/md4.sol --variables 1-512,641-768 summarize` to run the analyzer and output the values of the variables 1 to 512 and 641 to 768. You can provide as many variable ranges as you like, all provided in the single argument "--variables" in a comma-separated format.  It prints something like this (output truncated for obvious reasons):
-
-```
-Range: 1 - 512
-00000000
-00000001
-10111110
-00011101
-11111111
-...
-
-Range: 641 - 768
-11111111
-11111111
-11111111
-11111111
-11111111
-...
-```
-
-The rest of the documentation for summarization can be accessed through `solution_analyzer summarize --help`, just like any other standard program.
-
-## Cactus Plot
-
-A small Python script that uses matplotlib for generating cactus plot is housed in `tools/cactus_plot` that is in the process of refactoring to be compatible with the recent major changes of the benchmark tool. It simply takes an aggregated log through stdin and plots the results of various SAT solvers in a cactus/survival plot, like so: `python generate.py < benchmark.log`, resulting in a PNG image of the plot.
-
-## Cube & Conquer Cutoff Threshold Finder
-
-Generates cubesets using various cutoff thresholds (number of max. variables) within constraints. For each cubeset, it takes a random sample set of size N to estimate the time to solve the sub-problems generated from the cubes.
-
 # Credits
 
-- `encoders/saeed` is a modified and trimmed version of https://github.com/saeednj/SAT-encoding
+- `encoders/nejati` is a modified and trimmed version of https://github.com/saeednj/SAT-encoding
+- Transalg code templates for MD4, MD5, and SHA-256 were based on that housed in https://gitlab.com/satencodings/satencodings/
 - The threshold finding algorithm is a modified version of that found in https://github.com/olegzaikin/MD4-CnC
