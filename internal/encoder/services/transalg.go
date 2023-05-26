@@ -36,8 +36,7 @@ var layoutMd5 string
 var layoutSha256 string
 
 func (encoderSvc *EncoderService) GenerateTransalgMd4Code(instanceInfo encoder.InstanceInfo) (string, error) {
-	_, dobbertinAttackEnabled := instanceInfo.Dobbertin.Get()
-	// dynamicDobbertinConstant := false
+	dobbertinInfo, dobbertinAttackEnabled := instanceInfo.Dobbertin.Get()
 	registers := []string{"a", "d", "c", "b"}
 
 	tmpl := template.New("transalg_md4.txt").Funcs(map[string]interface{}{
@@ -54,14 +53,17 @@ func (encoderSvc *EncoderService) GenerateTransalgMd4Code(instanceInfo encoder.I
 
 			constraints := ""
 			dobbertinSteps := []int{
-				// 13, 14,
-				23,
+				14, 15,
+				17, 18, 19,
+				21, 22, 23,
 				25, 26, 27,
-				29, 30, 31,
-				33, 34, 35,
-				37, 38, 39,
+				// 23,
+				// 25, 26, 27,
+				// 29, 30, 31,
+				// 33, 34, 35,
+				// 37, 38, 39,
 			}
-			// constraints += generateEqualityAssertion("c_11", "K", 4)
+			constraints += generateEqualityAssertion("a_13", "K", dobbertinInfo.Bits)
 			for _, dobbertinStep := range dobbertinSteps {
 				register := fmt.Sprintf("%s_%d", registers[(dobbertinStep-1)%4], dobbertinStep)
 				constraints += "\n\t" + generateEqualityAssertion(register, "K", 32)
