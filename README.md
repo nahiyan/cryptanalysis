@@ -30,7 +30,7 @@ Available commands and arguments can be found via the `--help` flag. For example
 
 All queries to the cryptanalysis tool are provided through a schema file written in [TOML](https://toml.io/en/). A pipeline can be declared in the schema with each pipe defining the operation and its configuration.
 
-For example, here's the following schema file instructs the cryptanalysis tool to encode and solve:
+For example, the following schema file instructs the cryptanalysis tool to encode and solve a 43-step MD4 instance:
 
 ```toml
 [[pipeline]]
@@ -55,7 +55,7 @@ workers = 16
 
 The pipeline can be run by executing `cryptanalysis run <schema-file>`, where `<schema-fle>` is the placeholder to the file path, e.g. schema.toml. The pipeline propagates top-down sequentially.
 
-A pipeline for encode > simplify > cube > select (cubes) > solve can be defined like this:
+A much more complex pipeline for encode > simplify > cube > select (cubes) > solve can be defined like this:
 
 ```toml
 [[pipeline]]
@@ -103,7 +103,38 @@ timeout = 10000
 workers = 16
 ```
 
-This will encode a 43-step MD4 with all-one target hash and Dobbertin's constraints. Afterwards, CaDiCaL will simplify the instance till 100 conflicts. Cubing will be done till reaching cubesets of 10M cubes while only keeping cubesets of at least 500 refuted leaves. Then, from each cubeset, 1000 cubes will be selected in random order with a seed of 1 (you can exclude the quantity to select all the cubes). Finally, the instances will be solved by Kissat with a timeout of 10000s in 16 workers (16 processes of Kissat will be spawned at a time).
+The operations of the above pipeline are as follows:
+- Encode a 43-step MD4 with all-one target hash and Dobbertin's constraints
+- Simplify the instance with CaDiCaL till 100 conflicts
+- Cube till reaching cubesets of 10M cubes while only keeping cubesets of at least 500 refuted leaves
+- Select 100 cubes from each cubeset in random order with a seed of 1 (you can exclude the quantity to select all the cubes)
+- Solve the instances with Kissat (with a 10000s timeout) in 16 workers (16 processes of Kissat will be spawned at a time)
+
+You can explore all the possible parameters and pipe types in the [internal/pipeline/main.go](https://github.com/nahiyan/cryptanalysis/blob/33dee9ed742b0afd39ced66f341a0fd0c90bd568/internal/pipeline/main.go) file.
+
+# Configuration
+
+The cryptanalysis tool's configuration is defined in a (optional) `config.toml` TOML file. The tool will conventionally look for the file relative to the current working directory.
+
+This is how it may look like:
+
+```toml
+[Solver.Cadical]
+LocalSearchRounds = 3
+
+[Solver.Kissat]
+LocalSearch = true
+LocalSearchEffort = 10
+
+[Solver.CryptoMiniSat]
+LocalSearch = true
+LocalSearchType = "walksat"
+
+[Paths.Bin]
+NejatiEncoder = "/tmp/SAT-encodings/crypto/main"
+```
+
+You can check out all the possible parameters in the [internal/config/main.go](https://github.com/nahiyan/cryptanalysis/blob/33dee9ed742b0afd39ced66f341a0fd0c90bd568/internal/config/main.go) file.
 
 # Encoders
 
