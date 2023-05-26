@@ -199,7 +199,7 @@ func (encoderSvc *EncoderService) ShouldSkip(encodingPath string) bool {
 	return encoderSvc.filesystemSvc.FileExists(encodingPath)
 }
 
-// TODO: Reduce shared redundant code with SaeedE invokation
+// TODO: Reduce shared redundant code with NejatiEncoder invokation
 func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.EncodeParams) []encoder.Encoding {
 	err := encoderSvc.filesystemSvc.PrepareDir("tmp")
 	encoderSvc.errorSvc.Fatal(err, "Encoder: failed to create tmp dir")

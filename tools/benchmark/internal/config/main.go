@@ -18,7 +18,7 @@ type Config struct {
 			Satelite         string
 			Verifier         string
 			SolutionAnalyzer string
-			SaeedE           string
+			NejatiEncoder    string
 			Benchmark        string
 			Transalg         string
 		}

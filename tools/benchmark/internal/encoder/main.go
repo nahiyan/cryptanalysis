@@ -23,8 +23,8 @@ const (
 
 // Encoders
 const (
-	SaeedE   = "saeed_e" // Short for Saeed's Encoder
-	Transalg = "transalg"
+	NejatiEncoder = "nejati_encoder" // Short for Saeed's Encoder
+	Transalg      = "transalg"
 )
 
 // Adders

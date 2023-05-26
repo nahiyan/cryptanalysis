@@ -30,7 +30,7 @@ func (encoderSvc *EncoderService) GetInstanceName(info encoder.InstanceInfo) str
 	if dobbertinInfo, enabled := info.Dobbertin.Get(); enabled {
 		instanceName += fmt.Sprintf("_dobbertin%d", dobbertinInfo.Bits)
 	}
-	if encoder_ == encoder.SaeedE {
+	if encoder_ == encoder.NejatiEncoder {
 		instanceName += "_" + string(adderType)
 
 		if info.IsXorEnabled {
@@ -74,8 +74,8 @@ func (encoderSvc *EncoderService) ProcessInstanceName(instanceName string) (enco
 		// Encoder
 		if strings.HasPrefix(mainSegment, encoder.Transalg) {
 			info.Encoder = encoder.Transalg
-		} else if strings.HasPrefix(mainSegment, encoder.SaeedE) {
-			info.Encoder = encoder.SaeedE
+		} else if strings.HasPrefix(mainSegment, encoder.NejatiEncoder) {
+			info.Encoder = encoder.NejatiEncoder
 		}
 		mainSegment = strings.TrimPrefix(mainSegment, string(info.Encoder)+"_")
 
@@ -247,15 +247,15 @@ func (encoderSvc *EncoderService) Run(parameters pipeline.EncodeParams) []encode
 	err := encoderSvc.filesystemSvc.PrepareDir(encoderSvc.configSvc.Config.Paths.Encodings)
 	encoderSvc.errorSvc.Fatal(err, "Encoder: failed to prepare directory for storing the encodings")
 
-	// TODO: Add MD5 to SaeedE
+	// TODO: Add MD5 to NejatiEncoder
 	if parameters.Function != encoder.Md4 && parameters.Function != encoder.Md5 && parameters.Function != encoder.Sha256 {
 		log.Fatal("Encoder: function not supported")
 	}
 
 	switch parameters.Encoder {
-	case encoder.SaeedE:
-		encodings := encoderSvc.InvokeSaeedE(parameters)
-		log.Println("Encoder: saeed_e", encodings)
+	case encoder.NejatiEncoder:
+		encodings := encoderSvc.InvokeNejatiEncoder(parameters)
+		log.Println("Encoder: nejati_encoder", encodings)
 		return encodings
 	case encoder.Transalg:
 		encodings := encoderSvc.InvokeTransalg(parameters)

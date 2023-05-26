@@ -8,7 +8,7 @@ import (
 	"path"
 )
 
-func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.EncodeParams) []encoder.Encoding {
+func (encoderSvc *EncoderService) InvokeNejatiEncoder(parameters pipeline.EncodeParams) []encoder.Encoding {
 	config := &encoderSvc.configSvc.Config
 
 	// * Loop through the variations
@@ -40,7 +40,7 @@ func (encoderSvc *EncoderService) InvokeSaeedE(parameters pipeline.EncodeParams)
 		// * Drive the encoder
 		command := fmt.Sprintf(
 			"%s -f md4 -a preimage -r %d -A %s -t %s %s --bits %d %s",
-			config.Paths.Bin.SaeedE,
+			config.Paths.Bin.NejatiEncoder,
 			instanceInfo.Steps,
 			instanceInfo.AdderType,
 			instanceInfo.TargetHash,

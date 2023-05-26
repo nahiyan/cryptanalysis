@@ -90,9 +90,9 @@ func (pipelineSvc *PipelineService) RunPipes(pipes []pipeline.Pipe) {
 	pipelineSvc.Loop(pipes, func(pipe, nextPipe *pipeline.Pipe) {
 		switch pipe.Type {
 		case pipeline.Encode:
-			// SaeedE is the default encoder
+			// NejatiEncoder is the default encoder
 			if pipe.EncodeParams.Encoder == "" {
-				pipe.EncodeParams.Encoder = encoder.SaeedE
+				pipe.EncodeParams.Encoder = encoder.NejatiEncoder
 			}
 			lastValue = pipelineSvc.encoderSvc.Run(pipe.EncodeParams)
 

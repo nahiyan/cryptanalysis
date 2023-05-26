@@ -25,9 +25,9 @@ func TestParseSolutionLogName(t *testing.T) {
 }
 
 func TestParseSolutionLogName2(t *testing.T) {
-	encoder_, function, step, targetHash, err := parseSolutionLogName("saeed_e_md5_35_00000000000000000000000000000000_dobbertin31.cnf.cadical_c1000000.cnf.march_n2460.cubes.cube79837.kissat.log")
-	if encoder_ != encoder.SaeedE {
-		t.Errorf("Expected saeed_e, got %s", encoder_)
+	encoder_, function, step, targetHash, err := parseSolutionLogName("nejati_encoder_md5_35_00000000000000000000000000000000_dobbertin31.cnf.cadical_c1000000.cnf.march_n2460.cubes.cube79837.kissat.log")
+	if encoder_ != encoder.NejatiEncoder {
+		t.Errorf("Expected nejati_encoder, got %s", encoder_)
 	}
 	if function != encoder.Md5 {
 		t.Errorf("Expected md5, got %s", function)

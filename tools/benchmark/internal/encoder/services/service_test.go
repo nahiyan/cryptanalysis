@@ -25,7 +25,7 @@ func TestGetInstanceName(t *testing.T) {
 
 	{
 		info := encoder.InstanceInfo{
-			Encoder:      encoder.SaeedE,
+			Encoder:      encoder.NejatiEncoder,
 			Steps:        35,
 			Function:     "md4",
 			TargetHash:   "ffffffffffffffffffffffffffffffff",
@@ -33,7 +33,7 @@ func TestGetInstanceName(t *testing.T) {
 			AdderType:    encoder.Espresso,
 		}
 		instance := encoderSvc.GetInstanceName(info)
-		expectation := "saeed_e_md4_35_ffffffffffffffffffffffffffffffff_espresso_xor.cnf"
+		expectation := "nejati_encoder_md4_35_ffffffffffffffffffffffffffffffff_espresso_xor.cnf"
 		if instance != expectation {
 			t.Errorf("Expected %s but got %s instead", expectation, instance)
 		}
@@ -51,57 +51,57 @@ func TestProcessInstanceName(t *testing.T) {
 	}
 
 	{
-		info, _ := encoderSvc.ProcessInstanceName("saeed_e_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
-		if info.Encoder != "saeed_e" {
-			t.Errorf("got '%s', expected 'saeed_e'", info.Encoder)
+		info, _ := encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
+		if info.Encoder != "nejati_encoder" {
+			t.Errorf("got '%s', expected 'nejati_encoder'", info.Encoder)
 		}
 	}
 
 	{
-		info, _ := encoderSvc.ProcessInstanceName("saeed_e_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
+		info, _ := encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
 		if info.Function != "md4" {
 			t.Errorf("got '%s', expected 'md4'", info.Function)
 		}
 	}
 
 	{
-		info, _ := encoderSvc.ProcessInstanceName("saeed_e_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
+		info, _ := encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
 		if info.Steps != 35 {
 			t.Errorf("got %d, expected 35", info.Steps)
 		}
 	}
 
 	{
-		info, _ := encoderSvc.ProcessInstanceName("saeed_e_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
+		info, _ := encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
 		if info.AdderType != "espresso" {
 			t.Errorf("got '%s', expected 'espresso'", info.AdderType)
 		}
 
-		info, _ = encoderSvc.ProcessInstanceName("saeed_e_md4_35_dot_matrix_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
+		info, _ = encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_dot_matrix_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
 		if info.AdderType != "dot_matrix" {
 			t.Errorf("got '%s', expected 'dot_matrix'", info.AdderType)
 		}
 
-		info, _ = encoderSvc.ProcessInstanceName("saeed_e_md4_35_counter_chain_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
+		info, _ = encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_counter_chain_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
 		if info.AdderType != "counter_chain" {
 			t.Errorf("got '%s', expected 'counter_chain'", info.AdderType)
 		}
 
-		info, _ = encoderSvc.ProcessInstanceName("saeed_e_md4_35_two_operand_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
+		info, _ = encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_two_operand_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
 		if info.AdderType != "two_operand" {
 			t.Errorf("got '%s', expected 'two_operand'", info.AdderType)
 		}
 	}
 
 	{
-		info, _ := encoderSvc.ProcessInstanceName("saeed_e_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
+		info, _ := encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
 		if info.TargetHash != "ffffffffffffffffffffffffffffffff" {
 			t.Errorf("got %s, expected 'ffffffffffffffffffffffffffffffff'", info.TargetHash)
 		}
 	}
 
 	{
-		info, _ := encoderSvc.ProcessInstanceName("saeed_e_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32_xor.cnf")
+		info, _ := encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32_xor.cnf")
 		dobbertin, exists := info.Dobbertin.Get()
 		if !exists {
 			t.Error("expected dobbertin, got none")
@@ -125,7 +125,7 @@ func TestProcessInstanceName(t *testing.T) {
 	}
 
 	{
-		info, _ := encoderSvc.ProcessInstanceName("saeed_e_md4_35_espresso_ffffffffffffffffffffffffffffffff.cnf")
+		info, _ := encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_espresso_ffffffffffffffffffffffffffffffff.cnf")
 		_, exists := info.Dobbertin.Get()
 		if exists {
 			t.Error("expected no dobbertin, got dobbertin")
@@ -133,21 +133,21 @@ func TestProcessInstanceName(t *testing.T) {
 	}
 
 	{
-		info, _ := encoderSvc.ProcessInstanceName("saeed_e_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32_xor.cnf")
+		info, _ := encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32_xor.cnf")
 		if !info.IsXorEnabled {
 			t.Error("expected xor, got no xor")
 		}
 	}
 
 	{
-		info, _ := encoderSvc.ProcessInstanceName("saeed_e_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
+		info, _ := encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf")
 		if info.IsXorEnabled {
 			t.Error("expected no xor, got xor")
 		}
 	}
 
 	{
-		info, _ := encoderSvc.ProcessInstanceName("saeed_e_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf.cadical_c100000.cnf.march_n810.cubes.cube8.cnf")
+		info, _ := encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf.cadical_c100000.cnf.march_n810.cubes.cube8.cnf")
 		cubeInfo, exists := info.Cubing.Get()
 		if !exists {
 			t.Error("expected cube info, got none")
@@ -159,7 +159,7 @@ func TestProcessInstanceName(t *testing.T) {
 	}
 
 	{
-		info, _ := encoderSvc.ProcessInstanceName("saeed_e_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf.cadical_c100000.cnf.march_n810.cubes.cube8.cnf")
+		info, _ := encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf.cadical_c100000.cnf.march_n810.cubes.cube8.cnf")
 		cubeIndex, exists := info.CubeIndex.Get()
 		if !exists {
 			t.Error("expected cube index, got none")
@@ -171,7 +171,7 @@ func TestProcessInstanceName(t *testing.T) {
 	}
 
 	{
-		info, _ := encoderSvc.ProcessInstanceName("saeed_e_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf.cadical_c100000.cnf.march_n810.cubes.cube8.cnf")
+		info, _ := encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf.cadical_c100000.cnf.march_n810.cubes.cube8.cnf")
 		simplificationInfo, exists := info.Simplification.Get()
 		if !exists {
 			t.Error("expected simplification info, got none")
@@ -187,7 +187,7 @@ func TestProcessInstanceName(t *testing.T) {
 	}
 
 	{
-		info, _ := encoderSvc.ProcessInstanceName("saeed_e_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf.satelite.cnf.march_n810.cubes.cube8.cnf")
+		info, _ := encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_espresso_ffffffffffffffffffffffffffffffff_dobbertin32.cnf.satelite.cnf.march_n810.cubes.cube8.cnf")
 		simplificationInfo, exists := info.Simplification.Get()
 		if !exists {
 			t.Error("expected simplification info, got none")
@@ -203,7 +203,7 @@ func TestProcessInstanceName(t *testing.T) {
 	}
 
 	{
-		info, _ := encoderSvc.ProcessInstanceName("saeed_e_md4_35_espresso_00000000000000000000000000000000_dobbertin32.cnf.satelite.cnf.march_n810.cubes.cube8.cnf")
+		info, _ := encoderSvc.ProcessInstanceName("nejati_encoder_md4_35_espresso_00000000000000000000000000000000_dobbertin32.cnf.satelite.cnf.march_n810.cubes.cube8.cnf")
 		if info.TargetHash != "00000000000000000000000000000000" {
 			t.Errorf("expected target hash = 00000000000000000000000000000000, got %s", info.TargetHash)
 		}
