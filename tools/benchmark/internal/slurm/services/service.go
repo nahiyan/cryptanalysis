@@ -35,7 +35,7 @@ func (slurmSvc *SlurmService) GenerateJob(command string, numTasks, nodes, cpuCo
 		"CpuCores":     cpuCores,
 		"Memory":       memory,
 		"Timeout":      timeout_,
-		"BenchmarkBin": config.Paths.Bin.Benchmark,
+		"BenchmarkBin": config.Paths.Bin.Self,
 		"Command":      command,
 		"NumTasks":     numTasks,
 	}); err != nil {

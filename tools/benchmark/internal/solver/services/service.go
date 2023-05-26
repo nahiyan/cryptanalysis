@@ -220,7 +220,7 @@ func (solverSvc *SolverService) RunSlurm(encodings []encoder.Encoding, parameter
 	tasksPerWorker := int(math.Ceil(float64(len(tasks)) / float64(parameters.Workers)))
 	command := fmt.Sprintf(
 		"%s task -t solve -i %s -n %d -g ${SLURM_ARRAY_TASK_ID}",
-		config.Paths.Bin.Benchmark,
+		config.Paths.Bin.Self,
 		tasksSetPath,
 		tasksPerWorker)
 	jobFilePath, err := solverSvc.slurmSvc.GenerateJob(

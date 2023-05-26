@@ -4,23 +4,21 @@ package config
 type Config struct {
 	Paths struct {
 		Bin struct {
-			CryptoMiniSat    string
-			Kissat           string
-			Cadical          string
-			Glucose          string
-			MapleSat         string
-			XnfSat           string
-			YalSat           string
-			PalSat           string
-			LSTechMaple      string
-			KissatCF         string
-			March            string
-			Satelite         string
-			Verifier         string
-			SolutionAnalyzer string
-			NejatiEncoder    string
-			Benchmark        string
-			Transalg         string
+			CryptoMiniSat string
+			Kissat        string
+			Cadical       string
+			Glucose       string
+			MapleSat      string
+			XnfSat        string
+			YalSat        string
+			PalSat        string
+			LSTechMaple   string
+			KissatCF      string
+			March         string
+			Satelite      string
+			NejatiEncoder string
+			Self          string
+			Transalg      string
 		}
 
 		Database  string
