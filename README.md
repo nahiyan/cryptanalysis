@@ -53,7 +53,7 @@ timeout = 10000
 workers = 16
 ```
 
-The pipeline can be run by executing `cryptanalysis run <schema-file>`, where `<schema-fle>` is the placeholder to the file path, e.g. schema.toml. The pipeline propagates top-down sequentially.
+The pipeline can be run by executing `cryptanalysis run <schema-file>`, where `<schema-fle>` is the placeholder to the file path, e.g. schema.toml. Note that the pipeline propagates top-down sequentially.
 
 A much more complex pipeline for encode > simplify > cube > select (cubes) > solve can be defined like this:
 
@@ -104,7 +104,7 @@ workers = 16
 ```
 
 The operations of the above pipeline are as follows:
-- Encode a 43-step MD4 with all-one target hash and Dobbertin's constraints
+- Encode a 43-step MD4 using Transalg with all-one target hash and including the Dobbertin's constraints
 - Simplify the instance with CaDiCaL till 100 conflicts
 - Cube till reaching cubesets of 10M cubes while only keeping cubesets of at least 500 refuted leaves
 - Select 100 cubes from each cubeset in random order with a seed of 1 (you can exclude the quantity to select all the cubes)
