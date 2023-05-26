@@ -8,12 +8,12 @@ bit D[32] = 0x10325476;
 
 bit F(bit X[32], bit Y[32], bit Z[32])
 {
-	return (X&Y)|(!X&Z);
+	return (X&Y)|(!X&Z); // if X then Y else Z
 }
 
 bit G(bit X[32], bit Y[32], bit Z[32])
 {
-	return (X&Z)|(Y&!Z);
+	return (X&Z)|(Y&!Z); // if Z then X else Y
 }
 
 bit H(bit X[32], bit Y[32], bit Z[32])
@@ -60,50 +60,52 @@ void main()
     bit b[32] = B;
     bit c[32] = C;
     bit d[32] = D;
+	bit K[32] = 0xffffffff;
+	bit L[32] = 0x00000000;
 
     // Round 1: FF(a,b,c,d,M_j,s,t_j) 1-16
 
-	{{ step 1 "a = FF(a, b, c, d, M[0], 7, 0xd76aa478);" }}
-	{{ step 2 "d = FF(d, a, b, c, M[1], 12, 0xe8c7b756);" }}
-	{{ step 3 "c = FF(c, d, a, b, M[2], 17, 0x242070db);" }}
-	{{ step 4 "b = FF(b, c, d, a, M[3], 22, 0xc1bdceee);" }}
+	{{ step 1 "bit a_1[32] = FF(a, b, c, d, M[0], 7, 0xd76aa478);" }}
+	{{ step 2 "bit d_2[32] = FF(d, a_1, b, c, M[1], 12, 0xe8c7b756);" }}
+	{{ step 3 "bit c_3[32] = FF(c, d_2, a_1, b, M[2], 17, 0x242070db);" }}
+	{{ step 4 "bit b_4[32] = FF(b, c_3, d_2, a_1, M[3], 22, 0xc1bdceee);" }}
 
-	{{ step 5 "a = FF(a, b, c, d, M[4], 7, 0xf57c0faf);" }}
-	{{ step 6 "d = FF(d, a, b, c, M[5], 12, 0x4787c62a);" }}
-	{{ step 7 "c = FF(c, d, a, b, M[6], 17, 0xa8304613);" }}
-	{{ step 8 "b = FF(b, c, d, a, M[7], 22, 0xfd469501);" }}
+	{{ step 5 "bit a_5[32] = FF(a_1, b_4, c_3, d_2, M[4], 7, 0xf57c0faf);" }}
+	{{ step 6 "bit d_6[32] = FF(d_2, a_5, b_4, c_3, M[5], 12, 0x4787c62a);" }}
+	{{ step 7 "bit c_7[32] = FF(c_3, d_6, a_5, b_4, M[6], 17, 0xa8304613);" }}
+	{{ step 8 "bit b_8[32] = FF(b_4, c_7, d_6, a_5, M[7], 22, 0xfd469501);" }}
 	
-	{{ step 9 "a = FF(a, b, c, d, M[8], 7, 0x698098d8);" }}
-	{{ step 10 "d = FF(d, a, b, c, M[9], 12, 0x8b44f7af);" }}
-	{{ step 11 "c = FF(c, d, a, b, M[10], 17, 0xffff5bb1);" }}
-	{{ step 12 "b = FF(b, c, d, a, M[11], 22, 0x895cd7be);" }}
+	{{ step 9 "bit a_9[32] = FF(a_5, b_8, c_7, d_6, M[8], 7, 0x698098d8);" }}
+	{{ step 10 "bit d_10[32] = FF(d_6, a_9, b_8, c_7, M[9], 12, 0x8b44f7af);" }}
+	{{ step 11 "bit c_11[32] = FF(c_7, d_10, a_9, b_8, M[10], 17, 0xffff5bb1);" }}
+	{{ step 12 "bit b_12[32] = FF(b_8, c_11, d_10, a_9, M[11], 22, 0x895cd7be);" }}
 
-	{{ step 13 "a = FF(a, b, c, d, M[12], 7, 0x6b901122);" }}
-	{{ step 14 "d = FF(d, a, b, c, M[13], 12, 0xfd987193);" }}
-	{{ step 15 "c = FF(c, d, a, b, M[14], 17, 0xa679438e);" }}
-	{{ step 16 "b = FF(b, c, d, a, M[15], 22, 0x49b40821);" }}
+	{{ step 13 "bit a_13[32] = FF(a_9, b_12, c_11, d_10, M[12], 7, 0x6b901122);" }}
+	{{ step 14 "bit d_14[32] = FF(d_10, a_13, b_12, c_11, M[13], 12, 0xfd987193);" }}
+	{{ step 15 "bit c_15[32] = FF(c_11, d_14, a_13, b_12, M[14], 17, 0xa679438e);" }}
+	{{ step 16 "bit b_16[32] = FF(b_12, c_15, d_14, a_13, M[15], 22, 0x49b40821);" }}
 
 	// Round 2: GG(a,b,c,d,M_j,s,t_j) 17-32
 
-	{{ step 17 "a = GG(a, b, c, d, M[1], 5, 0xf61e2562);" }}
-	{{ step 18 "d = GG(d, a, b, c, M[6], 9, 0xc040b340);" }}
-	{{ step 19 "c = GG(c, d, a, b, M[11], 14, 0x265e5a51);" }}
-	{{ step 20 "b = GG(b, c, d, a, M[0], 20, 0xe9b6c7aa);" }}
+	{{ step 17 "bit a_17[32] = GG(a_13, b_16, c_15, d_14, M[1], 5, 0xf61e2562);" }}
+	{{ step 18 "bit d_18[32] = GG(d_14, a_17, b_16, c_15, M[6], 9, 0xc040b340);" }}
+	{{ step 19 "bit c_19[32] = GG(c_15, d_18, a_17, b_16, M[11], 14, 0x265e5a51);" }}
+	{{ step 20 "bit b_20[32] = GG(b_16, c_19, d_18, a_17, M[0], 20, 0xe9b6c7aa);" }}
 
-	{{ step 21 "a = GG(a, b, c, d, M[5], 5, 0xd62f105d);" }}
-	{{ step 22 "d = GG(d, a, b, c, M[10], 9, 0x02441453);" }}
-	{{ step 23 "c = GG(c, d, a, b, M[15], 14, 0xd8a1e681);" }}
-	{{ step 24 "b = GG(b, c, d, a, M[4], 20, 0xe7d3fbc8);" }}
+	{{ step 21 "bit a_21[32] = GG(a_17, b_20, c_19, d_18, M[5], 5, 0xd62f105d);" }}
+	{{ step 22 "bit d_22[32] = GG(d_18, a_21, b_20, c_19, M[10], 9, 0x02441453);" }}
+	{{ step 23 "bit c_23[32] = GG(c_19, d_22, a_21, b_20, M[15], 14, 0xd8a1e681);" }}
+	{{ step 24 "bit b_24[32] = GG(b_20, c_23, d_22, a_21, M[4], 20, 0xe7d3fbc8);" }}
 
-	{{ step 25 "a = GG(a, b, c, d, M[9], 5, 0x21e1cde6);" }}
-	{{ step 26 "d = GG(d, a, b, c, M[14], 9, 0xc33707d6);" }}
-	{{ step 27 "c = GG(c, d, a, b, M[3], 14, 0xf4d50d87);" }}
-	{{ step 28 "b = GG(b, c, d, a, M[8], 20, 0x455a14ed);" }}
+	{{ step 25 "bit a_25[32] = GG(a_21, b_24, c_23, d_22, M[9], 5, 0x21e1cde6);" }}
+	{{ step 26 "bit d_26[32] = GG(d_22, a_25, b_24, c_23, M[14], 9, 0xc33707d6);" }}
+	{{ step 27 "bit c_27[32] = GG(c_23, d_26, a_25, b_24, M[3], 14, 0xf4d50d87);" }}
+	{{ step 28 "bit b_28[32] = GG(b_24, c_27, d_26, a_25, M[8], 20, 0x455a14ed);" }}
 
-	{{ step 29 "a = GG(a, b, c, d, M[13], 5, 0xa9e3e905);" }}
-	{{ step 30 "d = GG(d, a, b, c, M[2], 9, 0xfcefa3f8);" }}
-	{{ step 31 "c = GG(c, d, a, b, M[7], 14, 0x676f02d9);" }}
-	{{ step 32 "b = GG(b, c, d, a, M[12], 20, 0x8d2a4c8a);" }}
+	{{ step 29 "bit a_29[32] = GG(a_25, b_28, c_27, d_26, M[13], 5, 0xa9e3e905);" }}
+	{{ step 30 "d = GG(d_26, a, b_28, c_27, M[2], 9, 0xfcefa3f8);" }}
+	{{ step 31 "c = GG(c_27, d, a, b_28, M[7], 14, 0x676f02d9);" }}
+	{{ step 32 "b = GG(b_28, c, d, a, M[12], 20, 0x8d2a4c8a);" }}
 
 	// Round 3: HH(a,b,c,d,M_j,s,t_j) 33-48
 
@@ -149,10 +151,12 @@ void main()
 	{{ step 63 "c = II(c, d, a, b, M[2], 15, 0x2ad7d2bb);" }}
 	{{ step 64 "b = II(b, c, d, a, M[9], 21, 0xeb86d391);" }}
     
-    Hash[0] = a;
-    Hash[1] = b;
-    Hash[2] = c;
-    Hash[3] = d;
+    Hash[0] = {{ .LastRegVar1 }};
+    Hash[1] = {{ .LastRegVar2 }};
+    Hash[2] = {{ .LastRegVar3 }};
+    Hash[3] = {{ .LastRegVar4 }};
+
+	{{ constraints }}
 
     {{ if eq $.OneTargetHash true -}}
     // 1^(128)

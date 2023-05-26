@@ -1,5 +1,4 @@
 __in bit M[16][32];
-
 __out bit Hash[8][32];
 
 bit A[32] = 0x6A09E667;
