@@ -457,7 +457,7 @@ func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, f
 	}
 	remaining_ := humanize.Comma(int64(remaining))
 
-	file.WriteString(fmt.Sprintf("%s SAT%s, %s UNSAT, %s Fails, %s Remaining\n", satCount_, satVerifiedComment, unsatCount_, failCount_, remaining_))
+	file.WriteString(fmt.Sprintf("%s SAT%s, %s UNSAT, %s Fails, %s Remaining (including fails)\n", satCount_, satVerifiedComment, unsatCount_, failCount_, remaining_))
 
 	// Stats
 	if len(processTimes) > 1 {
@@ -465,25 +465,23 @@ func printSolutionsStat(name string, solutions []solution, cubesets []cubeset, f
 		mean, stdDev := stat.MeanStdDev(processTimes, nil)
 		median := stat.Quantile(0.5, stat.Empirical, processTimes, nil)
 		lowest, highest := processTimes[0], processTimes[len(processTimes)-1]
-		file.WriteString(fmt.Sprintf("Mean: %0.2fs, Median: %.2fs, Std. Deviation: %0.2f, Range: %.2fs to %.2fs\n\n", mean, median, stdDev, lowest, highest))
+		file.WriteString(fmt.Sprintf("Mean: %0.2fs, Median: %.2fs, Std. Deviation: %0.2f, Range: %.2fs to %.2fs (excluding fails)\n\n", mean, median, stdDev, lowest, highest))
 	}
 
 	if solvedCount > 0 {
 		file.WriteString(fmt.Sprintf("Process time (1 CPU, %s instances): %s\n", solvedCount_, totalProcessTime))
-		file.WriteString(fmt.Sprintf("Process time (12 CPU, %s instances): %s\n", solvedCount_, time.Duration(totalProcessTime/12).Round(time.Millisecond)))
 	}
 
 	// TODO: Include runtimes
 	file.WriteString(fmt.Sprintf("Run time (1 CPU, %s instances): %s\n", allCount_, totalRunTime))
-	file.WriteString(fmt.Sprintf("Run time (12 CPU, %s instances): %s\n", allCount_, time.Duration(totalRunTime/12).Round(time.Millisecond)))
 
 	if len(cubesets) > 0 && solvedCount > 0 {
 		cubeset := cubesets[0]
 		cubesCount := humanize.Comma(int64(cubeset.cubesCount))
-		estimatedTime := time.Duration((int(totalProcessTime) / solvedCount) * cubeset.cubesCount).Round(time.Millisecond)
-		estimatedTime12Cpu := time.Duration((int(totalProcessTime) / (solvedCount * 12)) * cubeset.cubesCount).Round(time.Millisecond)
-		file.WriteString(fmt.Sprintf("\nEstimated time (1 CPU, %s instances): %s\n", cubesCount, estimatedTime))
-		file.WriteString(fmt.Sprintf("Estimated time (12 CPU, %s instances): %s\n", cubesCount, estimatedTime12Cpu))
+		estimatedProcessTime := time.Duration((int(totalProcessTime) / solvedCount) * cubeset.cubesCount).Round(time.Millisecond)
+		estimatedRunTime := time.Duration((int(totalRunTime) / (solvedCount + failsCount)) * cubeset.cubesCount).Round(time.Millisecond)
+		file.WriteString(fmt.Sprintf("\nEstimated process time (1 CPU, %s instances): %s\n", cubesCount, estimatedProcessTime))
+		file.WriteString(fmt.Sprintf("Estimated run time (1 CPU, %s instances): %s\n", cubesCount, estimatedRunTime))
 	}
 
 	if len(messages) > 0 {
