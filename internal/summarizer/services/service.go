@@ -183,19 +183,19 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 				summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed extract the message from the solution literal")
 
 				// Take the steps derived from the instance name
-				_, function, step, targetHash, err := parseSolutionLogName(fileName)
+				_, function, steps, targetHash, err := parseSolutionLogName(fileName)
 				summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to extract information from the log file name")
 
 				// Verify the solution
 				var hash string
 				if function == encoder.Md4 {
-					hash, err = summarizerSvc.md4Svc.Run(message, step, false)
+					hash, err = summarizerSvc.md4Svc.Run(message, steps, false)
 					summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the md4 hash")
 				} else if function == encoder.Md5 {
-					hash, err = summarizerSvc.md5Svc.Run(message, step, false)
+					hash, err = summarizerSvc.md5Svc.Run(message, steps, false)
 					summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the md5 hash")
 				} else if function == encoder.Sha256 {
-					hash, err = summarizerSvc.sha256Svc.Run(message, step, false)
+					hash, err = summarizerSvc.sha256Svc.Run(message, steps, false)
 					summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the md5 hash")
 				}
 				solution.verified = hash == targetHash
@@ -601,7 +601,7 @@ func (summarizerSvc *SummarizerService) Run(workers int) {
 
 	// Important: Register new SAT Solver here
 	for _, fileEntry := range fileEntries {
-		regexp_ := regexp.MustCompile(fmt.Sprintf("(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)", solver.Kissat, simplifier.Cadical, solver.CryptoMiniSat, solver.Glucose, solver.MapleSat, solver.YalSat, solver.PalSat, solver.LSTechMaple, solver.KissatCF))
+		regexp_ := regexp.MustCompile(fmt.Sprintf("(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)", solver.Kissat, simplifier.Cadical, solver.CryptoMiniSat, solver.Glucose, solver.MapleSat, solver.YalSat, solver.PalSat, solver.LSTechMaple, solver.KissatCF, solver.Lingeling))
 		if regexp_.Match([]byte(fileEntry)) {
 			solutionLogFiles = append(solutionLogFiles, fileEntry)
 		} else if strings.Contains(fileEntry, "march") {
