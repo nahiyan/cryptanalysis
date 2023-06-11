@@ -14,6 +14,7 @@ type Config struct {
 			PalSat        string
 			LSTechMaple   string
 			KissatCF      string
+			Lingeling     string
 			March         string
 			NejatiEncoder string
 			Self          string

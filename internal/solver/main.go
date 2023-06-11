@@ -30,6 +30,7 @@ const (
 	PalSat        = "palsat"
 	LSTechMaple   = "lstech_maple"
 	KissatCF      = "kissat_cf"
+	Lingeling     = "lingeling"
 )
 
 const (

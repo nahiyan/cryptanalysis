@@ -36,6 +36,7 @@ func (configSvc *ConfigService) Process() {
 	viper.SetDefault("Paths.Bin.PalSat", "palsat")
 	viper.SetDefault("Paths.Bin.LSTechMaple", "lstech_maple")
 	viper.SetDefault("Paths.Bin.KissatCF", "kissat_cf")
+	viper.SetDefault("Paths.Bin.Lingeling", "lingeling")
 	viper.SetDefault("Paths.Bin.March", "march_cu_pc")
 	viper.SetDefault("Paths.Bin.SolutionAnalyzer", "solution_analyzer")
 	viper.SetDefault("Paths.Bin.NejatiEncoder", "nejati_encoder")
