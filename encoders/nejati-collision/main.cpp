@@ -1,5 +1,4 @@
 #include "diff-parser.h"
-#include "sha1.h"
 #include "sha256x.h"
 #include "util.h"
 #include <assert.h>
