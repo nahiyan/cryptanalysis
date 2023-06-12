@@ -13,8 +13,8 @@ func (encoderSvc *EncoderService) InvokeNejatiEncoder(parameters pipeline.Encode
 
 	// * Loop through the variations
 	encodings := []encoder.Encoding{}
-	encoderSvc.LoopThroughVariation(parameters, func(instanceInfo encoder.InstanceInfo) {
-		instanceName := encoderSvc.GetInstanceName(instanceInfo)
+	loopThroughVariation(parameters, func(instanceInfo encoder.InstanceInfo) {
+		instanceName := getInstanceName(instanceInfo)
 		encodingPath := path.Join(config.Paths.Encodings, instanceName)
 		encodings = append(encodings, encoder.Encoding{BasePath: encodingPath})
 
@@ -38,15 +38,27 @@ func (encoderSvc *EncoderService) InvokeNejatiEncoder(parameters pipeline.Encode
 		}
 
 		// * Drive the encoder
-		command := fmt.Sprintf(
-			"%s -f md4 -a preimage -r %d -A %s -t %s %s --bits %d %s",
-			config.Paths.Bin.NejatiEncoder,
-			instanceInfo.Steps,
-			instanceInfo.AdderType,
-			instanceInfo.TargetHash,
-			dobbertinFlag,
-			dobbertinBits,
-			xorFlag)
+		var command string
+		if parameters.AttackType == encoder.Preimage {
+			command = fmt.Sprintf(
+				"%s -f md4 -a preimage -r %d -A %s -t %s %s --bits %d %s",
+				config.Paths.Bin.NejatiPreimageEncoder,
+				instanceInfo.Steps,
+				instanceInfo.AdderType,
+				instanceInfo.TargetHash,
+				dobbertinFlag,
+				dobbertinBits,
+				xorFlag)
+		} else if parameters.AttackType == encoder.Collision {
+			command = fmt.Sprintf(
+				"%s -r %d -A %s %s --diff_desc -d HARD_CODED",
+				config.Paths.Bin.NejatiCollisionEncoder,
+				instanceInfo.Steps,
+				instanceInfo.AdderType,
+				xorFlag)
+		} else {
+			log.Fatal("Encoder: failed to recognize attack type")
+		}
 		cmd := encoderSvc.commandSvc.Create(command)
 		encoderSvc.OutputToFile(cmd, encodingPath)
 
