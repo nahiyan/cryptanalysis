@@ -55,6 +55,9 @@ func (slurmSvc *SlurmService) ScheduleJob(jobPath string, dependencies []slurm.J
 		args = append(args, strconv.Itoa(dependency.Id))
 	}
 
+	// TODO: Make account dynamic
+	args = append(args, "--account=def-cbright")
+
 	// Job path
 	args = append(args, jobPath)
 	output_, err := exec.Command("sbatch", args...).Output()
