@@ -34,12 +34,12 @@ func sig1(x uint32) uint32 {
 	return rightRotate(x, 17) ^ rightRotate(x, 19) ^ (x >> 10)
 }
 
-func (sha256Svc *Sha256Service) Run(message_ []byte, steps int, addChainingVars bool) (string, error) {
+func (sha256Svc *Sha256Service) Run(message []byte, steps int, addChainingVars bool) (string, error) {
 	k := []uint32{
 		0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
 	}
 
-	if len(message_) != 64 {
+	if len(message) != 64 {
 		return "", errors.New("message must be exactly 512 bits long")
 	}
 
@@ -53,13 +53,15 @@ func (sha256Svc *Sha256Service) Run(message_ []byte, steps int, addChainingVars 
 	var h6 uint32 = 0x1f83d9ab
 	var h7 uint32 = 0x5be0cd19
 
-	message := make([]uint32, 64)
+	// Message expansion
+	expandedMessage := make([]uint32, 64)
 	for i := 0; i < 16; i++ {
-		message[i] = binary.BigEndian.Uint32(message_[i*4:])
+		expandedMessage[i] = binary.BigEndian.Uint32(message[i*4:])
+		// fmt.Printf("W[%d] = %08x\n", i, expandedMessage[i])
 	}
-
 	for i := 16; i < steps; i++ {
-		message[i] = sig1(message[i-2]) + message[i-7] + sig0(message[i-15]) + message[i-16]
+		expandedMessage[i] = sig1(expandedMessage[i-2]) + expandedMessage[i-7] + sig0(expandedMessage[i-15]) + expandedMessage[i-16]
+		// fmt.Printf("W[%d] = %08x\n", i, expandedMessage[i])
 	}
 
 	var a uint32 = h0
@@ -73,7 +75,7 @@ func (sha256Svc *Sha256Service) Run(message_ []byte, steps int, addChainingVars 
 	var t1, t2 uint32
 
 	for i := 0; i < steps; i++ {
-		t1 = h + ep1(e) + ch(e, f, g) + k[i] + message[i]
+		t1 = h + ep1(e) + ch(e, f, g) + k[i] + expandedMessage[i]
 		t2 = ep0(a) + maj(a, b, c)
 		h = g
 		g = f
@@ -83,6 +85,7 @@ func (sha256Svc *Sha256Service) Run(message_ []byte, steps int, addChainingVars 
 		c = b
 		b = a
 		a = t1 + t2
+		// fmt.Printf("Step %d %08x %08x\n", i, a, e)
 	}
 
 	h0 = a
@@ -105,16 +108,7 @@ func (sha256Svc *Sha256Service) Run(message_ []byte, steps int, addChainingVars 
 		h7 += h
 	}
 
-	digest_ := make([]byte, 32)
-	binary.BigEndian.PutUint32(digest_, h0)
-	binary.BigEndian.PutUint32(digest_[4:], h1)
-	binary.BigEndian.PutUint32(digest_[8:], h2)
-	binary.BigEndian.PutUint32(digest_[12:], h3)
-	binary.BigEndian.PutUint32(digest_[16:], h4)
-	binary.BigEndian.PutUint32(digest_[20:], h5)
-	binary.BigEndian.PutUint32(digest_[24:], h6)
-	binary.BigEndian.PutUint32(digest_[28:], h7)
-	digest := fmt.Sprintf("%x", digest_)
+	digest := fmt.Sprintf("%08x%08x%08x%08x%08x%08x%08x%08x", h0, h1, h2, h3, h4, h5, h6, h7)
 
 	return digest, nil
 }
