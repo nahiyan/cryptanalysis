@@ -15,7 +15,7 @@ import (
 	"github.com/samber/mo"
 )
 
-func (encoderSvc *EncoderService) GetInstanceName(info encoder.InstanceInfo) string {
+func getInstanceName(info encoder.InstanceInfo) string {
 	encoder_ := info.Encoder
 	function := info.Function
 	steps := info.Steps
@@ -57,7 +57,7 @@ func (encoderSvc *EncoderService) GetInstanceName(info encoder.InstanceInfo) str
 	return instanceName
 }
 
-func (encoderSvc *EncoderService) ProcessInstanceName(instanceName string) (encoder.InstanceInfo, error) {
+func processInstanceName(instanceName string) (encoder.InstanceInfo, error) {
 	instanceName = path.Base(instanceName)
 	info := encoder.InstanceInfo{}
 	errInvalidFormat := errors.New("instance name processor: invalid format")
@@ -170,50 +170,109 @@ func (encoderSvc *EncoderService) ProcessInstanceName(instanceName string) (enco
 	return info, nil
 }
 
-func (encoderSvc *EncoderService) LoopThroughVariation(params pipeline.EncodeParams, cb func(instanceInfo encoder.InstanceInfo)) {
-	for _, steps := range params.Steps {
-		for _, hash := range params.Hashes {
-			for _, xorOption := range params.Xor {
-				for _, adderType := range params.Adders {
-					if params.Function == encoder.Md4 || params.Function == encoder.Md5 {
-						for _, dobbertin := range params.Dobbertin {
-							for _, dobbertinBits := range params.DobbertinBits {
-								dobbertin_ := mo.None[encoder.DobbertinInfo]()
-								if dobbertin == 1 {
-									dobbertin_ = mo.Some(encoder.DobbertinInfo{
-										Bits: dobbertinBits,
-									})
-								}
+func loopThroughVariation(params pipeline.EncodeParams, cb func(instanceInfo encoder.InstanceInfo)) {
+	instances := make([]encoder.InstanceInfo, 0)
+	for _, stepsCount := range params.Steps {
+		instances = append(instances, encoder.InstanceInfo{
+			Encoder:    params.Encoder,
+			Function:   params.Function,
+			AttackType: params.AttackType,
+			Steps:      stepsCount,
+		})
+	}
 
-								cb(encoder.InstanceInfo{
-									Encoder:      params.Encoder,
-									Function:     params.Function,
-									Steps:        steps,
-									TargetHash:   hash,
-									AdderType:    adderType,
-									IsXorEnabled: xorOption == 1,
-									Dobbertin:    dobbertin_,
-								})
+	// Add the hashes
+	if params.AttackType == encoder.Preimage {
+		if len(params.Hashes) == 0 {
+			log.Fatal("Encoder: expected target hashes in the schema")
+		}
 
-								// Skip any following dobbertin bit variation when dobbertin's attack isn't on
-								if dobbertin == 0 {
-									break
-								}
-							}
-						}
-					} else if params.Function == encoder.Sha256 {
-						cb(encoder.InstanceInfo{
-							Encoder:      params.Encoder,
-							Function:     params.Function,
-							Steps:        steps,
-							TargetHash:   hash,
-							AdderType:    adderType,
-							IsXorEnabled: xorOption == 1,
-						})
-					}
+		for i, instance := range instances {
+			for j, targetHash := range params.Hashes {
+				if j == 0 {
+					instances[i].TargetHash = targetHash
+				} else {
+					newInstance := instance
+					newInstance.TargetHash = targetHash
+					instances = append(instances, newInstance)
 				}
 			}
 		}
+	}
+
+	// Add the XOR versions
+	if params.Encoder == encoder.NejatiEncoder {
+		for i, instance := range instances {
+			for j, xorEnabled := range params.Xor {
+				if j == 0 {
+					instances[i].IsXorEnabled = xorEnabled == 1
+				} else {
+					newInstance := instance
+					newInstance.IsXorEnabled = xorEnabled == 1
+					instances = append(instances, newInstance)
+				}
+			}
+		}
+	}
+
+	// Add the adder types
+	if params.Encoder == encoder.NejatiEncoder {
+		for i, instance := range instances {
+			for j, adderType := range params.Adders {
+				if j == 0 {
+					instances[i].AdderType = adderType
+				} else {
+					instance.AdderType = adderType
+					instances = append(instances, instance)
+				}
+			}
+		}
+	}
+
+	// Handle the dobbertin attack
+	if (params.Function == encoder.Md4 || params.Function == encoder.Md5) && params.AttackType == encoder.Preimage {
+		// Add the dobbertin options
+		for i, instance := range instances {
+			for j, isDobbertinEnabled := range params.Dobbertin {
+				dobbertinParams := mo.None[encoder.DobbertinInfo]()
+				if isDobbertinEnabled == 1 {
+					dobbertinParams = mo.Some(encoder.DobbertinInfo{})
+				}
+
+				if j == 0 {
+					instances[i].Dobbertin = dobbertinParams
+				} else {
+					newInstance := instance
+					newInstance.Dobbertin = dobbertinParams
+					instances = append(instances, newInstance)
+				}
+			}
+		}
+
+		// Add the dobbertin bits
+		for i, instance := range instances {
+			var dobbertinParams encoder.DobbertinInfo
+			var exists bool
+			if dobbertinParams, exists = instance.Dobbertin.Get(); !exists {
+				continue
+			}
+
+			for j, bits := range params.DobbertinBits {
+				if j == 0 {
+					dobbertinParams.Bits = bits
+					instances[i].Dobbertin = mo.Some(dobbertinParams)
+				} else {
+					newInstance := instance
+					dobbertinParams.Bits = bits
+					newInstance.Dobbertin = mo.Some(dobbertinParams)
+					instances = append(instances, newInstance)
+				}
+			}
+		}
+	}
+
+	for _, instance := range instances {
+		cb(instance)
 	}
 }
 
@@ -240,7 +299,6 @@ func (encoderSvc *EncoderService) Run(parameters pipeline.EncodeParams) []encode
 	err := encoderSvc.filesystemSvc.PrepareDir(encoderSvc.configSvc.Config.Paths.Encodings)
 	encoderSvc.errorSvc.Fatal(err, "Encoder: failed to prepare directory for storing the encodings")
 
-	// TODO: Add MD5 to NejatiEncoder
 	if parameters.Function != encoder.Md4 && parameters.Function != encoder.Md5 && parameters.Function != encoder.Sha256 {
 		log.Fatal("Encoder: function not supported")
 	}

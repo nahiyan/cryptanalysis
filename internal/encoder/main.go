@@ -13,6 +13,13 @@ import (
 type AdderType string
 type Encoder string
 type Function string
+type AttackType string
+
+// Attack types
+const (
+	Preimage  = "preimage"
+	Collision = "collision"
+)
 
 // Function
 const (
@@ -23,7 +30,7 @@ const (
 
 // Encoders
 const (
-	NejatiEncoder = "nejati_encoder" // Short for Saeed's Encoder
+	NejatiEncoder = "nejati_encoder"
 	Transalg      = "transalg"
 )
 
@@ -55,6 +62,7 @@ type DobbertinInfo struct {
 type InstanceInfo struct {
 	Encoder        Encoder
 	Function       Function
+	AttackType     AttackType
 	Steps          int
 	AdderType      AdderType
 	IsXorEnabled   bool

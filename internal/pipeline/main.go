@@ -21,16 +21,21 @@ type Type string
 type Solver string
 
 type EncodeParams struct {
-	Encoder       encoder.Encoder
-	Function      encoder.Function
-	Xor           []int
-	Dobbertin     []int
+	Encoder    encoder.Encoder
+	Function   encoder.Function
+	Steps      []int
+	AttackType encoder.AttackType
+
+	// Nejati Encoder
+	Xor    []int
+	Adders []encoder.AdderType
+
+	// Preimage attack
+	Dobbertin     []int // TODO: Bring Dobbertin into a single entity
 	DobbertinBits []int
-	Adders        []encoder.AdderType
 	Hashes        []string
-	Steps         []int
-	Solvers       []Solver
-	Redundant     bool
+
+	Redundant bool
 }
 type SolveParams struct {
 	Solvers   []solver.Solver
@@ -66,6 +71,7 @@ type SimplifyParams struct {
 	Conflicts []int
 	Timeout   int
 	Workers   int
+	// TODO: Add support for redundant simplification
 }
 
 type Pipe struct {
