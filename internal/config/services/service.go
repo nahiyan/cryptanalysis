@@ -39,7 +39,8 @@ func (configSvc *ConfigService) Process() {
 	viper.SetDefault("Paths.Bin.Lingeling", "lingeling")
 	viper.SetDefault("Paths.Bin.March", "march_cu_pc")
 	viper.SetDefault("Paths.Bin.SolutionAnalyzer", "solution_analyzer")
-	viper.SetDefault("Paths.Bin.NejatiEncoder", "nejati_encoder")
+	viper.SetDefault("Paths.Bin.NejatiPreimageEncoder", "nejati_preimage_encoder")
+	viper.SetDefault("Paths.Bin.NejatiCollisionEncoder", "nejati_collision_encoder")
 	viper.SetDefault("Paths.Bin.Transalg", "transalg")
 	viper.SetDefault("Paths.Bin.Self", selfPath)
 
