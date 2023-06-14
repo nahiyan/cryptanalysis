@@ -51,7 +51,7 @@ func (encoderSvc *EncoderService) InvokeNejatiEncoder(parameters pipeline.Encode
 				xorFlag)
 		} else if parameters.AttackType == encoder.Collision {
 			command = fmt.Sprintf(
-				"%s -r %d -A %s %s --diff_desc -d HARD_CODED",
+				"%s -r %d -A %s %s --diff_desc --diff_impl -d HARD_CODED",
 				config.Paths.Bin.NejatiCollisionEncoder,
 				instanceInfo.Steps,
 				instanceInfo.AdderType,

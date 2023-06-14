@@ -30,6 +30,12 @@ void diff_xor4(Formula& f, int r, int a, int b, int c, int d)
 {
 }
 
+void negVar(int* a, int* b, int n = 32) {
+    for (int i = 0; i < 32; i++) {
+        a[i] = -b[i];
+    }
+}
+
 void collision(int rounds)
 {
     SHA256 f(rounds), g(rounds);
@@ -168,53 +174,38 @@ void collision(int rounds)
             }
 
             if (cfg_diff_impl){
+                int a[32], b[32], c[32], q[32];
+
                 // IF: -xx -> x
-                int a[32], b[32], c[32], z[32];
-                g.cnf.newVars(pIf1[i], 32);
-                for (int j = 0; j < 32; j++) {
-                    a[j] = !DE[i + 3][j];
-                }
+                g.cnf.newVars(pIf1[i], 32, "pIf1");
+                negVar(a, DE[i + 3]);
                 g.cnf.and3(pIf1[i], a, DE[i + 2], DE[i + 1]);
                 g.cnf.implication(pIf1[i], Df1[i]);
 
                 // IF: --- -> -
-                g.cnf.newVars(pIf2[i], 32);
-                for (int j = 0; j < 32; j++) {
-                    a[j] = !DE[i + 3][j];
-                }
-                for (int j = 0; j < 32; j++) {
-                    b[j] = !DE[i + 2][j];
-                }
-                for (int j = 0; j < 32; j++) {
-                    c[j] = !DE[i + 1][j];
-                }
-                for (int j = 0; j < 32; j++) {
-                    z[j] = !Df1[i][j];
-                }
+                g.cnf.newVars(pIf2[i], 32, "pIf2");
+                negVar(a, DE[i + 3]);
+                negVar(b, DE[i + 2]);
+                negVar(c, DE[i + 1]);
                 g.cnf.and3(pIf2[i], a, b, c);
-                g.cnf.implication(pIf2[i], z);
+
+                negVar(q, Df1[i]);
+                g.cnf.implication(pIf2[i], q);
 
                 // MAJ: xxx -> x
-                g.cnf.newVars(pMaj1[i], 32);
+                g.cnf.newVars(pMaj1[i], 32, "pMaj1");
                 g.cnf.and3(pMaj1[i], DA[i + 3], DA[i + 2], DA[i + 1]);
                 g.cnf.implication(pMaj1[i], Df2[i]);
 
-                // MAJ: --- -> -
-                g.cnf.newVars(pMaj2[i], 32);
-                for (int j = 0; j < 32; j++) {
-                    a[j] = !DA[i + 3][j];
-                }
-                for (int j = 0; j < 32; j++) {
-                    b[j] = !DA[i + 2][j];
-                }
-                for (int j = 0; j < 32; j++) {
-                    c[j] = !DA[i + 1][j];
-                }
-                for (int j = 0; j < 32; j++) {
-                    z[j] = !Df2[i][j];
-                }
+                // // MAJ: --- -> -
+                g.cnf.newVars(pMaj2[i], 32, "pMaj2");
+                negVar(a, DA[i + 3]);
+                negVar(b, DA[i + 2]);
+                negVar(c, DA[i + 1]);
+                
+                negVar(q, Df2[i]);
                 g.cnf.and3(pMaj2[i], a, b, c);
-                g.cnf.implication(pMaj2[i], z);
+                g.cnf.implication(pMaj2[i], q);
             }
 
             // T = E[i] + sigma1 + f1 + k[i] + w[i]
