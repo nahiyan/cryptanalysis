@@ -76,6 +76,20 @@ void Formula::and2(int* z, int* x, int* y, int n)
         addClause({ z[i], -x[i], -y[i] });
         addClause({ -z[i], x[i] });
         addClause({ -z[i], y[i] });
+        // TODO: Check whether this is efficient
+        // addClause({ z[i], -x[i] });
+        // addClause({ x[i], -y[i] });
+        // addClause({ -z[i], y[i] });
+    }
+}
+
+void Formula::and3(int* z, int* a, int* b, int* c, int n)
+{
+    for (int i = 0; i < n; i++) {
+        addClause({ z[i], -a[i] });
+        addClause({ a[i], -b[i] });
+        addClause({ b[i], -c[i] });
+        addClause({ -z[i], c[i] });
     }
 }
 
@@ -85,6 +99,16 @@ void Formula::or2(int* z, int* x, int* y, int n)
         addClause({ -z[i], x[i], y[i] });
         addClause({ z[i], -x[i] });
         addClause({ z[i], -y[i] });
+    }
+}
+
+void Formula::or3(int* z, int* a, int* b, int* c, int n)
+{
+    for (int i = 0; i < n; i++) {
+        addClause({ -z[i], a[i], b[i], c[i] });
+        addClause({ z[i], -a[i] });
+        addClause({ z[i], -b[i] });
+        addClause({ z[i], -c[i] });
     }
 }
 
@@ -159,6 +183,13 @@ void Formula::xor4(int* z, int* a, int* b, int* c, int* d, int n)
             addClause({ z[i], a[i], b[i], c[i], -d[i] });
             addClause({ -z[i], a[i], b[i], c[i], d[i] });
         }
+    }
+}
+
+void Formula::implication(int* p, int* q, int n)
+{
+    for (int i = 0; i < n; i++) {
+        addClause({ -p[i], q[i] });
     }
 }
 

@@ -14,6 +14,7 @@ using namespace std;
 int cfg_use_xor_clauses;
 Formula::MultiAdderType cfg_multi_adder_type;
 int cfg_diff_desc;
+int cfg_diff_impl;
 int cfg_rand_inp_diff;
 string cfg_diff_const_file;
 
@@ -63,6 +64,7 @@ void collision(int rounds)
             }
         }
 
+        // Support for built-in differential characters
         vector<string> A, E, W;
         if (cfg_diff_const_file == "HARD_CODED") {
             retrieve_table(rounds, A, E, W);
@@ -133,6 +135,13 @@ void collision(int rounds)
         int DK[64][32];
         int Dr1carry[64][32];
         int Dr2carry[64][32], Dr2Carry[64][32];
+
+        // Implications
+        int pIf1[64][32]; // -xx
+        int pIf2[64][32]; // ---
+        int pMaj1[64][32]; // xxx
+        int pMaj2[64][32]; // ---
+
         for (int i = 0; i < rounds; i++) {
             // sigma0 = Sigma0(A[i+3])
             // sigma1 = Sigma1(E[i+3])
@@ -156,6 +165,56 @@ void collision(int rounds)
                 g.cnf.addClause({ DE[i + 3][j], DE[i + 2][j], DE[i + 1][j], -Df1[i][j] });
                 g.cnf.addClause({ DA[i + 3][j], DA[i + 2][j], DA[i + 1][j], -Df2[i][j] });
                 g.cnf.addClause({ -DA[i + 3][j], -DA[i + 2][j], -DA[i + 1][j], Df2[i][j] });
+            }
+
+            if (cfg_diff_impl){
+                // IF: -xx -> x
+                int a[32], b[32], c[32], z[32];
+                g.cnf.newVars(pIf1[i], 32);
+                for (int j = 0; j < 32; j++) {
+                    a[j] = !DE[i + 3][j];
+                }
+                g.cnf.and3(pIf1[i], a, DE[i + 2], DE[i + 1]);
+                g.cnf.implication(pIf1[i], Df1[i]);
+
+                // IF: --- -> -
+                g.cnf.newVars(pIf2[i], 32);
+                for (int j = 0; j < 32; j++) {
+                    a[j] = !DE[i + 3][j];
+                }
+                for (int j = 0; j < 32; j++) {
+                    b[j] = !DE[i + 2][j];
+                }
+                for (int j = 0; j < 32; j++) {
+                    c[j] = !DE[i + 1][j];
+                }
+                for (int j = 0; j < 32; j++) {
+                    z[j] = !Df1[i][j];
+                }
+                g.cnf.and3(pIf2[i], a, b, c);
+                g.cnf.implication(pIf2[i], z);
+
+                // MAJ: xxx -> x
+                g.cnf.newVars(pMaj1[i], 32);
+                g.cnf.and3(pMaj1[i], DA[i + 3], DA[i + 2], DA[i + 1]);
+                g.cnf.implication(pMaj1[i], Df2[i]);
+
+                // MAJ: --- -> -
+                g.cnf.newVars(pMaj2[i], 32);
+                for (int j = 0; j < 32; j++) {
+                    a[j] = !DA[i + 3][j];
+                }
+                for (int j = 0; j < 32; j++) {
+                    b[j] = !DA[i + 2][j];
+                }
+                for (int j = 0; j < 32; j++) {
+                    c[j] = !DA[i + 1][j];
+                }
+                for (int j = 0; j < 32; j++) {
+                    z[j] = !Df2[i][j];
+                }
+                g.cnf.and3(pMaj2[i], a, b, c);
+                g.cnf.implication(pMaj2[i], z);
             }
 
             // T = E[i] + sigma1 + f1 + k[i] + w[i]
@@ -223,6 +282,7 @@ void display_usage()
            "                                           Specifies the type of multi operand addition encoding (default: espresso)\n"
            "  --rounds or -r {int(16..80)}             Number of rounds in your function\n"
            "  --diff_desc                              Adds differential description\n"
+           "  --diff_impl                              Adds differential implication for MAJ, IF, XOR2, and XOR3\n"
            "  --diff_const_file or -d {file_path}      Path to the differential constraints file\n"
            "  --rand_input_diff                        Randomly pick a bit in input to be different (for collision)\n");
 }
@@ -235,6 +295,7 @@ int main(int argc, char** argv)
     cfg_use_xor_clauses = 0;
     cfg_multi_adder_type = Formula::MAT_NONE;
     cfg_diff_desc = 0;
+    cfg_diff_impl = 0;
     cfg_rand_inp_diff = 0;
     cfg_diff_const_file = "";
     int rounds = -1;
@@ -243,6 +304,7 @@ int main(int argc, char** argv)
         /* flag options */
         { "xor", no_argument, &cfg_use_xor_clauses, 1 },
         { "diff_desc", no_argument, &cfg_diff_desc, 1 },
+        { "diff_impl", no_argument, &cfg_diff_impl, 1 },
         { "rand_input_diff", no_argument, &cfg_rand_inp_diff, 1 },
         /* valued options */
         { "rounds", required_argument, 0, 'r' },

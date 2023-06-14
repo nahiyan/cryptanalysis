@@ -1,3 +1,5 @@
 .vscode
 *.o
 cryptanalysis
+nejati_collision_encoder
+nejati_preimage_encoder
