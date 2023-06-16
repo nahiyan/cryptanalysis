@@ -162,23 +162,17 @@ void collision(int rounds)
             }
 
             if (cfg_diff_impl){
-                // MAJ: xxx -> x
                 for (int j = 0; j < 32; j++) {
+                    // MAJ: xxx -> x
                     g.cnf.addClause({-DA[i+3][j], -DA[i+2][j], -DA[i+1][j], Df2[i][j]});
-                }
 
-                // MAJ: --- -> -
-                for (int j = 0; j < 32; j++) {
+                    // MAJ: --- -> -
                     g.cnf.addClause({DA[i+3][j], DA[i+2][j], DA[i+1][j], -Df2[i][j]});
-                }
-
-                // IF: -xx -> x
-                for (int j = 0; j < 32; j++) {
+                    
+                    // IF: -xx -> x
                     g.cnf.addClause({DE[i+3][j], -DE[i+2][j], -DE[i+1][j], Df1[i][j]});
-                }
-
-                // IF: --- -> -
-                for (int j = 0; j < 32; j++) {
+                    
+                    // IF: --- -> -
                     g.cnf.addClause({DE[i+3][j], DE[i+2][j], DE[i+1][j], -Df1[i][j]});
                 }
             }
