@@ -136,12 +136,6 @@ void collision(int rounds)
         int Dr1carry[64][32];
         int Dr2carry[64][32], Dr2Carry[64][32];
 
-        // Implications
-        int pIf1[64][32]; // -xx
-        int pIf2[64][32]; // ---
-        int pMaj1[64][32]; // xxx
-        int pMaj2[64][32]; // ---
-
         for (int i = 0; i < rounds; i++) {
             // sigma0 = Sigma0(A[i+3])
             // sigma1 = Sigma1(E[i+3])
@@ -168,8 +162,6 @@ void collision(int rounds)
             }
 
             if (cfg_diff_impl){
-                int a[32], b[32], c[32], q[32];
-
                 // MAJ: xxx -> x
                 for (int j = 0; j < 32; j++) {
                     g.cnf.addClause({-DA[i+3][j], -DA[i+2][j], -DA[i+1][j], Df2[i][j]});
