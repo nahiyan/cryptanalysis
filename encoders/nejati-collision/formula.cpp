@@ -83,15 +83,15 @@ void Formula::and2(int* z, int* x, int* y, int n)
     }
 }
 
-void Formula::and3(int* z, int* a, int* b, int* c, int n)
-{
-    for (int i = 0; i < n; i++) {
-        addClause({ z[i], -a[i], -b[i], -c[i] });
-        addClause({ -z[i], a[i] });
-        addClause({ -z[i], b[i] });
-        addClause({ -z[i], c[i] });
-    }
-}
+// void Formula::and3(int* z, int* a, int* b, int* c, int n)
+// {
+//     for (int i = 0; i < n; i++) {
+//         addClause({ z[i], -a[i], -b[i], -c[i] });
+//         addClause({ -z[i], a[i] });
+//         addClause({ -z[i], b[i] });
+//         addClause({ -z[i], c[i] });
+//     }
+// }
 
 void Formula::or2(int* z, int* x, int* y, int n)
 {
