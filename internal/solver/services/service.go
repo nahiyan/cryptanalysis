@@ -118,7 +118,6 @@ func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver
 	err = solverSvc.filesystemSvc.WriteFromPipe(stdoutPipe, logFilePath)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to write from pipe")
 
-	// TODO: Fix issue with MiniSat family of solvers not exiting after solving
 	cmd.Wait()
 	exitCode := cmd.ProcessState.ExitCode()
 	result := solver.Result(solver.Fail)

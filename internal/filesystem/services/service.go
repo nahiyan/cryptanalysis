@@ -77,8 +77,10 @@ func (filesystemSvc *FilesystemService) WriteFromPipe(pipe io.Reader, filePath s
 	defer file.Close()
 
 	scanner := bufio.NewScanner(pipe)
+	scanner.Split(bufio.ScanBytes)
 	for scanner.Scan() {
-		file.WriteString(scanner.Text() + "\n")
+		token := scanner.Text()
+		file.WriteString(token)
 	}
 
 	return nil
