@@ -26,6 +26,8 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "mtl/Alg.h"
 #include "utils/Options.h"
 #include "core/SolverTypes.h"
+#include <unordered_map>
+#include <string>
 
 
 namespace Minisat {
@@ -165,6 +167,10 @@ public:
 
     vec<long double> total_actual_rewards;
     vec<int> total_actual_count;
+
+    // CDCL(Crypto)
+    std::unordered_map<std::string, int> var_map;
+    int steps = 0;
 
 protected:
 

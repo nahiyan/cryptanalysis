@@ -22,6 +22,8 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 #include "Solver.h"
 #include "mtl/Sort.h"
+#include "Crypto.h"
+#include <chrono>
 
 using namespace Minisat;
 
@@ -364,76 +366,36 @@ Lit Solver::pickBranchLit()
 //           the simplification steps may have removed some variables! If complete is true,
 //           the solver will return satisfiable immediately unless this function returns at
 //           least one clause.
-int wait = 0, da_addr = 18141, de_addr = 18173, df1_addr = 20445, df2_addr = 20477;
-// Spacings: DA, DE, DW: 96, DF1, DF2: 351
+
+int get_wait_threshold(int steps) {
+    if (steps == 18)
+        return 50;
+    else if (steps == 21)
+        return 50;
+    else if (steps == 23)
+        return 50;
+    else if (steps == 24)
+        return 50;
+    else if (steps == 25)
+        return 50;
+    return 1000;
+}
+
+int wait = 0;
+time_t time_sum = 0;
 void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
 {
+    auto start = std::chrono::high_resolution_clock::now();
     wait++;
-    int k = 0;
-    if (wait % 430000 != 0 && !complete) {
+    if (wait != get_wait_threshold(steps) && !complete) {
         return;
     }
 
-    for (int i = 0; i < 18; i++) {
-        for (int j = 0; j < 32; j++) {
-            int da_3 = da_addr + ((i + 3) * 96) + j; // A[i+3]
-            int da_2 = da_addr + ((i + 2) * 96) + j; // A[i+2]
-            int da_1 = da_addr + ((i + 1) * 96) + j; // A[i+1]
-            int de_3 = de_addr + ((i + 3) * 96) + j; // E[i+3]
-            int de_2 = de_addr + ((i + 2) * 96) + j; // E[i+2]
-            int de_1 = de_addr + ((i + 1) * 96) + j; // E[i+1]
-            int df1 = df1_addr + (i * 351) + j; // IF
-            int df2 = df2_addr + (i * 351) + j; // MAJ
+    add_clauses(*this, out_refined);
 
-            if (value(de_3) == l_False && value(de_2) == l_True && value(de_1) == l_True) {
-                // f1: -xx -> x
-                out_refined.push();
-                out_refined[k].push(mkLit(df1));
-                k++;
-            } else if (value(de_3) == l_False && value(de_2) == l_False && value(de_1) == l_False) {
-                // f1: --- -> -
-                out_refined.push();
-                out_refined[k].push(~mkLit(df1));
-                k++;
-            }
-
-            if (value(da_3) == l_True && value(da_2) == l_True && value(da_1) == l_True) {
-                // f2: xxx -> x
-                out_refined.push();
-                out_refined[k].push(mkLit(df2));
-                k++;
-            } else if (value(da_3) == l_False && value(da_2) == l_False && value(da_1) == l_False) {
-                // f2: --- -> -
-                out_refined.push();
-                out_refined[k].push(~mkLit(df2));
-                k++;
-            }
-        }
-    }
-
-    // if (value(10) == l_True) { // Checking if v_10 is set to a wrong value! returning the negation as a conflict clause
-    //     out_refined.push();
-    //     out_refined[k].push(~mkLit(10));
-    //     k++;
-    // }
-    // if (value(0) != l_Undef && value(1) != l_Undef) // Checking if a particular assignment to some variables is made
-    // {
-    //     int x = value(0) == l_True;
-    //     int y = value(1) == l_True;
-    //     int z = x + y;
-    //     int z0 = z & 1;
-    //     int z1 = (z >> 1) & 1; // Encoding addition of two variables and generating reason clauses
-    //     out_refined.push();
-    //     out_refined[k].push(mkLit(0, value(0) == l_False));
-    //     out_refined[k].push(mkLit(1, value(1) == l_False));
-    //     out_refined[k].push(mkLit(2, z0 == 0));
-    //     k++;
-    //     out_refined.push();
-    //     out_refined[k].push(mkLit(0, value(0) == l_False));
-    //     out_refined[k].push(mkLit(1, value(1) == l_False));
-    //     out_refined[k].push(mkLit(3, z1 == 0));
-    //     k++;
-    // }
+    wait = 0;
+    auto finish = std::chrono::high_resolution_clock::now();
+    time_sum += std::chrono::duration_cast<std::chrono::microseconds>(finish-start).count();
 }
 
 bool Solver::falsifiedClause(vec<Lit>& confl)
@@ -1394,6 +1356,8 @@ lbool Solver::solve_()
 
     if (verbosity >= 1)
         printf("===============================================================================\n");
+
+    printf("Time took: %d\n", time_sum);
 
     if (status == l_True) {
         // Extend & copy model:

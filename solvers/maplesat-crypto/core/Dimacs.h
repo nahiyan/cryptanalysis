@@ -23,8 +23,9 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 #include <stdio.h>
 
-#include "utils/ParseUtils.h"
-#include "core/SolverTypes.h"
+#include "../utils/ParseUtils.h"
+#include "SolverTypes.h"
+#include <string>
 
 namespace Minisat {
 
@@ -63,9 +64,57 @@ static void parse_DIMACS_main(B& in, Solver& S) {
             }else{
                 printf("PARSE ERROR! Unexpected char: %c\n", *in), exit(3);
             }
-        } else if (*in == 'c' || *in == 'p')
+        } else if (*in == 'c'){
+            // Process the variable mapping
+            char buffer[128];
+            int i = 0;
+            bool eof = 0;
+            for (;;){
+                ++in;
+                if (isEof(in)) {
+                    eof = 1;
+                    break;
+                }
+
+                // Store the chars in the buffer
+                buffer[i++] = *in;
+                
+                if (*in == '\n') {
+                    ++in;
+
+                    // Insert the variable map entries
+                    char var[20];
+                    int val;
+                    sscanf(buffer, "%s %d", &var, &val);
+                    S.var_map.insert({var, val - 1});
+
+                    // Detect the number of steps from the variable names
+                    for (int j = 0; j < 20; j++) {
+                        if (var[j] == 'D' || var[j] == '_' || var[j] == 'g')
+                            var[j] = ' ';
+                    }
+                    if (var[1] == 'W') {
+                        int step = 0;
+                        sscanf(var, " W %d", &step);
+                        if (step + 1 > S.steps) {
+                            S.steps = step + 1; 
+                        }
+                    }
+
+                    // Clear the buffer
+                    for (int j = 0; j < 128; j++) {
+                        buffer[j] = 0;
+                    }
+                    i = 0;
+                    continue;
+                }
+            }
+            if (eof) {
+                return;
+            }
+        } else if (*in == 'p') {
             skipLine(in);
-        else{
+        }else{
             cnt++;
             readClause(in, S, lits);
             S.addClause_(lits); }
