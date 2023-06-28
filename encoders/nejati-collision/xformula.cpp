@@ -100,13 +100,10 @@ void xFormula::diff_add(int *z, int *a, int *b, int *t, int *T, int *c, int *d, 
         if ( e ) v[k++] = e[j];
         if ( j > 0 ) v[k++] = t[j-1];
         if ( j > 1 )
-        {
-            if ( (m == 3 && j >= 3) || (m > 3) ) v[k++] = T[j-2]; 
-        }
+            if ( (m == 3 && j >= 3) || (m > 3) ) v[k++] = T[j-2];
 
         if ( m == 2 ) comp(z[j], v, k, t[j]);
         else          comp(z[j], v, k, t[j], T[j]);
-
     }
 }
 
