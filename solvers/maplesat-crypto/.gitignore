@@ -1,2 +1,4 @@
 maplesat_static
 *.or
+.cache
+compile_commands.json
