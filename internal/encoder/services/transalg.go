@@ -209,8 +209,8 @@ func (encoderSvc *EncoderService) InvokeTransalg(parameters pipeline.EncodeParam
 	encodings := []encoder.Encoding{}
 
 	// * Loop through the variations
-	encoderSvc.LoopThroughVariation(parameters, func(instanceInfo encoder.InstanceInfo) {
-		instanceName := encoderSvc.GetInstanceName(instanceInfo)
+	loopThroughVariation(parameters, func(instanceInfo encoder.InstanceInfo) {
+		instanceName := getInstanceName(instanceInfo)
 		encodingPath := path.Join(encoderSvc.configSvc.Config.Paths.Encodings, instanceName)
 		encodings = append(encodings, encoder.Encoding{BasePath: encodingPath})
 
