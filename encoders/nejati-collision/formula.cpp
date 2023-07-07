@@ -129,15 +129,13 @@ void Formula::neq(int* z, int* x, int n)
 void Formula::diffVar(int* z, int* x, int* y, int n)
 {
     for (int i = 0; i < n; i++) {
-        int d0 = *(z + i * 4 + 0);
-        int d1 = *(z + i * 4 + 1);
-        int d2 = *(z + i * 4 + 2);
-        int d3 = *(z + i * 4 + 3);
-        // addClause({ d0, x[i], y[i] }); // 0
-        // addClause({ d1, -x[i], y[i] }); // u
-        // addClause({ d2, x[i], -y[i] }); // n
-        // addClause({ d3, -x[i], -y[i] }); // 1
-        addClause({ d0, d1, d2, d3 }); // not #
+        int* d = z + i * 4;
+        // printf("c debug %d %d %d\n", d0, x[i], y[i]);
+        addClause({ d[0], x[i], y[i] }); // 0
+        addClause({ d[1], -x[i], y[i] }); // u
+        addClause({ d[2], x[i], -y[i] }); // n
+        addClause({ d[3], -x[i], -y[i] }); // 1
+        addClause({ d[0], d[1], d[2], d[3] }); // not #
     }
 }
 

@@ -424,7 +424,7 @@ void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
 {
     auto start = std::chrono::high_resolution_clock::now();
     wait++;
-    if (wait != 20000 && !complete) {
+    if (wait != 1 && !complete) {
         return;
     }
 

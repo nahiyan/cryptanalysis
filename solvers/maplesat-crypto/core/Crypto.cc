@@ -1111,7 +1111,7 @@ char gc(Minisat::Solver& s, int& id)
     } else if (d[0] == 0 && d[1] == 1 && d[2] == 1 && d[3] == 1) {
         return 'E';
     } else {
-        // printf("%d: %d %d %d %d\n", id, d[0], d[1], d[2], d[3]);
+        // printf("%d: %d %d %d %d\n", id + 1, d[0], d[1], d[2], d[3]);
         return NULL;
     }
 }
@@ -1136,24 +1136,28 @@ void impose_rule_3_1(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, std
         w + 3 };
     int vals[12] = { int_value(s, x), int_value(s, x + 1), int_value(s, x + 2), int_value(s, x + 3), int_value(s, y), int_value(s, y + 1), int_value(s, y + 2), int_value(s, y + 3), int_value(s, z), int_value(s, z + 1), int_value(s, z + 2), int_value(s, z + 3) };
 
-    bool o1d[4];
+    bool o1v[4];
     if (o[0] == '-') {
-        o1d[0] = true;
-        o1d[1] = false;
-        o1d[2] = false;
-        o1d[3] = true;
+        o1v[0] = true;
+        o1v[1] = false;
+        o1v[2] = false;
+        o1v[3] = true;
     }
 
     for (int j = 0; j < 4; j++) {
         out_refined.push();
         for (int i = 0; i < 12; i++) {
             out_refined[k].push(mkLit(vars[i], vals[i] == 1 ? false : true));
-            // printf("%d %d\n", vars[i], vals[i] == 1 ? false : true);
+            // printf("%d %d\n", vars[i] + 1, vals[i] == 1 ? false : true);
         }
-        out_refined[k].push(mkLit(vars[j + 12], o1d[j]));
-        // printf("%d %d\n", vars[j+12], o1d[j]);
+        out_refined[k].push(mkLit(vars[j + 12], o1v[j]));
+        // printf("%d %d\n", vars[j+12] + 1, o1v[j]);
+        // printf("\n");
         k++;
     }
+
+    // if (w == 27356)
+    //     printf("%c%c%c %d %d %d %d\n", gc(s, x), gc(s, y), gc(s, z), int_value(s, w), int_value(s, w + 1), int_value(s, w + 2), int_value(s, w + 3));
 
     // out_refined.push();
     // out_refined[k].push(mkLit(vars[12], true));
@@ -1163,45 +1167,71 @@ void impose_rule_3_1(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, std
     // k++;
 }
 
+void impose_rule_3_1_w(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int id, int& x, int& y, int& z, int& w)
+{
+    char x_gc = gc(s, x), y_gc = gc(s, y), z_gc = gc(s, z);
+    if (x_gc != NULL && y_gc != NULL && z_gc != NULL) {
+        std::string key = std::to_string(id);
+        key.push_back(x_gc);
+        key.push_back(y_gc);
+        key.push_back(z_gc);
+        auto value_it = s.rules.find(key);
+        if (value_it == s.rules.end()) // Rule not found
+            return;
+
+        auto value = value_it->second;
+        if (gc(s, w) == value[0]) // Output difference is already correct
+            return;
+
+        printf("RKey: %s; RValue: %s; DValue: %c(%d); DId: %d\n", key.c_str(), value.c_str(), gc(s, w), gc(s, w), w + 1);
+        impose_rule_3_1(s, out_refined, k, value, x, y, z, w);
+    }
+}
+
 void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
 {
     int k = 0;
     for (int i = 0; i < s.steps; i++) {
-        int dw_0_base = s.var_map["DW_" + std::to_string(i) + "_g"];
-        int da_4_base = s.var_map["DA_" + std::to_string(i + 4) + "_g"];
-        int da_0_base = s.var_map["DA_" + std::to_string(i) + "_g"];
-        int de_4_base = s.var_map["DE_" + std::to_string(i + 4) + "_g"];
+        // int dw_0_base = s.var_map["DW_" + std::to_string(i) + "_g"];
+        // int da_4_base = s.var_map["DA_" + std::to_string(i + 4) + "_g"];
+        int da_3_base = s.var_map["DA_" + std::to_string(i + 3) + "_g"];
+        int da_2_base = s.var_map["DA_" + std::to_string(i + 2) + "_g"];
+        int da_1_base = s.var_map["DA_" + std::to_string(i + 1) + "_g"];
+        // int da_0_base = s.var_map["DA_" + std::to_string(i) + "_g"];
+        // int de_4_base = s.var_map["DE_" + std::to_string(i + 4) + "_g"];
         int de_3_base = s.var_map["DE_" + std::to_string(i + 3) + "_g"];
         int de_2_base = s.var_map["DE_" + std::to_string(i + 2) + "_g"];
         int de_1_base = s.var_map["DE_" + std::to_string(i + 1) + "_g"];
-        int de_0_base = s.var_map["DE_" + std::to_string(i) + "_g"];
+        // int de_0_base = s.var_map["DE_" + std::to_string(i) + "_g"];
         int df1_base = s.var_map["Df1_" + std::to_string(i) + "_g"];
         int df2_base = s.var_map["Df2_" + std::to_string(i) + "_g"];
-        int dsigma0_base = s.var_map["Dsigma0_" + std::to_string(i) + "_g"];
-        int dsigma1_base = s.var_map["Dsigma1_" + std::to_string(i) + "_g"];
-        int ds0_base = s.var_map["Ds0_" + std::to_string(i) + "_g"];
-        int ds1_base = s.var_map["Ds1_" + std::to_string(i) + "_g"];
-        int dt_base = s.var_map["DT_" + std::to_string(i) + "_g"];
-        int dk_base = s.var_map["DK_" + std::to_string(i) + "_g"];
-        int dr1_carry_base = s.var_map["Dr1_carry_" + std::to_string(i) + "_g"];
-        int dr2_carry_base = s.var_map["Dr2_carry_" + std::to_string(i) + "_g"];
-        int dr2_carry2_base = s.var_map["Dr2_Carry_" + std::to_string(i) + "_g"];
-        int dr0_carry_base = s.var_map["Dr0_carry_" + std::to_string(i) + "_g"];
-        int dr0_carry2_base = s.var_map["Dr0_Carry_" + std::to_string(i) + "_g"];
-        int dw_carry_base = s.var_map["Dw_carry_" + std::to_string(i) + "_g"];
-        int dw_carry2_base = s.var_map["Dw_Carry_" + std::to_string(i) + "_g"];
+        // int dsigma0_base = s.var_map["Dsigma0_" + std::to_string(i) + "_g"];
+        // int dsigma1_base = s.var_map["Dsigma1_" + std::to_string(i) + "_g"];
+        // int ds0_base = s.var_map["Ds0_" + std::to_string(i) + "_g"];
+        // int ds1_base = s.var_map["Ds1_" + std::to_string(i) + "_g"];
+        // int dt_base = s.var_map["DT_" + std::to_string(i) + "_g"];
+        // int dk_base = s.var_map["DK_" + std::to_string(i) + "_g"];
+        // int dr1_carry_base = s.var_map["Dr1_carry_" + std::to_string(i) + "_g"];
+        // int dr2_carry_base = s.var_map["Dr2_carry_" + std::to_string(i) + "_g"];
+        // int dr2_carry2_base = s.var_map["Dr2_Carry_" + std::to_string(i) + "_g"];
+        // int dr0_carry_base = s.var_map["Dr0_carry_" + std::to_string(i) + "_g"];
+        // int dr0_carry2_base = s.var_map["Dr0_Carry_" + std::to_string(i) + "_g"];
+        // int dw_carry_base = s.var_map["Dw_carry_" + std::to_string(i) + "_g"];
+        // int dw_carry2_base = s.var_map["Dw_Carry_" + std::to_string(i) + "_g"];
 
         for (int j = 0; j < 32; j++) {
             // int dw_0 = dw_0_base + j;                 // DW[i]
-            // int da_4 = da_4_base + j;                 // DA[i+4]
-            // int da_0 = da_0_base + j;                 // DA[i]
+            // int da_4 = da_4_base + j; // DA[i+4]
+            int da_3 = da_3_base + j * 4; // DA[i+3]
+            int da_2 = da_2_base + j * 4; // DA[i+2]
+            int da_1 = da_1_base + j * 4; // DA[i+1]
             // int de_4 = de_4_base + j * 4; // DE[i+4]
             int de_3 = de_3_base + j * 4; // DE[i+3]
             int de_2 = de_2_base + j * 4; // DE[i+2]
             int de_1 = de_1_base + j * 4; // DE[i+1]
-            int de_0 = de_0_base + j * 4; // DE[i]
-            int df1 = df1_base + j * 4; // DIF
-            // int df2 = df2_base + j;                   // DMAJ
+            // int de_0 = de_0_base + j * 4; // DE[i]
+            int df1 = df1_base + j * 4; // Df1 <- IF
+            int df2 = df2_base + j * 4; // Df2 <- MAJ
             // int dsigma0 = dsigma0_base + j;           // DSigma0
             // int dsigma1 = dsigma1_base + j;           // DSigma1
             // int ds0 = ds0_base + j;                   // DS0
@@ -1217,21 +1247,9 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
             // int dw_carry2 = dw_carry2_base + j;       // Dw_carry2
 
             // IF
-            char x = gc(s, de_3), y = gc(s, de_2), z = gc(s, de_1);
-            if (x != NULL && y != NULL && z != NULL) {
-                std::string key = "1";
-                key.push_back(x);
-                key.push_back(y);
-                key.push_back(z);
-                auto value_it = s.rules.find(key);
-                if (value_it != s.rules.end()) {
-                    auto value = value_it->second;
-                    if (gc(s, df1) != value[0]) {
-                        printf("Key: %s; value: %s; current: %c(%d); df1: %d\n", key.c_str(), value.c_str(), gc(s, df1), gc(s, df1), df1 + 1);
-                        impose_rule_3_1(s, out_refined, k, value, de_3, de_2, de_1, df1);
-                    }
-                }
-            }
+            impose_rule_3_1_w(s, out_refined, k, 1, de_3, de_2, de_1, df1);
+            // MAJ
+            // impose_rule_3_1_w(s, out_refined, k, 2, da_3, da_2, da_1, df2);
         }
     }
 
