@@ -345,6 +345,57 @@ Lit Solver::pickBranchLit()
     return next == var_Undef ? lit_Undef : mkLit(next, rnd_pol ? drand(random_seed) < 0.5 : polarity[next]);
 }
 
+void Solver::loadRule(FILE*& db, int& id)
+{
+    int size = 0;
+    if (id >= 1 && id <= 3) {
+        size = 4;
+    } else if (id == 4) {
+        size = 6;
+    }
+
+    char buffer[size];
+    int n = fread(buffer, size, 1, db);
+    if (n == 0)
+        return;
+
+    // 3 operand functions
+    if (id >= 1 && id <= 3) {
+        const char op1 = buffer[0], op2 = buffer[1], op3 = buffer[2], o1 = buffer[3];
+        char key[5], value[2];
+        sprintf(key, "%d%c%c%c", id, op1, op2, op3);
+        sprintf(value, "%c", o1);
+        rules.insert({key, value});
+        // printf("Inserted %s => %s\n", key, value);
+    } else if (id == 4) {
+        const char op1 = buffer[0], op2 = buffer[1], op3 = buffer[2], o1 = buffer[3], o2 = buffer[4], o3 = buffer[5];
+        char key[5], value[4];
+        sprintf(key, "%d%c%c%c", id, op1, op2, op3);
+        sprintf(value, "%c%c%c", o1, o2, o3);
+        rules.insert({key, value});
+        // printf("Inserted %s => %s\n", key, value);
+    }
+    fflush(stdout);
+}
+
+void Solver::loadRules(const char* filename)
+{
+    FILE* db = fopen(filename, "r");
+    char buffer[1];
+    int count = 0; 
+    while(1) {
+        int n = fread(buffer, 1, 1, db);
+        if (n == 0)
+            break;
+
+        int id = buffer[0];
+        loadRule(db, id);
+        count++;
+    }
+
+    printf("Loaded %d rules\n", count);
+}
+
 // A callback function for programmatic interface. This function is called
 // very frequently, if the analysis is expensive then add code to skip the analysis on
 // most calls. However, if complete is set to true, do not skip the analysis or else the
@@ -367,31 +418,18 @@ Lit Solver::pickBranchLit()
 //           the solver will return satisfiable immediately unless this function returns at
 //           least one clause.
 
-int get_wait_threshold(int steps) {
-    if (steps == 18)
-        return 50;
-    else if (steps == 21)
-        return 50;
-    else if (steps == 23)
-        return 50;
-    else if (steps == 24)
-        return 50;
-    else if (steps == 25)
-        return 50;
-    return 1000;
-}
-
 int wait = 0;
 time_t time_sum = 0;
 void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
 {
     auto start = std::chrono::high_resolution_clock::now();
     wait++;
-    if (wait != get_wait_threshold(steps) && !complete) {
+    if (wait != 20000 && !complete) {
         return;
     }
 
     add_clauses(*this, out_refined);
+    fflush(stdout);
 
     wait = 0;
     auto finish = std::chrono::high_resolution_clock::now();

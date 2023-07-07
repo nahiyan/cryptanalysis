@@ -31,11 +31,13 @@ class Formula
         virtual ~Formula();
 
         void newVars(int *x, int n = 32, string name = "");                     // Reserves new variable IDs for the bitvector 'x' of size 'n'
+        void newVarsD2(int *x, int n = 32, int m = 4, string name = "");
 
         void addClause(vector<int> v);
         void addClause(Clause c);
 
         void fixedValue(int *z, unsigned v, int n = 32);                        // Forces the bitvector 'z' to the value 'v'
+        void fixedValueD2(int *z, unsigned v, int n = 32, int m = 4);
 
         int getVarCnt() { return varCnt; }
         int getClauseCnt() { return clauses.size(); }
@@ -73,15 +75,13 @@ class Formula
         void rotr(int *z, int *x, int p, int n = 32) { rotl(z, x, n-p, n); }    // Rotate right 'p' positions
         void assign(int *z, int *x, int n = 32) { rotl(z, x, 0, n); }
         void and2(int *z, int *x, int *y, int n = 32);                          // Two-input AND
-        void and3(int *z, int *a, int *b, int* c, int n = 32);                          // Three-input AND
         void or2(int *z, int *x, int *y, int n = 32);                           // Two-input OR
-        void or3(int *z, int *a, int *b, int* c, int n = 32);                           // Three-input OR
         void eq(int *z, int *x, int n = 32);                                    // Equivalence
         void neq(int *z, int *x, int n = 32);                                   // Boolean negation
+        void diffVar(int* z, int* x, int* y, int n = 32);
         void xor2(int *z, int *x, int *y, int n = 32);                          // Two-input XOR
         void xor3(int *z, int *x, int *y, int *t, int n = 32);                  // Three-input XOR
         void xor4(int *z, int *a, int *b, int *c, int *d, int n = 32);          // Four-input XOR
-        void implication(int *p, int *q, int n = 32);          // Implication p -> q
         void ch(int *z, int *x, int *y, int *t, int n = 32);                    // 'IF' function (used in SHA round functions). z = x ? y : t;
         void maj3(int *z, int *x, int *y, int *t, int n = 32);                  // Three-input Majority function
 

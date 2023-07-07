@@ -105,6 +105,7 @@ int main(int argc, char** argv)
         S.verbosity = verb;
         
         solver = &S;
+        solver->loadRules("rules.db");
         // Use signal handlers that forcibly quit until the solver will be able to respond to
         // interrupts:
         signal(SIGINT, SIGINT_exit);

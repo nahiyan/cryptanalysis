@@ -32,6 +32,18 @@ void Formula::newVars(int* x, int n, string name)
     varCnt += n;
 }
 
+void Formula::newVarsD2(int* x, int n, int m, string name)
+{
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++)
+            *(x + i * m + j) = ++varID;
+    }
+
+    if (name != "")
+        varNames[name + "_" + formulaName] = *x;
+    varCnt += n * m;
+}
+
 void Formula::addClause(vector<int> v)
 {
     if (any_of(v.begin(), v.end(), [](int x) { return x == 0; })) {
@@ -63,6 +75,15 @@ void Formula::fixedValue(int* z, unsigned value, int n)
         addClause({ x });
     }
 }
+void Formula::fixedValueD2(int* z, unsigned value, int n, int m)
+{
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
+            int x = (value >> i) & 1 ? *(z + i * m + j) : -*(z + i * m + j);
+            addClause({ x });
+        }
+    }
+}
 
 void Formula::rotl(int* z, int* x, int p, int n)
 {
@@ -76,22 +97,8 @@ void Formula::and2(int* z, int* x, int* y, int n)
         addClause({ z[i], -x[i], -y[i] });
         addClause({ -z[i], x[i] });
         addClause({ -z[i], y[i] });
-        // TODO: Check whether this is efficient
-        // addClause({ z[i], -x[i] });
-        // addClause({ x[i], -y[i] });
-        // addClause({ -z[i], y[i] });
     }
 }
-
-// void Formula::and3(int* z, int* a, int* b, int* c, int n)
-// {
-//     for (int i = 0; i < n; i++) {
-//         addClause({ z[i], -a[i], -b[i], -c[i] });
-//         addClause({ -z[i], a[i] });
-//         addClause({ -z[i], b[i] });
-//         addClause({ -z[i], c[i] });
-//     }
-// }
 
 void Formula::or2(int* z, int* x, int* y, int n)
 {
@@ -115,6 +122,22 @@ void Formula::neq(int* z, int* x, int n)
     for (int i = 0; i < n; i++) {
         addClause({ z[i], x[i] });
         addClause({ -z[i], -x[i] });
+    }
+}
+
+// Specific to SHA-256 differential collision attack with 4-bit difference variables
+void Formula::diffVar(int* z, int* x, int* y, int n)
+{
+    for (int i = 0; i < n; i++) {
+        int d0 = *(z + i * 4 + 0);
+        int d1 = *(z + i * 4 + 1);
+        int d2 = *(z + i * 4 + 2);
+        int d3 = *(z + i * 4 + 3);
+        // addClause({ d0, x[i], y[i] }); // 0
+        // addClause({ d1, -x[i], y[i] }); // u
+        // addClause({ d2, x[i], -y[i] }); // n
+        // addClause({ d3, -x[i], -y[i] }); // 1
+        addClause({ d0, d1, d2, d3 }); // not #
     }
 }
 
@@ -173,13 +196,6 @@ void Formula::xor4(int* z, int* a, int* b, int* c, int* d, int n)
             addClause({ z[i], a[i], b[i], c[i], -d[i] });
             addClause({ -z[i], a[i], b[i], c[i], d[i] });
         }
-    }
-}
-
-void Formula::implication(int* p, int* q, int n)
-{
-    for (int i = 0; i < n; i++) {
-        addClause({ -p[i], q[i] });
     }
 }
 

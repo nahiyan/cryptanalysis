@@ -170,7 +170,11 @@ public:
 
     // CDCL(Crypto)
     std::unordered_map<std::string, int> var_map;
+    std::unordered_map<std::string, std::string> rules;
     int steps = 0;
+
+    void loadRule(FILE*& db, int& id);
+    void loadRules(const char* filename);
 
 protected:
 
