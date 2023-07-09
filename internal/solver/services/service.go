@@ -38,7 +38,8 @@ func (solverSvc *SolverService) GetCmdInfo(solver_ solver.Solver, solutionPath s
 		args = append(args, "--maxtime", fmt.Sprintf("%d", timeout))
 	case solver.MapleSat:
 		binPath = config.Paths.Bin.MapleSat
-		args = append(args, "-model", fmt.Sprintf("-cpu-lim=%d", timeout))
+		args = append(args, "-no-pre", fmt.Sprintf("-cpu-lim=%d", timeout))
+		// args = append(args, "-model", fmt.Sprintf("-cpu-lim=%d", timeout))
 	case solver.Glucose:
 		binPath = config.Paths.Bin.Glucose
 		args = append(args, "-model", fmt.Sprintf("-cpu-lim=%d", timeout))
