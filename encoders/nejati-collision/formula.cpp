@@ -130,11 +130,10 @@ void Formula::diffVar(int* z, int* x, int* y, int n)
 {
     for (int i = 0; i < n; i++) {
         int* d = z + i * 4;
-        // printf("c debug %d %d %d\n", d0, x[i], y[i]);
-        addClause({ d[0], x[i], y[i] }); // d0
-        addClause({ d[1], -x[i], y[i] }); // d1
-        addClause({ d[2], x[i], -y[i] }); // d2
-        addClause({ d[3], -x[i], -y[i] }); // d3
+        addClause({ -d[0], d[1], d[2], -d[3], -x[i], y[i] });
+        addClause({ -d[0], d[1], d[2], -d[3], x[i], -y[i] });
+        addClause({ d[0], -d[1], -d[2], d[3], x[i], y[i] });
+        addClause({ d[0], -d[1], -d[2], d[3], -x[i], -y[i] });
         addClause({ d[0], d[1], d[2], d[3] }); // not #
     }
 }
