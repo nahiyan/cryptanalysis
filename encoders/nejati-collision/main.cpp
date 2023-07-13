@@ -18,12 +18,6 @@ int cfg_diff_impl;
 int cfg_rand_inp_diff;
 string cfg_diff_const_file;
 
-void diff_xor2(Formula& f, int r, int a, int b) { }
-
-void diff_xor3(Formula& f, int r, int a, int b, int c) { }
-
-void diff_xor4(Formula& f, int r, int a, int b, int c, int d) { }
-
 void collision(int rounds)
 {
     SHA256 f(rounds), g(rounds);
