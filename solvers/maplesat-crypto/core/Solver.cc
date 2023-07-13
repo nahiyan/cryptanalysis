@@ -235,6 +235,13 @@ void Solver::attachClause(CRef cr)
 {
     const Clause& c = ca[cr];
     assert(c.size() > 1);
+
+    // printf("Attached clause %d: ", c.learnt());
+    // for (int i = 0; i < c.size(); i++) {
+    //     printf("%s%d ", sign(c[i]) ? "-" : "", var(c[i]) + 1);
+    // }
+    // printf("\n");
+
     watches[~c[0]].push(Watcher(cr, c[1]));
     watches[~c[1]].push(Watcher(cr, c[0]));
     if (c.learnt())
@@ -247,6 +254,12 @@ void Solver::detachClause(CRef cr, bool strict)
 {
     const Clause& c = ca[cr];
     assert(c.size() > 1);
+
+    // printf("Detached clause: ");
+    // for (int i = 0; i < c.size(); i++) {
+    //     printf("%s%d ", sign(c[i]) ? "-" : "", var(c[i]) + 1);
+    // }
+    // printf("\n");
 
     if (strict) {
         remove(watches[~c[0]], Watcher(cr, c[1]));
@@ -451,48 +464,12 @@ void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
 {
     auto start = std::chrono::high_resolution_clock::now();
     wait++;
-    if (wait != 1 && !complete) {
+    if (wait != 100 && !complete) {
         return;
     }
 
     add_clauses(*this, out_refined);
     fflush(stdout);
-
-    for (int i = 0; i < 1; i++) {
-        vec<Lit> clause;
-        out_refined[i].copyTo(clause);
-        {
-            int max_index = 0;
-            for(int i=1; i<clause.size(); i++)
-                if(level(var(clause[i])) > level(var(clause[max_index])))
-                    max_index = i;
-            Lit p = clause[0];
-            clause[0] = clause[max_index];
-            clause[max_index] = p;
-        }
-
-        {
-            int max_index = 1;
-            for(int i=2; i<clause.size(); i++)
-                if(level(var(clause[i])) > level(var(clause[max_index])))
-                    max_index = i;
-            Lit p = clause[1];
-            clause[1] = clause[max_index];
-            clause[max_index] = p;
-        }
-
-        {
-            printf("Keeping clause ");
-            for(int i=0; i<clause.size(); i++)
-            {   printf("%s%d ", sign(clause[i]) ? "-" : "", var(clause[i])+1);
-            }
-            printf("0\n");
-        }
-
-        CRef confl_clause = ca.alloc(clause, false);
-        attachClause(confl_clause);
-        clauses.push(confl_clause);
-    }
 
     wait = 0;
     auto finish = std::chrono::high_resolution_clock::now();
