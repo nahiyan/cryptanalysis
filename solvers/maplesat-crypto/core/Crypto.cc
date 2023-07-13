@@ -1077,7 +1077,7 @@ void xor2_impl(Minisat::Solver& s,
     }
 }
 
-char gc(Minisat::Solver& s, int& id)
+char to_gc(Minisat::Solver& s, int& id)
 {
     int d[4] = { int_value(s, id), int_value(s, id + 1), int_value(s, id + 2), int_value(s, id + 3) };
     if (d[0] == 1 && d[1] == 1 && d[2] == 1 && d[3] == 1) {
@@ -1116,6 +1116,93 @@ char gc(Minisat::Solver& s, int& id)
     }
 }
 
+void from_gc(char& gc, uint8_t* vals) {
+    if (gc == '-') {
+        vals[0] = 1;
+        vals[1] = 0;
+        vals[2] = 0;
+        vals[3] = 1;
+    } else if (gc == 'x') {
+        vals[0] = 0;
+        vals[1] = 1;
+        vals[2] = 1;
+        vals[3] = 0;
+    } else if (gc == '?') {
+        vals[0] = 1;
+        vals[1] = 1;
+        vals[2] = 1;
+        vals[3] = 1;
+    } else if (gc == '0') {
+        vals[0] = 1;
+        vals[1] = 0;
+        vals[2] = 0;
+        vals[3] = 0;
+    } else if (gc == 'u') {
+        vals[0] = 0;
+        vals[1] = 1;
+        vals[2] = 0;
+        vals[3] = 0;
+    } else if (gc == 'n') {
+        vals[0] = 0;
+        vals[1] = 0;
+        vals[2] = 1;
+        vals[3] = 0;
+    } else if (gc == '1') {
+        vals[0] = 0;
+        vals[1] = 0;
+        vals[2] = 0;
+        vals[3] = 1;
+    } else if (gc == '3') {
+        vals[0] = 1;
+        vals[1] = 1;
+        vals[2] = 0;
+        vals[3] = 0;
+    } else if (gc == '5') {
+        vals[0] = 1;
+        vals[1] = 0;
+        vals[2] = 1;
+        vals[3] = 0;
+    } else if (gc == '7') {
+        vals[0] = 1;
+        vals[1] = 1;
+        vals[2] = 1;
+        vals[3] = 0;
+    } else if (gc == 'A') {
+        vals[0] = 0;
+        vals[1] = 1;
+        vals[2] = 0;
+        vals[3] = 1;
+    } else if (gc == 'B') {
+        vals[0] = 1;
+        vals[1] = 1;
+        vals[2] = 0;
+        vals[3] = 1;
+    } else if (gc == 'C') {
+        vals[0] = 0;
+        vals[1] = 0;
+        vals[2] = 1;
+        vals[3] = 1;
+    } else if (gc == 'D') {
+        vals[0] = 1;
+        vals[1] = 0;
+        vals[2] = 1;
+        vals[3] = 1;
+    } else if (gc == 'E') {
+        vals[0] = 0;
+        vals[1] = 1;
+        vals[2] = 1;
+        vals[3] = 1;
+    }
+}
+
+void print_clause(vec<Lit>& clause)
+{
+    for (int i = 0; i < clause.size(); i++) {
+        printf("%s%d ", sign(clause[i]) ? "-" : "", var(clause[i]) + 1);
+    }
+    printf("\n");
+}
+
 void impose_rule_3_1(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, std::string& o, int& x, int& y, int& z, int& w)
 {
     int vars[16] = { x,
@@ -1134,58 +1221,67 @@ void impose_rule_3_1(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, std
         w + 1,
         w + 2,
         w + 3 };
-    int vals[12] = { int_value(s, x), int_value(s, x + 1), int_value(s, x + 2), int_value(s, x + 3), int_value(s, y), int_value(s, y + 1), int_value(s, y + 2), int_value(s, y + 3), int_value(s, z), int_value(s, z + 1), int_value(s, z + 2), int_value(s, z + 3) };
+    int vals[16] = { int_value(s, x),
+        int_value(s, x + 1),
+        int_value(s, x + 2),
+        int_value(s, x + 3),
+        int_value(s, y),
+        int_value(s, y + 1),
+        int_value(s, y + 2),
+        int_value(s, y + 3),
+        int_value(s, z),
+        int_value(s, z + 1),
+        int_value(s, z + 2),
+        int_value(s, z + 3),
+        int_value(s, w),
+        int_value(s, w + 1),
+        int_value(s, w + 2),
+        int_value(s, w + 3) };
 
-    bool o1v[4];
-    if (o[0] == '-') {
-        o1v[0] = true;
-        o1v[1] = false;
-        o1v[2] = false;
-        o1v[3] = true;
-    }
+    uint8_t o1v[4];
+    from_gc(o[0], o1v);
 
     for (int j = 0; j < 4; j++) {
+        if (vals[12 + j] == o1v[j])
+            continue;
+
         out_refined.push();
-        for (int i = 0; i < 12; i++) {
-            out_refined[k].push(mkLit(vars[i], vals[i] == 1 ? false : true));
-            // printf("%d %d\n", vars[i] + 1, vals[i] == 1 ? false : true);
-        }
-        out_refined[k].push(mkLit(vars[j + 12], o1v[j]));
-        // printf("%d %d\n", vars[j+12] + 1, o1v[j]);
-        // printf("\n");
+        out_refined[k].push(mkLit(vars[j + 12], o1v[j] == 0));
+        for (int i = 0; i < 12; i++)
+            out_refined[k].push(mkLit(vars[i], vals[i] == 1));
         k++;
+
+        break;
     }
-
-    // if (w == 27356)
-    //     printf("%c%c%c %d %d %d %d\n", gc(s, x), gc(s, y), gc(s, z), int_value(s, w), int_value(s, w + 1), int_value(s, w + 2), int_value(s, w + 3));
-
-    // out_refined.push();
-    // out_refined[k].push(mkLit(vars[12], true));
-    // out_refined[k].push(mkLit(vars[13], false));
-    // out_refined[k].push(mkLit(vars[14], false));
-    // out_refined[k].push(mkLit(vars[15], true));
-    // k++;
 }
 
 void impose_rule_3_1_w(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int id, int& x, int& y, int& z, int& w)
 {
-    char x_gc = gc(s, x), y_gc = gc(s, y), z_gc = gc(s, z);
-    if (x_gc != NULL && y_gc != NULL && z_gc != NULL) {
-        std::string key = std::to_string(id);
-        key.push_back(x_gc);
-        key.push_back(y_gc);
-        key.push_back(z_gc);
-        auto value_it = s.rules.find(key);
-        if (value_it == s.rules.end()) // Rule not found
-            return;
-
-        auto value = value_it->second;
-        if (gc(s, w) == value[0]) // Output difference is already correct
-            return;
-
-        printf("RKey: %s; RValue: %s; DValue: %c(%d); DId: %d\n", key.c_str(), value.c_str(), gc(s, w), gc(s, w), w + 1);
-        impose_rule_3_1(s, out_refined, k, value, x, y, z, w);
+    if (k != 0) {
+        return;
     }
+
+    char x_gc = to_gc(s, x), y_gc = to_gc(s, y), z_gc = to_gc(s, z), w_gc = to_gc(s, w);
+    if (x_gc == NULL || y_gc == NULL || z_gc == NULL) {
+        return;
+    }
+
+    std::string r_key = std::to_string(id);
+    r_key.push_back(x_gc);
+    r_key.push_back(y_gc);
+    r_key.push_back(z_gc);
+    auto r_value_it = s.rules.find(r_key);
+    if (r_value_it == s.rules.end()) // Rule not found
+        return;
+
+    auto r_value = r_value_it->second;
+    if (w_gc == r_value[0]) { // Output difference is already correct
+        // printf("%d is correct (%c)\n", w + 1, w_gc);
+        return;
+    }
+
+    printf("RKey: %s; RValue: %s; DValue: %c(%d); DId: %d\n", r_key.c_str(), r_value.c_str(), w_gc, w_gc, w + 1);
+    impose_rule_3_1(s, out_refined, k, r_value, x, y, z, w);
 }
 
 void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
@@ -1249,11 +1345,9 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
             // IF
             impose_rule_3_1_w(s, out_refined, k, 1, de_3, de_2, de_1, df1);
             // MAJ
-            // impose_rule_3_1_w(s, out_refined, k, 2, da_3, da_2, da_1, df2);
+            impose_rule_3_1_w(s, out_refined, k, 2, da_3, da_2, da_1, df2);
+            // Sigma0
+            // impose_rule_3_1_w(s, out_refined, k, 3, da_3, da_2, da_1, df2);
         }
-    }
-
-    if (k > 0) {
-        printf("k = %d\n", k);
     }
 }
