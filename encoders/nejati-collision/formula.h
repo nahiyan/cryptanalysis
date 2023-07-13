@@ -78,7 +78,7 @@ class Formula
         void or2(int *z, int *x, int *y, int n = 32);                           // Two-input OR
         void eq(int *z, int *x, int n = 32);                                    // Equivalence
         void neq(int *z, int *x, int n = 32);                                   // Boolean negation
-        void diffVar(int* z, int* x, int* y, int n = 32);
+        void diff4Bits(int* z, int* x, int* y, int n = 32);
         void xor2(int *z, int *x, int *y, int n = 32);                          // Two-input XOR
         void xor3(int *z, int *x, int *y, int *t, int n = 32);                  // Three-input XOR
         void xor4(int *z, int *a, int *b, int *c, int *d, int n = 32);          // Four-input XOR

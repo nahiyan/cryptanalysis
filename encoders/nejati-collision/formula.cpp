@@ -125,8 +125,8 @@ void Formula::neq(int* z, int* x, int n)
     }
 }
 
-// Specific to SHA-256 differential collision attack with 4-bit difference variables
-void Formula::diffVar(int* z, int* x, int* y, int n)
+// Specific to SHA-256 differential collision attack with generalized conditions
+void Formula::diff4Bits(int* z, int* x, int* y, int n)
 {
     for (int i = 0; i < n; i++) {
         int* d = z + i * 4;
