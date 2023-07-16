@@ -112,7 +112,7 @@ void collision(int rounds)
 #else
                         g.cnf.fixedValue(&DW[i][j], 0, 1);
 #endif
-                        
+
                     } else if (W[i][31 - j] == 'x') {
 #if DIFF_BITS == 4
                         g.cnf.fixedValue(&DW[i][j][0], 0, 1);
@@ -186,12 +186,14 @@ void collision(int rounds)
             g.cnf.rotr(r2, DW[i - 15], 18);
             g.cnf.xor2(Ds0[i] + 29, r1 + 29, r2 + 29, 3);
             g.cnf.xor3(Ds0[i], r1, r2, DW[i - 15] + 3, 29);
+            g.cnf.xor3Rules(Ds0[i], r1, r2, DW[i - 15] + 3, 29);
 
             // s1 = (w[i-2] >>> 17) XOR (w[i-2] >>> 19) XOR (w[i-2] >> 10)
             g.cnf.rotr(r1, DW[i - 2], 17);
             g.cnf.rotr(r2, DW[i - 2], 19);
             g.cnf.xor2(Ds1[i] + 22, r1 + 22, r2 + 22, 10);
             g.cnf.xor3(Ds1[i], r1, r2, DW[i - 2] + 10, 22);
+            g.cnf.xor3Rules(Ds1[i], r1, r2, DW[i - 2] + 10, 22);
 #endif
 #if DIFF_BITS == 4
             g.cnf.newVarsD2(&Dwcarry[i][0][0], 32, 4, "Dw_carry_" + to_string(i));
@@ -206,8 +208,8 @@ void collision(int rounds)
 
             // w[i] = w[i-16] + s0 + w[i-7] + s1
             g.cnf.diff_add(DW[i], DW[i - 16], Ds0[i], Dwcarry[i], DwCarry[i],
-                           DW[i - 7], Ds1[i]);
-#endif      
+                DW[i - 7], Ds1[i]);
+#endif
         }
 
         /* Differential propagation for round function */
@@ -242,21 +244,14 @@ void collision(int rounds)
             g.cnf.xor2(Df2[i], f.f2[i], g.f2[i], 32);
 
             for (int j = 0; j < 32; j++) {
-                // MAJ: xxx -> x
                 g.cnf.addClause(
-                    {-DA[i + 3][j], -DA[i + 2][j], -DA[i + 1][j], Df2[i][j]});
-
-                // MAJ: --- -> -
+                    { -DA[i + 3][j], -DA[i + 2][j], -DA[i + 1][j], Df2[i][j] }); // MAJ: xxx -> x
                 g.cnf.addClause(
-                    {DA[i + 3][j], DA[i + 2][j], DA[i + 1][j], -Df2[i][j]});
-
-                // IF: -xx -> x
+                    { DA[i + 3][j], DA[i + 2][j], DA[i + 1][j], -Df2[i][j] }); // MAJ: --- -> -
                 g.cnf.addClause(
-                    {DE[i + 3][j], -DE[i + 2][j], -DE[i + 1][j], Df1[i][j]});
-
-                // IF: --- -> -
+                    { DE[i + 3][j], -DE[i + 2][j], -DE[i + 1][j], Df1[i][j] }); // IF: -xx -> x
                 g.cnf.addClause(
-                    {DE[i + 3][j], DE[i + 2][j], DE[i + 1][j], -Df1[i][j]});
+                    { DE[i + 3][j], DE[i + 2][j], DE[i + 1][j], -Df1[i][j] }); // IF: --- -> -
             }
 #endif
             // T = E[i] + sigma1 + f1 + k[i] + w[i]
@@ -280,7 +275,7 @@ void collision(int rounds)
             g.cnf.fixedValue(DK[i], 0, 32);
 
             g.cnf.diff_add(DT[i], DE[i], Dsigma1[i], Dr0carry[i], Dr0Carry[i], Df1[i],
-             DK[i], DW[i]);
+                DK[i], DW[i]);
 #endif
             // E[i+4] = A[i] + T
 #if DIFF_BITS == 4
@@ -304,7 +299,7 @@ void collision(int rounds)
             g.cnf.xor2(Dr2Carry[i] + 1, f.r2Carry[i] + 1, g.r2Carry[i] + 1, 31);
 
             g.cnf.diff_add(DA[i + 4], DT[i], Dsigma0[i], Dr2carry[i], Dr2Carry[i],
-                            Df2[i]);
+                Df2[i]);
 #endif
         }
     } else {

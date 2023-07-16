@@ -18,6 +18,8 @@ class xFormula : public Formula {
     void diff_add(int *z, int *a, int *b, int *t, int *T = NULL, int *c = NULL, int *d = NULL, int *e = NULL);
 
     void comp(int z, int *v, int n, int t, int T = -1);
+
+    void xor3Rules(int* z, int* x, int* y, int* t, int n);
 };
 
 #endif
