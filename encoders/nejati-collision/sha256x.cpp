@@ -16,8 +16,8 @@ void SHA256::encode() {
     cnf.newVars(out[i], 32, "hash" + to_string(i));
 
   for (int i = 0; i < rounds; i++) {
-    cnf.newVars(A[i + 4], 32, "A_" + to_string(i));
-    cnf.newVars(E[i + 4], 32, "E_" + to_string(i));
+    cnf.newVars(A[i + 4], 32, "A_" + to_string(i + 4));
+    cnf.newVars(E[i + 4], 32, "E_" + to_string(i + 4));
   }
 
   /* Message expansion */
