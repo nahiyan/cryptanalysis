@@ -82,8 +82,8 @@ void SHA256::encode() {
 
   /* Main loop */
   for (int i = 0; i < rounds; i++) {
-    cnf.newVars(sigma0[i]);
-    cnf.newVars(sigma1[i]);
+    cnf.newVars(sigma0[i], 32, "Sigma0_" + to_string(i));
+    cnf.newVars(sigma1[i], 32, "Sigma1_" + to_string(i));
     Sigma0(sigma0[i], A[i + 3]);
     Sigma1(sigma1[i], E[i + 3]);
 
