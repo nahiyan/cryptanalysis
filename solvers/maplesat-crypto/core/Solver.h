@@ -175,9 +175,6 @@ public:
     std::unordered_map<std::string, std::string> rules;
     int steps = 0;
 
-    void loadRule(FILE*& db, int& id);
-    void loadRules(const char* filename);
-
 protected:
 
     // Helper structures:

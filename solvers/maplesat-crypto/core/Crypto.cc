@@ -1,4 +1,119 @@
 #include "Crypto.h"
+#include <algorithm>
+#include <map>
+#include <set>
+#include <vector>
+#define DEBUG true
+#define DIFF_BITS 1
+#define IO_CONSTRAINT_ADD2_ID 0
+#define IO_CONSTRAINT_IF_ID 1
+#define IO_CONSTRAINT_MAJ_ID 2
+#define IO_CONSTRAINT_XOR3_ID 3
+#define IO_CONSTRAINT_ADD3_ID 4
+#define IO_CONSTRAINT_ADD4_ID 5
+#define IO_CONSTRAINT_ADD5_ID 6
+#define IO_CONSTRAINT_ADD6_ID 7
+#define IO_CONSTRAINT_ADD7_ID 8
+#define OI_CONSTRAINT_IF_ID 9
+#define OI_CONSTRAINT_MAJ_ID 10
+#define OI_CONSTRAINT_XOR3_ID 11
+#define OI_CONSTRAINT_ADD3_ID 12
+#define OI_CONSTRAINT_ADD4_ID 13
+#define OI_CONSTRAINT_ADD5_ID 14
+#define OI_CONSTRAINT_ADD6_ID 15
+#define OI_CONSTRAINT_ADD7_ID 16
+#define TWO_BIT_CONSTRAINT_IF_ID 17
+#define TWO_BIT_CONSTRAINT_MAJ_ID 18
+#define TWO_BIT_CONSTRAINT_XOR3_ID 19
+#define TWO_BIT_CONSTRAINT_ADD3_ID 20
+#define TWO_BIT_CONSTRAINT_ADD4_ID 21
+#define TWO_BIT_CONSTRAINT_ADD5_ID 22
+#define TWO_BIT_CONSTRAINT_ADD6_ID 23
+#define TWO_BIT_CONSTRAINT_ADD7_ID 24
+
+// TODO: Add support for 4-bit diff.
+
+void loadRule(Minisat::Solver& solver, FILE*& db, int& id)
+{
+    int key_size = 0, val_size = 0;
+    // Note: Put one extra char for the ID
+    if (id >= IO_CONSTRAINT_IF_ID && id <= IO_CONSTRAINT_XOR3_ID) {
+        key_size = 3;
+        val_size = 1;
+    } else if (id == IO_CONSTRAINT_ADD3_ID) {
+        key_size = 3;
+        val_size = 2;
+    } else if (id >= TWO_BIT_CONSTRAINT_IF_ID && id <= TWO_BIT_CONSTRAINT_XOR3_ID) {
+        key_size = 4;
+        val_size = 3;
+    } else if (id == OI_CONSTRAINT_ADD7_ID) {
+        key_size = 3;
+        val_size = 7;
+    } else if (id == OI_CONSTRAINT_ADD6_ID) {
+        key_size = 3;
+        val_size = 6;
+    } else if (id == OI_CONSTRAINT_ADD5_ID) {
+        key_size = 3;
+        val_size = 5;
+    } else if (id == OI_CONSTRAINT_ADD4_ID) {
+        key_size = 3;
+        val_size = 4;
+    } else if (id == OI_CONSTRAINT_ADD3_ID) {
+        key_size = 2;
+        val_size = 3;
+    } else if (id >= TWO_BIT_CONSTRAINT_IF_ID && id <= TWO_BIT_CONSTRAINT_ADD3_ID) {
+        key_size = 4;
+        val_size = 3;
+    }
+
+    int size = key_size + val_size;
+    char buffer[size];
+    int n = fread(buffer, size, 1, db);
+    if (n == 0)
+        return;
+
+    char key[key_size + 1], value[val_size];
+    key[0] = id;
+    for (int i = 0; i < key_size; i++) {
+        key[i + 1] = buffer[i];
+    }
+    key[key_size + 1] = 0;
+    int j = 0;
+    for (int i = key_size; i < size; i++) {
+        value[j] = buffer[i];
+        j++;
+    }
+    value[val_size] = 0;
+
+    solver.rules.insert({ key, value });
+
+    // DEBUG
+    // printf("Rule: %d %s: %s\n", id, key, value);
+    // fflush(stdout);
+}
+
+void loadRules(Minisat::Solver& solver, const char* filename)
+{
+    FILE* db = fopen(filename, "r");
+    char buffer[1];
+    int count = 0;
+    while (1) {
+        int n = fread(buffer, 1, 1, db);
+        if (n == 0)
+            break;
+
+        int id = buffer[0];
+        loadRule(solver, db, id);
+        count++;
+    }
+
+    printf("Loaded %d rules\n", count);
+
+    // DEBUG
+    // char key[] = {19, 'n', '1', '1', 'n'};
+    // printf("Found: %s\n", solver.rules.find(key)->second.c_str());
+    // exit(0);
+}
 
 int int_value(Minisat::Solver& s, int var)
 {
@@ -7,1078 +122,23 @@ int int_value(Minisat::Solver& s, int var)
                                                   : -1;
 }
 
-void add_impl2(Minisat::Solver& s,
-    Minisat::vec<Minisat::vec<Minisat::Lit>>& out_refined, int& k,
-    int i, int j, const char* name, int a, int b, int c, bool v1,
-    bool v2, bool v3)
+char to_gc(int x, int x_prime)
 {
-    printf("Add %s; i,j = %d,%d; vars: %d %d %d; vals: %d %d %d\n", name, i, j,
-        a + 1, b + 1, c + 1, int_value(s, a), int_value(s, b),
-        int_value(s, c));
-    out_refined.push();
-    out_refined[k].push(mkLit(a, v1));
-    out_refined[k].push(mkLit(b, v2));
-    out_refined[k].push(mkLit(c, v3));
-    k++;
-}
-void add_impl3(Minisat::Solver& s,
-    Minisat::vec<Minisat::vec<Minisat::Lit>>& out_refined, int& k,
-    int i, int j, const char* name, int a, int b, int c, int d,
-    bool v1, bool v2, bool v3, bool v4)
-{
-    printf("Add %s; i,j = %d,%d; vars: %d %d %d %d; vals: %d %d %d %d\n", name, i,
-        j, a + 1, b + 1, c + 1, d + 1, int_value(s, a), int_value(s, b),
-        int_value(s, c), int_value(s, d));
-    out_refined.push();
-    out_refined[k].push(mkLit(a, v1));
-    out_refined[k].push(mkLit(b, v2));
-    out_refined[k].push(mkLit(c, v3));
-    out_refined[k].push(mkLit(d, v4));
-    k++;
-}
-
-void add_impl4(Minisat::Solver& s,
-    Minisat::vec<Minisat::vec<Minisat::Lit>>& out_refined, int& k,
-    int i, int j, const char* name, int a, int b, int c, int d,
-    int e, bool v1, bool v2, bool v3, bool v4, bool v5)
-{
-    printf("Add %s; i,j = %d,%d; vars: %d %d %d %d %d; vals: %d %d %d %d %d\n",
-        name, i, j, a + 1, b + 1, c + 1, d + 1, e + 1, int_value(s, a),
-        int_value(s, b), int_value(s, c), int_value(s, d), int_value(s, e));
-    out_refined.push();
-    out_refined[k].push(mkLit(a, v1));
-    out_refined[k].push(mkLit(b, v2));
-    out_refined[k].push(mkLit(c, v3));
-    out_refined[k].push(mkLit(d, v4));
-    out_refined[k].push(mkLit(e, v5));
-    k++;
-}
-
-void add_impl5(Minisat::Solver& s,
-    Minisat::vec<Minisat::vec<Minisat::Lit>>& out_refined, int& k,
-    int i, int j, const char* name, int a, int b, int c, int d,
-    int e, int f, bool v1, bool v2, bool v3, bool v4, bool v5,
-    bool v6)
-{
-    printf("Add %s; i,j = %d,%d; vars: %d %d %d %d %d %d; vals: %d %d %d %d %d "
-           "%d\n",
-        name, i, j, a + 1, b + 1, c + 1, d + 1, e + 1, f + 1, int_value(s, a),
-        int_value(s, b), int_value(s, c), int_value(s, d), int_value(s, e),
-        int_value(s, f));
-    out_refined.push();
-    out_refined[k].push(mkLit(a, v1));
-    out_refined[k].push(mkLit(b, v2));
-    out_refined[k].push(mkLit(c, v3));
-    out_refined[k].push(mkLit(d, v4));
-    out_refined[k].push(mkLit(e, v5));
-    out_refined[k].push(mkLit(f, v6));
-    printf("Info: %d %d %d %d %d %d\n", !v1, !v2, !v3, !v4, !v5, v6);
-    k++;
-}
-
-void add_impl6(Minisat::Solver& s,
-    Minisat::vec<Minisat::vec<Minisat::Lit>>& out_refined, int& k,
-    int i, int j, const char* name, int a, int b, int c, int d,
-    int e, int f, int g, bool v1, bool v2, bool v3, bool v4, bool v5,
-    bool v6, bool v7)
-{
-    printf("Added %s; i,j = %d,%d; vars: %d %d %d %d %d %d %d; vals: %d %d %d %d "
-           "%d %d %d\n",
-        name, i, j, a + 1, b + 1, c + 1, d + 1, e + 1, f + 1, g + 1,
-        int_value(s, a), int_value(s, b), int_value(s, c), int_value(s, d),
-        int_value(s, e), int_value(s, f), int_value(s, g));
-    out_refined.push();
-    out_refined[k].push(mkLit(a, v1));
-    out_refined[k].push(mkLit(b, v2));
-    out_refined[k].push(mkLit(c, v3));
-    out_refined[k].push(mkLit(d, v4));
-    out_refined[k].push(mkLit(e, v5));
-    out_refined[k].push(mkLit(f, v6));
-    out_refined[k].push(mkLit(g, v7));
-    k++;
-}
-
-void add_impl7(Minisat::Solver& s,
-    Minisat::vec<Minisat::vec<Minisat::Lit>>& out_refined, int& k,
-    int i, int j, const char* name, int a, int b, int c, int d,
-    int e, int f, int g, int h, bool v1, bool v2, bool v3, bool v4,
-    bool v5, bool v6, bool v7, bool v8)
-{
-    printf("Added %s; i,j = %d,%d; vars: %d %d %d %d %d %d %d %d; vals: %d %d %d "
-           "%d %d %d %d %d\n",
-        name, i, j, a + 1, b + 1, c + 1, d + 1, e + 1, f + 1, g + 1, h + 1,
-        int_value(s, a), int_value(s, b), int_value(s, c), int_value(s, d),
-        int_value(s, e), int_value(s, f), int_value(s, g), int_value(s, h));
-    out_refined.push();
-    out_refined[k].push(mkLit(a, v1));
-    out_refined[k].push(mkLit(b, v2));
-    out_refined[k].push(mkLit(c, v3));
-    out_refined[k].push(mkLit(d, v4));
-    out_refined[k].push(mkLit(e, v5));
-    out_refined[k].push(mkLit(f, v6));
-    out_refined[k].push(mkLit(g, v7));
-    out_refined[k].push(mkLit(h, v8));
-    k++;
-}
-
-void comp_7_3(Minisat::Solver& s,
-    Minisat::vec<Minisat::vec<Minisat::Lit>>& out_refined, int& k,
-    int& i, int& j, int& op1, int& op2, int& op3, int& op4, int& op5,
-    int& op6, int& op7, int& o1, int& o2, int& o3)
-{
-    int xs = 0, nxs = 0;
-    xs += s.value(op1) == l_True ? 1 : 0;
-    xs += s.value(op2) == l_True ? 1 : 0;
-    xs += s.value(op3) == l_True ? 1 : 0;
-    xs += s.value(op4) == l_True ? 1 : 0;
-    xs += s.value(op5) == l_True ? 1 : 0;
-    xs += s.value(op6) == l_True ? 1 : 0;
-    xs += s.value(op7) == l_True ? 1 : 0;
-    nxs += s.value(op1) == l_False ? 1 : 0;
-    nxs += s.value(op2) == l_False ? 1 : 0;
-    nxs += s.value(op3) == l_False ? 1 : 0;
-    nxs += s.value(op4) == l_False ? 1 : 0;
-    nxs += s.value(op5) == l_False ? 1 : 0;
-    nxs += s.value(op6) == l_False ? 1 : 0;
-    nxs += s.value(op7) == l_False ? 1 : 0;
-
-    bool o1_nf = int_value(s, o1) != 0;
-    bool o1_nt = int_value(s, o1) != 1;
-    bool o2_nf = int_value(s, o2) != 0;
-    bool o2_nt = int_value(s, o2) != 1;
-    bool o3_nf = int_value(s, o3) != 0;
-    bool o3_nt = int_value(s, o3) != 1;
-
-    if (nxs == 7 && xs == 0 && o1_nf) {
-        // ----- -> ---
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 1", op1, op2, op3, op4, op5,
-            op6, op7, o1, true, true, true, true, true, true, true, false);
-    }
-    if (nxs == 7 && xs == 0 && o2_nf) {
-        // ----- -> ---
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 2", op1, op2, op3, op4, op5,
-            op6, op7, o2, true, true, true, true, true, true, true, false);
-    }
-    if (nxs == 7 && xs == 0 && o3_nf) {
-        // ----- -> ---
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 3", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, true, true, true, true, true, false);
-    }
-
-    if (nxs == 6 && xs == 1 && o3_nt) {
-        // ------x -> ??x
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 4", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, true, true, true, true, true,
-            true); // 0111111
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 4", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, true, true, true, true, true,
-            true); // 1011111
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 4", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, false, true, true, true, true,
-            true); // 1101111
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 4", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, true, false, true, true, true,
-            true); // 1110111
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 4", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, true, true, false, true, true,
-            true); // 1111011
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 4", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, true, true, true, false, true,
-            true); // 1111101
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 4", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, true, true, true, true, false,
-            true); // 1111110
-    } else if (nxs == 5 && xs == 2 && o3_nf) {
-        // -----xx -> ??-
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, true, true, true, true, true, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, false, true, true, true, true, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, true, false, true, true, true, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, true, true, false, true, true, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, true, true, true, false, true, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, true, true, true, true, false, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, false, true, true, true, true, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, true, false, true, true, true, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, true, true, false, true, true, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, true, true, true, false, true, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, true, true, true, true, false, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, false, false, true, true, true, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, false, true, false, true, true, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, false, true, true, false, true, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, false, true, true, true, false, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, true, false, false, true, true, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, true, false, true, false, true, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, true, false, true, true, false, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, true, true, false, false, true, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, true, true, false, true, false, false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 5", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, true, true, true, false, false, false);
-    } else if (nxs == 4 && xs == 3 && o3_nt) {
-        // ----xxx -> ??x
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, false, true, true, true, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, true, false, true, true, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, true, true, false, true, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, true, true, true, false, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, true, true, true, true, false, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, false, false, true, true, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, false, true, false, true, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, false, true, true, false, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, false, true, true, true, false, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, true, false, false, true, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, true, false, true, false, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, true, false, true, true, false, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, true, true, false, false, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, true, true, false, true, false, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, true, true, true, false, false, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, false, false, true, true, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, false, true, false, true, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, false, true, true, false, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, false, true, true, true, false, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, true, false, false, true, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, true, false, true, false, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, true, false, true, true, false, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, true, true, false, false, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, true, true, false, true, false, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, true, true, true, false, false, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, false, false, false, true, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, false, false, true, false, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, false, false, true, true, false, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, false, true, false, false, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, false, true, false, true, false, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, false, true, true, false, false, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, true, false, false, false, true, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, true, false, false, true, false, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, true, false, true, false, false, true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 6", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, true, true, false, false, false, true);
-    } else if (nxs == 3 && xs == 4 && o3_nf) {
-        // ---xxxx -> ??-
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, false, false, true, true, true,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, false, true, false, true, true,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, false, true, true, false, true,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, false, true, true, true, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, true, false, false, true, true,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, true, false, true, false, true,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, true, false, true, true, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, true, true, false, false, true,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, true, true, false, true, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, true, true, true, false, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, false, false, false, true, true,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, false, false, true, false, true,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, false, false, true, true, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, false, true, false, false, true,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, false, true, false, true, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, false, true, true, false, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, true, false, false, false, true,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, true, false, false, true, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, true, false, true, false, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, true, true, false, false, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, false, false, false, true, true,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, false, false, true, false, true,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, false, false, true, true, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, false, true, false, false, true,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, false, true, false, true, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, false, true, true, false, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, true, false, false, false, true,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, true, false, false, true, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, true, false, true, false, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, true, true, false, false, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, false, false, false, false, true,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, false, false, false, true, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, false, false, true, false, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, false, true, false, false, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 7", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, true, false, false, false, false,
-            false);
-    } else if (nxs == 2 && xs == 5 && o3_nt) {
-        // --xxxxx -> ??x
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, false, false, false, true, true,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, false, false, true, false, true,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, false, false, true, true, false,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, false, true, false, false, true,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, false, true, false, true, false,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, false, true, true, false, false,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, true, false, false, false, true,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, true, false, false, true, false,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, true, false, true, false, false,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, true, true, false, false, false,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, false, false, false, false, true,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, false, false, false, true, false,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, false, false, true, false, false,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, false, true, false, false, false,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, true, false, false, false, false,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, false, false, false, false, true,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, false, false, false, true, false,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, false, false, true, false, false,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, false, true, false, false, false,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, true, false, false, false, false,
-            true);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 8", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, true, false, false, false, false, false,
-            true);
-    } else if (nxs == 1 && xs == 6 && o3_nf) {
-        // -xxxxxx -> ??-
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 9", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, false, false, false, false, true,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 9", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, false, false, false, true, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 9", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, false, false, true, false, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 9", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, false, true, false, false, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 9", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, false, true, false, false, false, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 9", op1, op2, op3, op4, op5,
-            op6, op7, o3, false, true, false, false, false, false, false,
-            false);
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 9", op1, op2, op3, op4, op5,
-            op6, op7, o3, true, false, false, false, false, false, false,
-            false);
-    }
-
-    if (nxs == 0 && xs == 7 && o1_nt) {
-        // xxxxxxx -> xxx
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 10", op1, op2, op3, op4, op5,
-            op6, op7, o1, false, false, false, false, false, false, false,
-            true);
-    }
-    if (nxs == 0 && xs == 7 && o2_nt) {
-        // xxxxxxx -> xxx
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 11", op1, op2, op3, op4, op5,
-            op6, op7, o1, false, false, false, false, false, false, false,
-            true);
-    }
-    if (nxs == 0 && xs == 7 && o3_nt) {
-        // xxxxxxx -> xxx
-        add_impl7(s, out_refined, k, i, j, "COMP_7_3 12", op1, op2, op3, op4, op5,
-            op6, op7, o1, false, false, false, false, false, false, false,
-            true);
-    }
-}
-
-void comp_6_3(Minisat::Solver& s,
-    Minisat::vec<Minisat::vec<Minisat::Lit>>& out_refined, int& k,
-    int& i, int& j, int& op1, int& op2, int& op3, int& op4, int& op5,
-    int& op6, int& o1, int& o2, int& o3)
-{
-    int xs = 0, nxs = 0;
-    xs += s.value(op1) == l_True ? 1 : 0;
-    xs += s.value(op2) == l_True ? 1 : 0;
-    xs += s.value(op3) == l_True ? 1 : 0;
-    xs += s.value(op4) == l_True ? 1 : 0;
-    xs += s.value(op5) == l_True ? 1 : 0;
-    xs += s.value(op6) == l_True ? 1 : 0;
-    nxs += s.value(op1) == l_False ? 1 : 0;
-    nxs += s.value(op2) == l_False ? 1 : 0;
-    nxs += s.value(op3) == l_False ? 1 : 0;
-    nxs += s.value(op4) == l_False ? 1 : 0;
-    nxs += s.value(op5) == l_False ? 1 : 0;
-    nxs += s.value(op6) == l_False ? 1 : 0;
-
-    bool o1_nf = int_value(s, o1) != 0;
-    bool o2_nf = int_value(s, o2) != 0;
-    bool o3_nf = int_value(s, o3) != 0;
-    bool o3_nt = int_value(s, o3) != 1;
-
-    if (xs == 0 && nxs == 6 && o1_nf) {
-        // ------ -> ---
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 1", op1, op2, op3, op4, op5,
-            op6, o1, true, true, true, true, true, true, false);
-    }
-    if (xs == 0 && nxs == 6 && o2_nf) {
-        // ------ -> ---
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 2", op1, op2, op3, op4, op5,
-            op6, o2, true, true, true, true, true, true, false);
-    }
-    if (xs == 0 && nxs == 6 && o3_nf) {
-        // ------ -> ---
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 3", op1, op2, op3, op4, op5,
-            op6, o3, true, true, true, true, true, true, false);
-    }
-
-    if (nxs == 5 && xs == 1 && o3_nt) {
-        // -----x -> ??x
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 4", op1, op2, op3, op4, op5,
-            op6, o3, false, true, true, true, true, true, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 4", op1, op2, op3, op4, op5,
-            op6, o3, true, false, true, true, true, true, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 4", op1, op2, op3, op4, op5,
-            op6, o3, true, true, false, true, true, true, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 4", op1, op2, op3, op4, op5,
-            op6, o3, true, true, true, false, true, true, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 4", op1, op2, op3, op4, op5,
-            op6, o3, true, true, true, true, false, true, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 4", op1, op2, op3, op4, op5,
-            op6, o3, true, true, true, true, true, false, true);
-    } else if (nxs == 4 && xs == 2 && o3_nf) {
-        // ----xx -> ??-
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 5", op1, op2, op3, op4, op5,
-            op6, o3, false, false, true, true, true, true, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 5", op1, op2, op3, op4, op5,
-            op6, o3, false, true, false, true, true, true, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 5", op1, op2, op3, op4, op5,
-            op6, o3, false, true, true, false, true, true, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 5", op1, op2, op3, op4, op5,
-            op6, o3, false, true, true, true, false, true, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 5", op1, op2, op3, op4, op5,
-            op6, o3, false, true, true, true, true, false, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 5", op1, op2, op3, op4, op5,
-            op6, o3, true, false, false, true, true, true, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 5", op1, op2, op3, op4, op5,
-            op6, o3, true, false, true, false, true, true, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 5", op1, op2, op3, op4, op5,
-            op6, o3, true, false, true, true, false, true, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 5", op1, op2, op3, op4, op5,
-            op6, o3, true, false, true, true, true, false, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 5", op1, op2, op3, op4, op5,
-            op6, o3, true, true, false, false, true, true, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 5", op1, op2, op3, op4, op5,
-            op6, o3, true, true, false, true, false, true, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 5", op1, op2, op3, op4, op5,
-            op6, o3, true, true, false, true, true, false, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 5", op1, op2, op3, op4, op5,
-            op6, o3, true, true, true, false, false, true, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 5", op1, op2, op3, op4, op5,
-            op6, o3, true, true, true, false, true, false, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 5", op1, op2, op3, op4, op5,
-            op6, o3, true, true, true, true, false, false, false);
-    } else if (nxs == 3 && xs == 3 && o3_nt) {
-        // ---xxx -> ??x
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, false, false, false, true, true, true, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, false, false, true, false, true, true, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, false, false, true, true, false, true, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, false, false, true, true, true, false, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, false, true, false, false, true, true, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, false, true, false, true, false, true, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, false, true, false, true, true, false, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, false, true, true, false, false, true, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, false, true, true, false, true, false, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, false, true, true, true, false, false, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, true, false, false, false, true, true, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, true, false, false, true, false, true, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, true, false, false, true, true, false, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, true, false, true, false, false, true, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, true, false, true, false, true, false, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, true, false, true, true, false, false, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, true, true, false, false, false, true, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, true, true, false, false, true, false, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, true, true, false, true, false, false, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 6", op1, op2, op3, op4, op5,
-            op6, o3, true, true, true, false, false, false, true);
-    } else if (nxs == 2 && xs == 4 && o3_nf) {
-        // --xxxx -> ??-
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 7", op1, op2, op3, op4, op5,
-            op6, o3, false, false, false, false, true, true, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 7", op1, op2, op3, op4, op5,
-            op6, o3, false, false, false, true, false, true, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 7", op1, op2, op3, op4, op5,
-            op6, o3, false, false, false, true, true, false, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 7", op1, op2, op3, op4, op5,
-            op6, o3, false, false, true, false, false, true, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 7", op1, op2, op3, op4, op5,
-            op6, o3, false, false, true, false, true, false, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 7", op1, op2, op3, op4, op5,
-            op6, o3, false, false, true, true, false, false, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 7", op1, op2, op3, op4, op5,
-            op6, o3, false, true, false, false, false, true, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 7", op1, op2, op3, op4, op5,
-            op6, o3, false, true, false, false, true, false, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 7", op1, op2, op3, op4, op5,
-            op6, o3, false, true, false, true, false, false, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 7", op1, op2, op3, op4, op5,
-            op6, o3, false, true, true, false, false, false, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 7", op1, op2, op3, op4, op5,
-            op6, o3, true, false, false, false, false, true, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 7", op1, op2, op3, op4, op5,
-            op6, o3, true, false, false, false, true, false, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 7", op1, op2, op3, op4, op5,
-            op6, o3, true, false, false, true, false, false, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 7", op1, op2, op3, op4, op5,
-            op6, o3, true, false, true, false, false, false, false);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 7", op1, op2, op3, op4, op5,
-            op6, o3, true, true, false, false, false, false, false);
-    } else if (nxs == 1 && xs == 5 && o3_nt) {
-        // -xxxxx -> ??x
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 8", op1, op2, op3, op4, op5,
-            op6, o3, false, false, false, false, false, true, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 8", op1, op2, op3, op4, op5,
-            op6, o3, false, false, false, false, true, false, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 8", op1, op2, op3, op4, op5,
-            op6, o3, false, false, false, true, false, false, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 8", op1, op2, op3, op4, op5,
-            op6, o3, false, false, true, false, false, false, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 8", op1, op2, op3, op4, op5,
-            op6, o3, false, true, false, false, false, false, true);
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 8", op1, op2, op3, op4, op5,
-            op6, o3, true, false, false, false, false, false, true);
-    }
-
-    if (nxs == 0 && xs == 6 && o3_nf) {
-        // xxxxxx -> ??-
-        add_impl6(s, out_refined, k, i, j, "COMP_6_3 9", op1, op2, op3, op4, op5,
-            op6, o3, false, false, false, false, false, false, false);
-    }
-}
-
-void comp_5_3(Minisat::Solver& s,
-    Minisat::vec<Minisat::vec<Minisat::Lit>>& out_refined, int& k,
-    int& i, int& j, int& op1, int& op2, int& op3, int& op4, int& op5,
-    int& o1, int& o2, int& o3)
-{
-    int xs = 0, nxs = 0;
-    xs += s.value(op1) == l_True ? 1 : 0;
-    xs += s.value(op2) == l_True ? 1 : 0;
-    xs += s.value(op3) == l_True ? 1 : 0;
-    xs += s.value(op4) == l_True ? 1 : 0;
-    xs += s.value(op5) == l_True ? 1 : 0;
-    nxs += s.value(op1) == l_False ? 1 : 0;
-    nxs += s.value(op2) == l_False ? 1 : 0;
-    nxs += s.value(op3) == l_False ? 1 : 0;
-    nxs += s.value(op4) == l_False ? 1 : 0;
-    nxs += s.value(op5) == l_False ? 1 : 0;
-
-    bool o1_nf = int_value(s, o1) != 0;
-    bool o2_nf = int_value(s, o2) != 0;
-    bool o3_nf = int_value(s, o3) != 0;
-    bool o3_nt = int_value(s, o3) != 1;
-
-    if (nxs == 5 && xs == 0 && o1_nf) {
-        // ----- -> ---
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 1", op1, op2, op3, op4, op5,
-            o1, true, true, true, true, true, false);
-    }
-    if (nxs == 5 && xs == 0 && o2_nf) {
-        // ----- -> ---
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 2", op1, op2, op3, op4, op5,
-            o2, true, true, true, true, true, false);
-    }
-    if (nxs == 5 && xs == 0 && o3_nf) {
-        // ----- -> ---
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 3", op1, op2, op3, op4, op5,
-            o3, true, true, true, true, true, false);
-    }
-
-    if (nxs == 4 && xs == 1 && o3_nt) {
-        // ----x -> ??x
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 4", op1, op2, op3, op4, op5,
-            o3, true, true, true, true, false, true);
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 4", op1, op2, op3, op4, op5,
-            o3, true, true, true, false, true, true);
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 4", op1, op2, op3, op4, op5,
-            o3, true, true, false, true, true, true);
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 4", op1, op2, op3, op4, op5,
-            o3, true, false, true, true, true, true);
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 4", op1, op2, op3, op4, op5,
-            o3, false, true, true, true, true, true);
-    } else if (nxs == 3 && xs == 2 && o3_nf) {
-        // ---xx -> ??-
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 5", op1, op2, op3, op4, op5,
-            o3, true, true, true, false, false, false); // 11100
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 5", op1, op2, op3, op4, op5,
-            o3, true, true, false, true, false, false); // 11010
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 5", op1, op2, op3, op4, op5,
-            o3, true, true, false, false, true, false); // 11001
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 5", op1, op2, op3, op4, op5,
-            o3, true, false, true, true, false, false); // 10110
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 5", op1, op2, op3, op4, op5,
-            o3, true, false, true, false, true, false); // 10101
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 5", op1, op2, op3, op4, op5,
-            o3, true, false, false, true, true, false); // 10011
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 5", op1, op2, op3, op4, op5,
-            o3, false, true, true, true, false, false); // 01110
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 5", op1, op2, op3, op4, op5,
-            o3, false, true, true, false, true, false); // 01101
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 5", op1, op2, op3, op4, op5,
-            o3, false, true, false, true, true, false); // 01011
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 5", op1, op2, op3, op4, op5,
-            o3, false, false, true, true, true, false); // 00111
-    } else if (nxs == 2 && xs == 3 && o3_nt) {
-        // --xxx -> ??x
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 6", op1, op2, op3, op4, op5,
-            o3, true, true, false, false, false, true); // 11000
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 6", op1, op2, op3, op4, op5,
-            o3, true, false, true, false, false, true); // 10100
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 6", op1, op2, op3, op4, op5,
-            o3, true, false, false, true, false, true); // 10010
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 6", op1, op2, op3, op4, op5,
-            o3, true, false, false, false, true, true); // 10001
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 6", op1, op2, op3, op4, op5,
-            o3, false, true, true, false, false, true); // 01100
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 6", op1, op2, op3, op4, op5,
-            o3, false, true, false, true, false, true); // 01010
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 6", op1, op2, op3, op4, op5,
-            o3, false, true, false, false, true, true); // 01001
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 6", op1, op2, op3, op4, op5,
-            o3, false, false, true, true, false, true); // 00110
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 6", op1, op2, op3, op4, op5,
-            o3, false, false, true, false, true, true); // 00101
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 6", op1, op2, op3, op4, op5,
-            o3, false, false, false, true, true, true); // 00011
-    } else if (nxs == 1 && xs == 4 && o3_nf) {
-        // -xxxx -> ??-
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 7", op1, op2, op3, op4, op5,
-            o3, true, false, false, false, false, false); // 10000
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 7", op1, op2, op3, op4, op5,
-            o3, false, true, false, false, false, false); // 01000
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 7", op1, op2, op3, op4, op5,
-            o3, false, false, true, false, false, false); // 00100
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 7", op1, op2, op3, op4, op5,
-            o3, false, false, false, true, false, false); // 00010
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 7", op1, op2, op3, op4, op5,
-            o3, false, false, false, false, true, false); // 00001
-    }
-
-    if (xs == 5 && nxs == 0 && o2_nf) {
-        // xxxxx -> ?-x
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 8", op1, op2, op3, op4, op5,
-            o2, false, false, false, false, false, false);
-    }
-    if (xs == 5 && nxs == 0 && o3_nt) {
-        // xxxxx -> ?-x
-        add_impl5(s, out_refined, k, i, j, "COMP_5_3 9", op1, op2, op3, op4, op5,
-            o2, false, false, false, false, false, true);
-    }
-}
-
-void comp_4_3(Minisat::Solver& s,
-    Minisat::vec<Minisat::vec<Minisat::Lit>>& out_refined, int& k,
-    int& i, int& j, int& op1, int& op2, int& op3, int& op4, int& o1,
-    int& o2, int& o3)
-{
-    int xs = 0, nxs = 0;
-    xs += s.value(op1) == l_True ? 1 : 0;
-    xs += s.value(op2) == l_True ? 1 : 0;
-    xs += s.value(op3) == l_True ? 1 : 0;
-    xs += s.value(op4) == l_True ? 1 : 0;
-    nxs += s.value(op1) == l_False ? 1 : 0;
-    nxs += s.value(op2) == l_False ? 1 : 0;
-    nxs += s.value(op3) == l_False ? 1 : 0;
-    nxs += s.value(op4) == l_False ? 1 : 0;
-
-    bool o1_nf = int_value(s, o1) != 0;
-    bool o2_nf = int_value(s, o2) != 0;
-    bool o3_nf = int_value(s, o3) != 0;
-    bool o3_nt = int_value(s, o3) != 1;
-
-    if (nxs == 4 && xs == 0 && o1_nf) {
-        // ---- -> ---
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 1", op1, op2, op3, op4, o1,
-            true, true, true, true, false);
-    }
-    if (nxs == 4 && xs == 0 && o2_nf) {
-        // ---- -> ---
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 2", op1, op2, op3, op4, o2,
-            true, true, true, true, false);
-    }
-    if (nxs == 4 && xs == 0 && o3_nf) {
-        // ---- -> ---
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 3", op1, op2, op3, op4, o3,
-            true, true, true, true, false);
-    }
-
-    if (nxs == 3 && xs == 1 && o3_nt) {
-        // ---x -> ??x
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 4", op1, op2, op3, op4, o3,
-            false, true, true, true, true);
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 4", op1, op2, op3, op4, o3,
-            true, false, true, true, true);
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 4", op1, op2, op3, op4, o3,
-            true, true, false, true, true);
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 4", op1, op2, op3, op4, o3,
-            true, true, true, false, true);
-    } else if (nxs == 2 && xs == 2 && o3_nf) {
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 5", op1, op2, op3, op4, o3,
-            false, false, true, true, false);
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 5", op1, op2, op3, op4, o3,
-            false, true, false, true, false);
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 5", op1, op2, op3, op4, o3,
-            false, true, true, false, false);
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 5", op1, op2, op3, op4, o3,
-            true, false, false, true, false);
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 5", op1, op2, op3, op4, o3,
-            true, false, true, false, false);
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 5", op1, op2, op3, op4, o3,
-            true, true, false, false, false);
-    } else if (nxs == 1 && xs == 3 && o3_nt) {
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 6", op1, op2, op3, op4, o3,
-            false, false, false, true, true);
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 6", op1, op2, op3, op4, o3,
-            false, false, true, false, true);
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 6", op1, op2, op3, op4, o3,
-            false, true, false, false, true);
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 6", op1, op2, op3, op4, o3,
-            true, false, false, false, true);
-    }
-
-    if (nxs == 0 && xs == 4 && o3_nf) {
-        add_impl4(s, out_refined, k, i, j, "COMP_5_3 7", op1, op2, op3, op4, o3,
-            true, true, true, true, false);
-    }
-}
-
-void comp_3_2(Minisat::Solver& s,
-    Minisat::vec<Minisat::vec<Minisat::Lit>>& out_refined, int& k,
-    int& i, int& j, int& op1, int& op2, int& op3, int& o1, int& o2)
-{
-    int xs = 0, nxs = 0;
-    xs += s.value(op1) == l_True ? 1 : 0;
-    xs += s.value(op2) == l_True ? 1 : 0;
-    xs += s.value(op3) == l_True ? 1 : 0;
-    nxs += s.value(op1) == l_False ? 1 : 0;
-    nxs += s.value(op2) == l_False ? 1 : 0;
-    nxs += s.value(op3) == l_False ? 1 : 0;
-
-    int o1_nf = int_value(s, o1) != 0;
-    int o1_nt = int_value(s, o1) != 1;
-    int o2_nf = int_value(s, o2) != 0;
-    int o2_nt = int_value(s, o2) != 1;
-
-    if (nxs == 3 && xs == 0 && o1_nf) {
-        // --- -> --
-        add_impl3(s, out_refined, k, i, j, "COMP_3_2 1", op1, op2, op3, o1, true,
-            true, true, false);
-    }
-    if (nxs == 3 && xs == 0 && o2_nf) {
-        // --- -> --
-        add_impl3(s, out_refined, k, i, j, "COMP_3_2 2", op1, op2, op3, o2, true,
-            true, true, false);
-    }
-
-    if (nxs == 2 && xs == 1 && o2_nt) {
-        // --x -> ?x
-        add_impl3(s, out_refined, k, i, j, "COMP_3_2 3", op1, op2, op3, o2, true,
-            true, false, true);
-        add_impl3(s, out_refined, k, i, j, "COMP_3_2 3", op1, op2, op3, o2, true,
-            false, true, true);
-        add_impl3(s, out_refined, k, i, j, "COMP_3_2 3", op1, op2, op3, o2, false,
-            true, true, true);
-    } else if (nxs == 1 && xs == 2 && o2_nf) {
-        // -xx -> ?-
-        add_impl3(s, out_refined, k, i, j, "COMP_3_2 4", op1, op2, op3, o2, true,
-            false, false, false);
-        add_impl3(s, out_refined, k, i, j, "COMP_3_2 4", op1, op2, op3, o2, false,
-            true, false, false);
-        add_impl3(s, out_refined, k, i, j, "COMP_3_2 4", op1, op2, op3, o2, false,
-            false, true, false);
-    }
-
-    if (xs == 3 && nxs == 0 && o1_nt) {
-        // xxx -> xx
-        add_impl3(s, out_refined, k, i, j, "COMP_3_2 5", op1, op2, op3, o1, false,
-            false, false, true);
-    }
-    if (xs == 3 && nxs == 0 && o2_nt) {
-        // xxx -> xx
-        add_impl3(s, out_refined, k, i, j, "COMP_3_2 6", op1, op2, op3, o2, false,
-            false, false, true);
-    }
-}
-
-void comp_2_2(Minisat::Solver& s,
-    Minisat::vec<Minisat::vec<Minisat::Lit>>& out_refined, int& k,
-    int& i, int& j, int& op1, int& op2, int& o1, int& o2)
-{
-    int xs = 0, nxs = 0;
-    xs += s.value(op1) == l_True ? 1 : 0;
-    xs += s.value(op2) == l_True ? 1 : 0;
-    nxs += s.value(op1) == l_False ? 1 : 0;
-    nxs += s.value(op2) == l_False ? 1 : 0;
-
-    int o1_nf = int_value(s, o1) != 0;
-    int o2_nf = int_value(s, o2) != 0;
-    int o2_nt = int_value(s, o2) != 1;
-
-    if (nxs == 2 && xs == 0 && o1_nf) {
-        // -- -> --
-        add_impl2(s, out_refined, k, i, j, "COMP_2_2 1", op1, op2, o1, true, true,
-            false);
-    }
-    if (nxs == 2 && xs == 0 && o2_nf) {
-        // -- -> --
-        add_impl2(s, out_refined, k, i, j, "COMP_2_2 2", op1, op2, o2, true, true,
-            false);
-    }
-
-    if (nxs == 1 && xs == 1 && o2_nt) {
-        // -x -> ?x
-        add_impl2(s, out_refined, k, i, j, "COMP_2_2 3", op1, op2, o2, true, false,
-            true);
-        add_impl2(s, out_refined, k, i, j, "COMP_2_2 3", op1, op2, o2, false, true,
-            true);
-    } else if (nxs == 0 && xs == 2 && o2_nf) {
-        // xx -> ?-
-        add_impl2(s, out_refined, k, i, j, "COMP_2_2 4", op1, op2, o2, false, false,
-            false);
-    }
-}
-
-void xor3_impl(Minisat::Solver& s,
-    Minisat::vec<Minisat::vec<Minisat::Lit>>& out_refined, int& k,
-    int i, int j, int a, int b, int c, int o, const char* name)
-{
-    if (s.value(a) != l_Undef && s.value(b) != l_Undef && s.value(c) != l_Undef) {
-        int xs = 0, nxs = 0;
-        if (s.value(a) == l_True)
-            xs++;
-        if (s.value(b) == l_True)
-            xs++;
-        if (s.value(c) == l_True)
-            xs++;
-
-        if (s.value(a) == l_False)
-            nxs++;
-        if (s.value(b) == l_False)
-            nxs++;
-        if (s.value(c) == l_False)
-            nxs++;
-        auto o_ = s.value(o);
-
-        if (xs == 0 && nxs == 3 && o_ != l_False) {
-            // --- -> -
-            add_impl3(s, out_refined, k, i, j, name, a, b, c, o, true, true, true,
-                false);
-        } else if (xs == 1 && nxs == 2 && o_ != l_True) {
-            // --x -> x
-            add_impl3(s, out_refined, k, i, j, name, a, b, c, o, true, true, false,
-                true);
-            // -x- -> x
-            add_impl3(s, out_refined, k, i, j, name, a, b, c, o, true, false, true,
-                true);
-            // x-- -> x
-            add_impl3(s, out_refined, k, i, j, name, a, b, c, o, false, true, true,
-                true);
-        } else if (xs == 2 && nxs == 1 && o_ != l_False) {
-            // -xx -> -
-            add_impl3(s, out_refined, k, i, j, name, a, b, c, o, true, false, false,
-                false);
-            // x-x -> -
-            add_impl3(s, out_refined, k, i, j, name, a, b, c, o, false, true, false,
-                false);
-            // xx- -> -
-            add_impl3(s, out_refined, k, i, j, name, a, b, c, o, false, false, true,
-                false);
-        } else if (xs == 3 && nxs == 0 && o_ != l_True) {
-            // xxx -> x
-            add_impl3(s, out_refined, k, i, j, name, a, b, c, o, false, false, false,
-                true);
-        }
-    }
-}
-
-void xor2_impl(Minisat::Solver& s,
-    Minisat::vec<Minisat::vec<Minisat::Lit>>& out_refined, int& k,
-    int i, int j, int op1, int op2, int o, const char* name)
-{
-    if (s.value(op1) != l_Undef && s.value(op2) != l_Undef) {
-        int xs = 0, nxs = 0;
-        xs += s.value(op1) == l_True ? 1 : 0;
-        xs += s.value(op2) == l_True ? 1 : 0;
-        nxs += s.value(op1) == l_False ? 1 : 0;
-        nxs += s.value(op2) == l_False ? 1 : 0;
-        auto o_nf = s.value(o) != l_False;
-        auto o_nt = s.value(o) != l_True;
-
-        if (xs == 0 && nxs == 2 && o_nf) {
-            // -- -> -
-            add_impl2(s, out_refined, k, i, j, name, op1, op2, o, true, true, false);
-        } else if (nxs == 1 && xs == 1 && o_nt) {
-            // -x -> x
-            add_impl2(s, out_refined, k, i, j, name, op1, op2, o, true, false, true);
-            add_impl2(s, out_refined, k, i, j, name, op1, op2, o, false, true, true);
-        } else if (nxs == 0 && xs == 2 && o_nf) {
-            // xx -> -
-            add_impl2(s, out_refined, k, i, j, name, op1, op2, o, false, false,
-                false);
-        }
-    }
+    if (x == 0 && x_prime == 0)
+        return '0';
+    else if (x == 1 && x_prime == 0)
+        return 'u';
+    else if (x == 0 && x_prime == 1)
+        return 'n';
+    else if (x == 1 && x_prime == 1)
+        return '1';
+    else
+        return NULL;
 }
 
 char to_gc(Minisat::Solver& s, int& id)
 {
+#if DIFF_BITS == 4
     int d[4] = { int_value(s, id), int_value(s, id + 1), int_value(s, id + 2), int_value(s, id + 3) };
     if (d[0] == 1 && d[1] == 1 && d[2] == 1 && d[3] == 1) {
         return '?';

@@ -29,6 +29,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "utils/Options.h"
 #include "core/Dimacs.h"
 #include "simp/SimpSolver.h"
+#include "core/Crypto.h"
 
 using namespace Minisat;
 
@@ -107,7 +108,7 @@ int main(int argc, char** argv)
         S.verbosity = verb;
         
         solver = &S;
-        solver->loadRules("rules.db");
+        loadRules(*solver, "rules.db");
         // Use signal handlers that forcibly quit until the solver will be able to respond to
         // interrupts:
         signal(SIGINT, SIGINT_exit);
