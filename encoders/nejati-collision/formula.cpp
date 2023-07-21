@@ -152,6 +152,7 @@ void Formula::xor2(int* z, int* x, int* y, int n)
     }
 }
 
+// TODO: Inject XOR rules if these are difference variables
 void Formula::xor3(int* z, int* x, int* y, int* t, int n)
 {
     for (int i = 0; i < n; i++) {
