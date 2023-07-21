@@ -418,6 +418,9 @@ void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
     }
 
     add_clauses(*this, out_refined);
+    // if (out_refined.size() > 0)
+    // //     out_refined.clear();
+    //     printf("Size: %d\n", out_refined.size());
     fflush(stdout);
 
     wait = 0;

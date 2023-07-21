@@ -669,11 +669,11 @@ void add_2_bit_conditions(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k
     if (!check_consistency(equations)) {
         // Block the input variables that lead to the contradiction
         if (gcs_known) {
-            // out_refined.push();
+            out_refined.push();
             for (int i = 0; i < vars_n - 3; i++) {
-                // printf("%d\n", int_value(s, var_ids[i]));
-                // out_refined[k].push(mkLit(var_ids[i], int_value(s, var_ids[i]) == 1));
-                // print_clause(out_refined[k]);
+                printf("%d\n", int_value(s, var_ids[i]));
+                out_refined[k].push(mkLit(var_ids[i], int_value(s, var_ids[i]) == 1));
+                print_clause(out_refined[k]);
             }
             k++;
         } else if (xors_known) {
@@ -735,7 +735,7 @@ void infer_carries(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int* 
     std::vector<std::pair<int, lbool>> vars;
     for (int i = 0; i < inputs_n; i++) {
         auto value = s.value(var_ids[i]);
-        if (value == l_Undef)
+        if (value != l_True)
             continue;
         vars.push_back({ var_ids[i], value });
     }
@@ -743,7 +743,8 @@ void infer_carries(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int* 
     // High carry must be 1 if no. of 1s >= 4
     if (carries_n == 2) {
         int high_carry_id = var_ids[inputs_n];
-        vars.push_back({ high_carry_id, l_False });
+        // vars.push_back({ high_carry_id, l_False });
+        vars.insert(vars.begin(), { high_carry_id, l_False });
         std::sort(vars.begin(), vars.end(), sort_by_value);
 
         if (input_1s_n >= 4 && s.value(high_carry_id) != l_True) {
@@ -752,7 +753,6 @@ void infer_carries(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int* 
                 printf("%d: %d\n", vars[i].first + 1, int_value(s, vars[i].first));
                 out_refined[k].push(mkLit(vars[i].first, vars[i].second == l_True));
             }
-
             print_clause(out_refined[k]);
             k++;
             printf("Inferred high carry %d %d %d %d\n", inputs_n, input_1s_n, high_carry_id + 1, int_value(s, high_carry_id));
@@ -763,15 +763,15 @@ void infer_carries(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int* 
         return;
 
     // Low carry must be 1 if no. of 1s >= 6
-    // int low_carry_id = var_ids[vars_n - carries_n + 1];
-    // if (input_1s_n >= 6 && s.value(low_carry_id) != l_True) {
-    //     out_refined.push();
-    //     out_refined[k].push(mkLit(low_carry_id, false));
-    //     for (int i = 0; i < inputs_n; i++)
-    //         out_refined[k].push(mkLit(var_ids[i], s.value(var_ids[i]) == l_True));
-    //     k++;
-    //     printf("Inferred low carry %d\n", input_1s_n);
-    // }
+    int low_carry_id = var_ids[vars_n - carries_n + 1];
+    if (input_1s_n >= 6 && s.value(low_carry_id) != l_True) {
+        out_refined.push();
+        out_refined[k].push(mkLit(low_carry_id, false));
+        for (int i = 0; i < inputs_n; i++)
+            out_refined[k].push(mkLit(var_ids[i], s.value(var_ids[i]) == l_True));
+        k++;
+        printf("Inferred low carry %d\n", input_1s_n);
+    }
 }
 
 void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
