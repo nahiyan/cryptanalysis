@@ -373,3 +373,17 @@ void xFormula::xor7(int *z, int *a, int *b, int *c, int *d, int *e, int *f, int 
         }
     }
 }
+
+void xFormula::xor3Rules(int* z, int* x, int* y, int* t, int n)
+{
+    for (int i = 0; i < n; i++) {
+        addClause({ -x[i], -y[i], -t[i], z[i] }); // XOR3: xxx -> x
+        addClause({ x[i], y[i], t[i], -z[i] }); // XOR3: --- -> -
+        addClause({ x[i], -y[i], t[i], z[i] }); // XOR3: -x- -> x
+        addClause({ -x[i], y[i], t[i], z[i] }); // XOR3: x-- -> x
+        addClause({ x[i], y[i], -t[i], z[i] }); // XOR3: --x -> x
+        addClause({ -x[i], y[i], -t[i], -z[i] }); // XOR3: x-x -> -
+        addClause({ -x[i], -y[i], t[i], -z[i] }); // XOR3: xx- -> -
+        addClause({ x[i], -y[i], -t[i], -z[i] }); // XOR3: -xx -> -
+    }
+}
