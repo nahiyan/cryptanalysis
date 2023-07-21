@@ -464,38 +464,6 @@ bool impose_rule_3i_1o(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, s
     return false;
 }
 
-// TODO: Finish this
-// bool impose_rule_3i_2o(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, std::string& o, int& x, int& y, int& z, int& v, int& w)
-// {
-// #if DIFF_BITS == 4
-//     // TODO: Implement for diff 4
-// #else
-//     int vars[DIFF_BITS * 5] = { x, y, z, v, w };
-//     int vals[DIFF_BITS * 5] = { int_value(s, x), int_value(s, y), int_value(s, z), int_value(s, v), int_value(s, w) };
-// #endif
-
-//     uint8_t o_vals[DIFF_BITS * 2];
-//     from_gc(o[0], &o_vals[0]);
-//     from_gc(o[1], &o_vals[1]);
-
-//     for (int j = 0; j < 2 * DIFF_BITS; j++) {
-//         if (vals[DIFF_BITS * 3 + j] == o_vals[j])
-//             continue;
-
-//         out_refined.push();
-//         out_refined[k].push(mkLit(vars[j + DIFF_BITS * 3], o_vals[j] == 0));
-//         for (int i = 0; i < DIFF_BITS * 3; i++)
-//             out_refined[k].push(mkLit(vars[i], vals[i] == 1));
-// #if DEBUG
-//         print_clause(out_refined[k]);
-// #endif
-//         k++;
-//         return true;
-//     }
-
-//     return false;
-// }
-
 bool impose_rule_3i_1o_w(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int id, int& x, int& y, int& z, int& w)
 {
     if (k != 0) {
@@ -766,35 +734,23 @@ void infer_carries(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int* 
 
     std::vector<std::pair<int, lbool>> vars;
     for (int i = 0; i < inputs_n; i++) {
-        vars.push_back({ var_ids[i], s.value(var_ids[i]) });
+        auto value = s.value(var_ids[i]);
+        if (value == l_Undef)
+            continue;
+        vars.push_back({ var_ids[i], value });
     }
-
-    // // Reorder variables by placing the undefined variables first in the array
-    // int vars_reordered[inputs_n];
-    // int j = 0;
-    // for (int i = 0; i < inputs_n; i++)
-    //     if (s.value(var_ids[i]) == l_Undef) {
-    //         vars_reordered[j] = var_ids[i];
-    //         j++;
-    //     }
-    // for (int i = 0; i < inputs_n; i++)
-    //     if (s.value(var_ids[i]) != l_Undef) {
-    //         vars_reordered[j] = var_ids[i];
-    //         j++;
-    //     }
 
     // High carry must be 1 if no. of 1s >= 4
     if (carries_n == 2) {
         int high_carry_id = var_ids[inputs_n];
-        vars.push_back({ high_carry_id, s.value(high_carry_id) });
+        vars.push_back({ high_carry_id, l_False });
         std::sort(vars.begin(), vars.end(), sort_by_value);
 
         if (input_1s_n >= 4 && s.value(high_carry_id) != l_True) {
             out_refined.push();
-            // out_refined[k].push(mkLit(high_carry_id, false));
             for (int i = 0; i < vars.size(); i++) {
                 printf("%d: %d\n", vars[i].first + 1, int_value(s, vars[i].first));
-                out_refined[k].push(mkLit(vars[i].first, vars[i].first == high_carry_id ? false : vars[i].second == l_True));
+                out_refined[k].push(mkLit(vars[i].first, vars[i].second == l_True));
             }
 
             print_clause(out_refined[k]);
@@ -1069,7 +1025,7 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
 
                 if (j > 1) {
                     int var_ids[] = { op1, op2, op3, op4, op5, op6, op7, o1, o2, o3 };
-                    // infer_carries(s, out_refined, k, var_ids, 10, 2);
+                    infer_carries(s, out_refined, k, var_ids, 10, 2);
                 } else if (j == 1) {
                     // int var_ids[] = { op1, op2, op3, op4, op5, op6, o1, o2, o3 };
                     // infer_carries(s, out_refined, k, var_ids, 9, 2);
