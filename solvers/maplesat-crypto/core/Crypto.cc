@@ -64,6 +64,18 @@ void loadRule(Minisat::Solver& solver, FILE*& db, int& id)
     } else if (id >= TWO_BIT_CONSTRAINT_IF_ID && id <= TWO_BIT_CONSTRAINT_ADD3_ID) {
         key_size = 4;
         val_size = 3;
+    } else if (id == TWO_BIT_CONSTRAINT_ADD4_ID) {
+        key_size = 5;
+        val_size = 6;
+    } else if (id == TWO_BIT_CONSTRAINT_ADD5_ID) {
+        key_size = 6;
+        val_size = 10;
+    } else if (id == TWO_BIT_CONSTRAINT_ADD6_ID) {
+        key_size = 7;
+        val_size = 15;
+    } else if (id == TWO_BIT_CONSTRAINT_ADD7_ID) {
+        key_size = 8;
+        val_size = 21;
     }
 
     int size = key_size + val_size;
