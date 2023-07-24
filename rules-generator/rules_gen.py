@@ -1,3 +1,4 @@
+import os
 from itertools import permutations, combinations
 
 IO_CONSTRAINT_ADD2_ID = 0
@@ -19,7 +20,9 @@ OI_CONSTRAINT_ADD5_ID = 14
 OI_CONSTRAINT_ADD6_ID = 15
 OI_CONSTRAINT_ADD7_ID = 16
 
-rules_db = open("rules-io-oi.db", "wb")
+if not os.path.exists("output"):
+    os.mkdir("output")
+rules_db = open("output/rules-io-oi.db", "wb")
 
 
 def uniq(data):
@@ -43,14 +46,14 @@ def bin_add(ops):
     bitsum = 0
 
     for op in ops:
-        bitsum += op >> 0 & 1
+        bitsum += op & 1
     sum = bitsum & 1
     carries.append(bitsum >> 1 & 1)
     carries.append(bitsum >> 2 & 1)
     return carries[1], carries[0], sum
 
 
-def sym(x, y):
+def gc(x, y):
     if x == 0 and y == 0:
         return "0"
     if x == 1 and y == 0:
@@ -195,11 +198,11 @@ def oi_rules_gen(id, n):
                     num1s_ += 1
 
             ops_xor = [ops[x] ^ ops_[x] for x in range(n)]
-            ops_gc = [sym(ops[x], ops_[x]) for x in range(n)]
+            ops_gc = [gc(ops[x], ops_[x]) for x in range(n)]
 
-            o1_gc = sym(o1, o1_)
-            o2_gc = sym(o2, o2_)
-            o3_gc = sym(o3, o3_)
+            o1_gc = gc(o1, o1_)
+            o2_gc = gc(o2, o2_)
+            o3_gc = gc(o3, o3_)
 
             num1sop = 0
             for op in ops_xor:
@@ -302,14 +305,14 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
                         maj_2 = maj(ops[1], ops[3], ops[5])
                         xor3_1 = xor3(ops[0], ops[2], ops[4])
                         xor3_2 = xor3(ops[1], ops[3], ops[5])
-                        out_syms_if.add(sym(if_1, if_2))
-                        out_syms_maj.add(sym(maj_1, maj_2))
-                        out_syms_xor3.add(sym(xor3_1, xor3_2))
+                        out_syms_if.add(gc(if_1, if_2))
+                        out_syms_maj.add(gc(maj_1, maj_2))
+                        out_syms_xor3.add(gc(xor3_1, xor3_2))
                         carry2_1, carry1_1, sum_1 = bin_add([ops[0], ops[2], ops[4]])
                         carry2_2, carry1_2, sum_2 = bin_add([ops[1], ops[3], ops[5]])
-                        carry2_syms.add(sym(carry2_1, carry2_2))
-                        carry1_syms.add(sym(carry1_1, carry1_2))
-                        sum_syms.add(sym(sum_1, sum_2))
+                        carry2_syms.add(gc(carry2_1, carry2_2))
+                        carry1_syms.add(gc(carry1_1, carry1_2))
+                        sum_syms.add(gc(sum_1, sum_2))
             print("IF:  ", i[0], i[1], i[2], "->", to_sym(out_syms_if))
             print("MAJ: ", i[0], i[1], i[2], "->", to_sym(out_syms_maj))
             print("XOR3:", i[0], i[1], i[2], "->", to_sym(out_syms_xor3))
@@ -365,9 +368,9 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
                             carry2_2, carry1_2, sum_2 = bin_add(
                                 [ops[1], ops[3], ops[5], ops[7]]
                             )
-                            carry2_syms.add(sym(carry2_1, carry2_2))
-                            carry1_syms.add(sym(carry1_1, carry1_2))
-                            sum_syms.add(sym(sum_1, sum_2))
+                            carry2_syms.add(gc(carry2_1, carry2_2))
+                            carry1_syms.add(gc(carry1_1, carry1_2))
+                            sum_syms.add(gc(sum_1, sum_2))
             print(
                 "ADD4:",
                 i[0],
@@ -409,9 +412,9 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
                                 carry2_2, carry1_2, sum_2 = bin_add(
                                     [ops[1], ops[3], ops[5], ops[7], ops[9]]
                                 )
-                                carry2_syms.add(sym(carry2_1, carry2_2))
-                                carry1_syms.add(sym(carry1_1, carry1_2))
-                                sum_syms.add(sym(sum_1, sum_2))
+                                carry2_syms.add(gc(carry2_1, carry2_2))
+                                carry1_syms.add(gc(carry1_1, carry1_2))
+                                sum_syms.add(gc(sum_1, sum_2))
             print(
                 "ADD5:",
                 i[0],
@@ -469,9 +472,9 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
                                             ops[11],
                                         ]
                                     )
-                                    carry2_syms.add(sym(carry2_1, carry2_2))
-                                    carry1_syms.add(sym(carry1_1, carry1_2))
-                                    sum_syms.add(sym(sum_1, sum_2))
+                                    carry2_syms.add(gc(carry2_1, carry2_2))
+                                    carry1_syms.add(gc(carry1_1, carry1_2))
+                                    sum_syms.add(gc(sum_1, sum_2))
             print(
                 "ADD6:",
                 i[0],
@@ -533,9 +536,9 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
                                                 ops[13],
                                             ]
                                         )
-                                        carry2_syms.add(sym(carry2_1, carry2_2))
-                                        carry1_syms.add(sym(carry1_1, carry1_2))
-                                        sum_syms.add(sym(sum_1, sum_2))
+                                        carry2_syms.add(gc(carry2_1, carry2_2))
+                                        carry1_syms.add(gc(carry1_1, carry1_2))
+                                        sum_syms.add(gc(sum_1, sum_2))
             print(
                 "ADD7:",
                 i[0],
@@ -552,17 +555,18 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
             )
 
 
-# gen_io_rules(4, ["x", "-"])
-for i in range(3, 8):
-    id = (
-        OI_CONSTRAINT_ADD3_ID
-        if i == 3
-        else OI_CONSTRAINT_ADD4_ID
-        if i == 4
-        else OI_CONSTRAINT_ADD5_ID
-        if i == 5
-        else OI_CONSTRAINT_ADD6_ID
-        if i == 6
-        else OI_CONSTRAINT_ADD7_ID
-    )
-    oi_rules_gen(id, i)
+def __main__():
+    # gen_io_rules(4, ["x", "-"])
+    for i in range(3, 8):
+        id = (
+            OI_CONSTRAINT_ADD3_ID
+            if i == 3
+            else OI_CONSTRAINT_ADD4_ID
+            if i == 4
+            else OI_CONSTRAINT_ADD5_ID
+            if i == 5
+            else OI_CONSTRAINT_ADD6_ID
+            if i == 6
+            else OI_CONSTRAINT_ADD7_ID
+        )
+        oi_rules_gen(id, i)
