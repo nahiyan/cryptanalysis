@@ -119,7 +119,7 @@ void loadRules(Minisat::Solver& solver, const char* filename)
         count++;
     }
 
-    printf("Loaded %d rules\n", count);
+    printf("Loaded %d rules into %d buckets\n", count, solver.rules.bucket_count());
 
     // DEBUG
     // char key[] = {19, 'n', '1', '1', 'n'};
@@ -677,7 +677,7 @@ void add_2_bit_conditions(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k
         visited.insert(var_id);
     }
 
-    // Check the consistency of the entire set of equations (includes one added for other functions)
+    // Check the consistency of the entire set of equations (includes ones added for other functions)
     if (!check_consistency(equations)) {
         // Block the input variables that lead to the contradiction
         if (gcs_known) {
@@ -759,7 +759,7 @@ void infer_carries(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int* 
         vars.insert(vars.begin(), { high_carry_id, l_False });
         std::sort(vars.begin(), vars.end(), sort_by_value);
 
-        if (input_1s_n >= 4 && s.value(high_carry_id) != l_True) {
+        if (input_1s_n >= 4 && s.value(high_carry_id) == l_Undef) {
             out_refined.push();
             for (int i = 0; i < vars.size(); i++) {
                 printf("%d: %d\n", vars[i].first + 1, int_value(s, vars[i].first));
@@ -767,7 +767,7 @@ void infer_carries(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int* 
             }
             print_clause(out_refined[k]);
             k++;
-            printf("Inferred high carry %d %d %d %d\n", inputs_n, input_1s_n, high_carry_id + 1, int_value(s, high_carry_id));
+            printf("Inferred high carry %d\n", inputs_n);
         }
     }
 
