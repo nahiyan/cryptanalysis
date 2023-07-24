@@ -919,13 +919,13 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
 
                 // bool out_def_in_undef = int_value(s, o1) != -1 && int_value(s, o2) != -1 && (int_value(s, op1) == -1 || int_value(s, op2) == -1 || int_value(s, op3) == -1);
 
-                // if (j > 0) {
-                //     int var_ids[] = { op1, op2, op3, o1, o2 };
-                //     infer_carries(s, out_refined, k, var_ids, 5, 1);
-                // } else {
-                //     int var_ids[] = { op1, op2, o1, o2 };
-                //     infer_carries(s, out_refined, k, var_ids, 4, 1);
-                // }
+                if (j > 0) {
+                    int var_ids[] = { op1, op2, op3, o1, o2 };
+                    infer_carries(s, out_refined, k, var_ids, 5, 1);
+                } else {
+                    int var_ids[] = { op1, op2, o1, o2 };
+                    infer_carries(s, out_refined, k, var_ids, 4, 1);
+                }
 
                 // if (out_def_in_undef)
                 //     printf("ADD3: %d %d %d = %d %d\n", int_value(s, op1), int_value(s, op2), int_value(s, op3), int_value(s, o1), int_value(s, o2));
@@ -955,16 +955,16 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
                 int o2 = dr2_carry; // t[j]
                 int o3 = da_4; // DA[i+4]
 
-                // if (j > 2) {
-                //     int var_ids[] = { op1, op2, op3, op4, op5, o1, o2, o3 };
-                //     infer_carries(s, out_refined, k, var_ids, 8, 2);
-                // } else if (j == 2 || j == 1) {
-                //     int var_ids[] = { op1, op2, op3, op4, o1, o2, o3 };
-                //     infer_carries(s, out_refined, k, var_ids, 7, 2);
-                // } else {
-                //     int var_ids[] = { op1, op2, op3, o1, o2 };
-                //     infer_carries(s, out_refined, k, var_ids, 5, 1);
-                // }
+                if (j > 2) {
+                    int var_ids[] = { op1, op2, op3, op4, op5, o1, o2, o3 };
+                    infer_carries(s, out_refined, k, var_ids, 8, 2);
+                } else if (j == 2 || j == 1) {
+                    int var_ids[] = { op1, op2, op3, op4, o1, o2, o3 };
+                    infer_carries(s, out_refined, k, var_ids, 7, 2);
+                } else {
+                    int var_ids[] = { op1, op2, op3, o1, o2 };
+                    infer_carries(s, out_refined, k, var_ids, 5, 1);
+                }
 
                 // if (int_value(s, o1) != -1 && int_value(s, o2) != -1 && int_value(s, o3) != -1 && (int_value(s, op1) == -1 || int_value(s, op2) == -1 || int_value(s, op3) == -1 || int_value(s, op4) == -1 || int_value(s, op5) == -1))
                 //     printf("ADD5: %d %d %d %d %d = %d %d %d\n", int_value(s, op1), int_value(s, op2), int_value(s, op3), int_value(s, op4), int_value(s, op5), int_value(s, o1), int_value(s, o2), int_value(s, o3));
@@ -995,16 +995,16 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
                 int o2 = dw_carry; // t[j]
                 int o3 = dw_0; // DW[i]
 
-                // if (j > 1) {
-                //     int var_ids[] = { op1, op2, op3, op4, op5, op6, o1, o2, o3 };
-                //     infer_carries(s, out_refined, k, var_ids, 9, 2);
-                // } else if (j == 1) {
-                //     int var_ids[] = { op1, op2, op3, op4, op5, o1, o2, o3 };
-                //     infer_carries(s, out_refined, k, var_ids, 8, 2);
-                // } else {
-                //     int var_ids[] = { op1, op2, op3, op4, o1, o2, o3 };
-                //     infer_carries(s, out_refined, k, var_ids, 7, 2);
-                // }
+                if (j > 1) {
+                    int var_ids[] = { op1, op2, op3, op4, op5, op6, o1, o2, o3 };
+                    infer_carries(s, out_refined, k, var_ids, 9, 2);
+                } else if (j == 1) {
+                    int var_ids[] = { op1, op2, op3, op4, op5, o1, o2, o3 };
+                    infer_carries(s, out_refined, k, var_ids, 8, 2);
+                } else {
+                    int var_ids[] = { op1, op2, op3, op4, o1, o2, o3 };
+                    infer_carries(s, out_refined, k, var_ids, 7, 2);
+                }
 
                 // if (int_value(s, o1) != -1 && int_value(s, o2) != -1 && int_value(s, o3) != -1 && (int_value(s, op1) == -1 || int_value(s, op2) == -1 || int_value(s, op3) == -1 || int_value(s, op4) == -1 || int_value(s, op5) == -1 || int_value(s, op6) == -1))
                 //     printf("ADD6: %d %d %d %d %d %d = %d %d %d\n", int_value(s, op1), int_value(s, op2), int_value(s, op3), int_value(s, op4), int_value(s, op5), int_value(s, op6), int_value(s, o1), int_value(s, o2), int_value(s, o3));
@@ -1041,11 +1041,11 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
                     int var_ids[] = { op1, op2, op3, op4, op5, op6, op7, o1, o2, o3 };
                     infer_carries(s, out_refined, k, var_ids, 10, 2);
                 } else if (j == 1) {
-                    // int var_ids[] = { op1, op2, op3, op4, op5, op6, o1, o2, o3 };
-                    // infer_carries(s, out_refined, k, var_ids, 9, 2);
+                    int var_ids[] = { op1, op2, op3, op4, op5, op6, o1, o2, o3 };
+                    infer_carries(s, out_refined, k, var_ids, 9, 2);
                 } else {
-                    // int var_ids[] = { op1, op2, op3, op4, op5, o1, o2, o3 };
-                    // infer_carries(s, out_refined, k, var_ids, 8, 2);
+                    int var_ids[] = { op1, op2, op3, op4, op5, o1, o2, o3 };
+                    infer_carries(s, out_refined, k, var_ids, 8, 2);
                 }
 
                 // if (int_value(s, o1) != -1 && int_value(s, o2) != -1 && int_value(s, o3) != -1 && (int_value(s, op1) == -1 || int_value(s, op2) == -1 || int_value(s, op3) == -1 || int_value(s, op4) == -1 || int_value(s, op5) == -1 || int_value(s, op6) == -1 || int_value(s, op7) == -1))
