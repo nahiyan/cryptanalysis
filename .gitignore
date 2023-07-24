@@ -4,3 +4,4 @@ cryptanalysis
 nejati_collision_encoder
 nejati_preimage_encoder
 rules-generator/output
+**/__pycache__
