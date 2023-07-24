@@ -776,13 +776,15 @@ void infer_carries(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int* 
 
     // Low carry must be 1 if no. of 1s >= 6
     int low_carry_id = var_ids[vars_n - carries_n + 1];
-    if (input_1s_n >= 6 && s.value(low_carry_id) != l_True) {
+    if (input_1s_n >= 6 && s.value(low_carry_id) == l_Undef) {
         out_refined.push();
-        out_refined[k].push(mkLit(low_carry_id, false));
-        for (int i = 0; i < inputs_n; i++)
-            out_refined[k].push(mkLit(var_ids[i], s.value(var_ids[i]) == l_True));
+        for (int i = 0; i < vars.size(); i++) {
+            printf("%d: %d\n", vars[i].first + 1, int_value(s, vars[i].first));
+            out_refined[k].push(mkLit(vars[i].first, vars[i].second == l_True));
+        }
+        print_clause(out_refined[k]);
         k++;
-        printf("Inferred low carry %d\n", input_1s_n);
+        printf("Inferred low carry %d %d %d %d\n", inputs_n, input_1s_n, low_carry_id + 1, int_value(s, low_carry_id));
     }
 }
 
