@@ -408,20 +408,45 @@ Lit Solver::pickBranchLit()
 //           least one clause.
 
 int wait = 0;
+int adds = 0;
 time_t time_sum = 0;
 void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
 {
     auto start = std::chrono::high_resolution_clock::now();
     wait++;
-    if (wait != 100 && !complete) {
+    if (wait != 300 && !complete) {
         return;
     }
 
+    // if (adds == 4) {
+    //     printf("Debug: %d\n", value(22338-1));
+    //     printf("Debug: %d\n", value(22210-1));
+    //     printf("Debug: %d\n", value(18695-1));
+    //     printf("Debug: %d\n", value(22305-1));
+    //     printf("Debug: %d\n", value(22336-1));
+    // }
+
+    int vars[] = {21997, 21837, 18609, 21964, 21995, 22337, 22209, 18694, 22304, 22335, 22331, 22171, 18688, 22298, 22329, 22341, 22181, 18698, 22308, 22339, 22338, 22210, 18695, 22305, 22336};
+    printf("Debug start\n");
+    for (int i = 0; i < sizeof(vars) / sizeof(int); i++) {
+        printf("%d %d, ", vars[i], value(vars[i] - 1) == l_True ? 1 : value(vars[i] - 1) == l_False ? 0 : -1);
+        if ((i + 1) % 5 == 0)
+            printf("\n");
+    }
+    printf("Debug end\n");
+
+    // if (adds >= 5) {   
+    //     printf("Stopping clause additions\n");
+    //     return;
+    // }
+
     add_clauses(*this, out_refined);
-    // if (out_refined.size() > 0)
-    // //     out_refined.clear();
-    //     printf("Size: %d\n", out_refined.size());
+    if (out_refined.size() > 1)
+        printf("Warning! Clause count: %d\n", out_refined.size());
+    else if (out_refined.size() > 0)
+        printf("Clause count: %d\n", out_refined.size());
     fflush(stdout);
+    adds += out_refined.size();
 
     wait = 0;
     auto finish = std::chrono::high_resolution_clock::now();
@@ -663,6 +688,17 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
         Clause& c = ca[confl];
 
 #if LBD_BASED_CLAUSE_DELETION
+        // printf("Analyze confl: %d\n", confl);
+        // printf("Analyze ca[confl]: %d\n", ca[confl]);
+        // printf("Analyze c: %d\n", c);
+        // printf("Analyze learnt: %d\n", c.learnt());
+
+        // printf("Analyze lits: ");
+        // for(int i = 0; i < c.size(); i++) {
+        //     printf("%s%d ", sign(c[i]) ? "-" : "", var(c[i]) + 1);
+        // }
+        // printf("\n");
+        
         if (c.learnt() && c.activity() > 2)
             c.activity() = lbd(c);
 #else

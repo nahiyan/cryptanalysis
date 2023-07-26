@@ -134,6 +134,20 @@ int int_value(Minisat::Solver& s, int var)
                                                   : -1;
 }
 
+char to_gc(lbool x, lbool x_prime)
+{
+    if (x == l_False && x_prime == l_False)
+        return '0';
+    else if (x == l_True && x_prime == l_False)
+        return 'u';
+    else if (x == l_False && x_prime == l_True)
+        return 'n';
+    else if (x == l_True && x_prime == l_True)
+        return '1';
+    else
+        return NULL;
+}
+
 char to_gc(int x, int x_prime)
 {
     if (x == 0 && x_prime == 0)
@@ -575,160 +589,200 @@ void impose_oi_rule(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int 
     // TODO: Impose the rule on the input bits (x, x', and dx)
 }
 
+void copyClause(vec<Lit>& src, vec<Lit>& dst)
+{
+    for (int i = 0; i < src.size(); i++)
+        dst.push(src[i]);
+}
+
+// TODO: Get rid of unwanted vector
 // TODO: Reduce redundancy
 // The variable IDs provided should include the operands and the output
-void add_2_bit_conditions(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int function_id, int* var_ids, int vars_n, std::vector<std::pair<int32_t, int32_t>>& equations)
+void add_2_bit_conditions(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int function_id, int* var_ids, int vars_n)
 {
     assert(DIFF_BITS == 0);
     // Number of variables
     assert(vars_n % 3 == 0 && vars_n > 0); // Must be in triples and non-empty
+    int chunks_n = vars_n / 3;
 
-    // Rule key
-    int key_size = (vars_n / 3) + 2;
+    // Lay out the rule key's foundation
+    int key_size = chunks_n + 2;
     char rule_key[key_size];
     rule_key[0] = function_id;
     rule_key[key_size - 1] = NULL;
 
-    // Determine if the XORs are known
-    bool xors_known = true;
-    for (int i = 2; i < vars_n; i += 3) {
-        if (int_value(s, var_ids[i]) == -1) {
-            xors_known = false;
-            break;
-        }
-    }
+    // Process chunk-wise (each chunk has 3 bits)
+    vec<Lit> base_clause;
+    bool hasXOrDash = false;
+    for (int i = 0, j = 1; i < vars_n; i += 3, j++) {
+        // There are 3 possible ways to derive the GC of the chunk: from x and x_, from dx and x or x_, or from dx alone, else we can't
+        int& x_id = var_ids[i];
+        lbool x_value = s.value(var_ids[i]);
 
-    // Determine if the GCs are known
-    bool gcs_known = true;
-    for (int i = 0; i < vars_n; i += 3) {
-        int x = int_value(s, var_ids[i]);
-        int x_ = int_value(s, var_ids[i + 1]);
-        int dx = int_value(s, var_ids[i + 2]);
-        // TODO: Invert the condition and convert into an if-only statement
-        if ((x != -1 && x_ != -1) || ((x != -1 || x_ != -1) && dx != -1)) {
+        int& x_prime_id = var_ids[i + 1];
+        lbool x_prime_value = s.value(var_ids[i + 1]);
 
-        } else {
-            gcs_known = false;
-            break;
-        }
-    }
+        int& dx_id = var_ids[i + 2];
+        lbool dx_value = s.value(var_ids[i + 2]);
 
-    // Construct the rule key
-    if (gcs_known) {
-        for (int i = 0, j = 1; i < vars_n; i += 3, j++) {
-            int x = int_value(s, var_ids[i]);
-            int x_ = int_value(s, var_ids[i + 1]);
-            int dx = int_value(s, var_ids[i + 2]);
-            char gc;
-            if (x != -1 && x_ != -1)
-                gc = to_gc(x, x_);
-            else if ((x == 0 || x_ == 0) && dx == 0)
-                gc = '0';
-            else if ((x == 1 || x_ == 1) && dx == 0)
-                gc = '1';
-            else if ((x == 0 || x_ == 0) && dx == 1)
-                gc = 'u';
+        // printf("Values: %d %d %d; IDs: %d %d %d\n", int_value(s, x_id), int_value(s, x_prime_id), int_value(s, dx_id), x_id + 1, x_prime_id + 1, dx_id + 1);
+
+        if (x_value != l_Undef && x_prime_value != l_Undef) {
+            rule_key[j] = to_gc(x_value, x_prime_value);
+            base_clause.push(mkLit(x_id, x_value == l_True));
+            base_clause.push(mkLit(x_prime_id, x_prime_value == l_True));
+        } else if (dx_value != l_Undef && (x_value != l_Undef || x_prime_value != l_Undef)) {
+            // y is x or x' that is defined
+            int y_id;
+            lbool y_value;
+            bool x_defined = false;
+            if (x_value != l_Undef) {
+                y_id = x_id;
+                y_value = x_value;
+                x_defined = true;
+            } else {
+                y_id = x_prime_id;
+                y_value = x_prime_value;
+            }
+
+            if (dx_value == l_False)
+                rule_key[j] = x_defined && y_value == l_False ? '0' : '1';
             else
-                gc = 'n';
-            rule_key[j] = gc;
+                rule_key[j] = x_defined && y_value == l_False ? 'n' : 'u';
+
+            base_clause.push(mkLit(y_id, y_value == l_True));
+            base_clause.push(mkLit(dx_id, dx_value == l_True));
+        } else if (dx_value != l_Undef) {
+            rule_key[j] = dx_value == l_True ? 'x' : '-';
+            hasXOrDash = true;
+            base_clause.push(mkLit(dx_id, dx_value == l_True));
+        } else {
+            // Terminate since we can't derive the rule if we don't know any of {1, u, n, 0, x, -}, and without the rule we can't derive the 2-bit conditions
+            return;
         }
-    } else if (xors_known) {
-        for (int i = 2, j = 1; i < vars_n; i += 3, j++) {
-            char gc = int_value(s, var_ids[i]) == 1 ? 'x' : '-';
-            rule_key[j] = gc;
-        }
-    } else {
-        return;
     }
+
+    if (!hasXOrDash)
+        return;
 
     // Find the value of the rule (if it exists)
     auto rule_it = s.rules.find(rule_key);
     if (rule_it == s.rules.end())
         return;
     auto rule_value = rule_it->second;
+    // printf("Found for key %s: %s\n", rule_key, rule_value.c_str());
 
-    // Derive the equations from the relationships between the input vars
-#if DEBUG
-    // printf("2-bit %d %s %s\n", function_id, rule_key, rule_value.c_str());
-#endif
+    // Derive the relationships between the x and x_ of the chunks and enforce them through clauses
     std::set<int> visited;
-    int equations_added = 0;
-    for (int i = 0; i < rule_value.length(); i++) {
-        if (rule_value[i] == '2')
-            continue;
-
-        int var_id = var_ids[i * 3];
+    int rule_i = -1;
+    for (int i = 0; i < vars_n - 3; i += 3) {
+        int var1_id = var_ids[i];
         for (int j = 0; j < vars_n - 3; j += 3) {
             int var2_id = var_ids[j];
-            if (var2_id == var_id || visited.find(var2_id) != visited.end())
+            // printf("Trying %d\n", var2_id + 1);
+            if (var2_id == var1_id || visited.find(var2_id) != visited.end())
+                continue;
+            rule_i++;
+            if (rule_value[rule_i] == '2')
+                continue;
+            // printf("Passed %d with %d; %c in %d\n", var1_id + 1, var2_id + 1, rule_value[rule_i], rule_i);
+
+            // Inferred variables should be undefined
+            lbool var1_value = s.value(var1_id);
+            lbool var2_value = s.value(var2_id);
+
+            // Skip if both the values are defined
+            if (var1_value != l_Undef && var2_value != l_Undef)
                 continue;
 
+            // Skip if both the values are undefined
+            if (var1_value == l_Undef && var2_value == l_Undef)
+                continue;
+
+            // printf("1175 = %d\n", int_value(s, 1175 - 1));
+            // printf("1110 = %d\n", int_value(s, 1110 - 1));
+
+            printf("\nUsing key %s: %s\n", rule_key, rule_value.c_str());
+
+            printf("Related vars: %d and %d; values: %d and %d\n", var1_id + 1, var2_id + 1, int_value(s, var1_id), int_value(s, var2_id));
+
+            printf("DEBUG: ");
+            for (int l = 0; l < base_clause.size(); l++) {
+                printf("%d = %d, ", var(base_clause[l]) + 1, int_value(s, var(base_clause[i])));
+            }
+            printf("\n");
+
             // DEBUG
-            // printf("%d %d %c\n", var_id, var2_id, rule_value[i]);
-            if (rule_value[i] == '1') {
-                equations.push_back({ var_id, var2_id });
-                equations_added++;
-            } else if (rule_value[i] == '0') {
-                equations.push_back({ var_id, -var2_id });
-                equations_added++;
+            if (rule_value[rule_i] == '1') {
+                out_refined.push();
+                if (var1_value == l_Undef) {
+                    out_refined[k].push(mkLit(var1_id, true));
+                    out_refined[k].push(mkLit(var2_id, false));
+                } else {
+                    out_refined[k].push(mkLit(var2_id, false));
+                    out_refined[k].push(mkLit(var1_id, true));
+                }
+                for (int l = 0; l < base_clause.size(); l++) {
+                    if (var(base_clause[l]) == var1_id || var(base_clause[l]) == var2_id)
+                        continue;
+                    out_refined[k].push(base_clause[l]);
+                }
+                k++;
+
+                out_refined.push();
+                if (var1_value == l_Undef) {
+                    out_refined[k].push(mkLit(var1_id, false));
+                    out_refined[k].push(mkLit(var2_id, true));
+                } else {
+                    out_refined[k].push(mkLit(var2_id, true));
+                    out_refined[k].push(mkLit(var1_id, false));
+                }
+                for (int l = 0; l < base_clause.size(); l++) {
+                    if (var(base_clause[l]) == var1_id || var(base_clause[l]) == var2_id)
+                        continue;
+                    out_refined[k].push(base_clause[l]);
+                }
+                k++;
+
+                print_clause(out_refined[k - 1]);
+                print_clause(out_refined[k - 2]);
+            } else {
+                out_refined.push();
+                if (var1_value == l_Undef) {
+                    out_refined[k].push(mkLit(var1_id, true));
+                    out_refined[k].push(mkLit(var2_id, true));
+                } else {
+                    out_refined[k].push(mkLit(var2_id, true));
+                    out_refined[k].push(mkLit(var1_id, true));
+                }
+                for (int l = 0; l < base_clause.size(); l++) {
+                    if (var(base_clause[l]) == var1_id || var(base_clause[l]) == var2_id)
+                        continue;
+                    out_refined[k].push(base_clause[l]);
+                }
+                k++;
+
+                out_refined.push();
+                if (var1_value == l_Undef) {
+                    out_refined[k].push(mkLit(var1_id, false));
+                    out_refined[k].push(mkLit(var2_id, false));
+                } else {
+                    out_refined[k].push(mkLit(var2_id, false));
+                    out_refined[k].push(mkLit(var1_id, false));
+                }
+                for (int l = 0; l < base_clause.size(); l++) {
+                    if (var(base_clause[l]) == var1_id || var(base_clause[l]) == var2_id)
+                        continue;
+                    out_refined[k].push(base_clause[l]);
+                }
+                k++;
+
+                print_clause(out_refined[k - 1]);
+                print_clause(out_refined[k - 2]);
             }
         }
 
-        visited.insert(var_id);
-    }
-
-    // Check the consistency of the entire set of equations (includes ones added for other functions)
-    if (!check_consistency(equations)) {
-        // Block the input variables that lead to the contradiction
-        if (gcs_known) {
-            out_refined.push();
-            for (int i = 0; i < vars_n - 3; i++) {
-                printf("%d\n", int_value(s, var_ids[i]));
-                out_refined[k].push(mkLit(var_ids[i], int_value(s, var_ids[i]) == 1));
-                print_clause(out_refined[k]);
-            }
-            k++;
-        } else if (xors_known) {
-            out_refined.push();
-            for (int i = 2; i < vars_n - 3; i += 3)
-                out_refined[k].push(mkLit(var_ids[i], int_value(s, var_ids[i]) == 1));
-            k++;
-        }
-        // // Block the equations that lead to the contradiction
-        // for (int i = 0; i < equations_added; i++) {
-        //     auto equation = equations.back();
-        //     equations.pop_back();
-
-        //     int var1 = equation.first;
-        //     int var2 = equation.second;
-
-        //     if (var1 > 0 && var2 > 0) {
-        //         // Block equality
-        //         out_refined.push();
-        //         out_refined[k].push(mkLit(abs(var2), false));
-        //         out_refined[k].push(mkLit(abs(var1), false));
-        //         print_clause(out_refined[k]);
-        //         k++;
-        //         out_refined.push();
-        //         out_refined[k].push(mkLit(abs(var1), true));
-        //         out_refined[k].push(mkLit(abs(var2), true));
-        //         print_clause(out_refined[k]);
-        //         k++;
-        //     } else {
-        //         // Block inequality
-        //         out_refined.push();
-        //         out_refined[k].push(mkLit(abs(var2), true));
-        //         out_refined[k].push(mkLit(abs(var1), false));
-        //         print_clause(out_refined[k]);
-        //         k++;
-        //         out_refined.push();
-        //         out_refined[k].push(mkLit(abs(var1), true));
-        //         out_refined[k].push(mkLit(abs(var2), false));
-        //         print_clause(out_refined[k]);
-        //         k++;
-        //     }
-        // }
-        equations.clear();
+        visited.insert(var1_id);
     }
 }
 
@@ -759,7 +813,7 @@ void infer_carries(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int* 
         vars.insert(vars.begin(), { high_carry_id, l_False });
         std::sort(vars.begin(), vars.end(), sort_by_value);
 
-        if (input_1s_n >= 4 && s.value(high_carry_id) == l_Undef) {
+        if (input_1s_n >= 4 && s.value(high_carry_id) != l_True) {
             out_refined.push();
             for (int i = 0; i < vars.size(); i++) {
                 printf("%d: %d\n", vars[i].first + 1, int_value(s, vars[i].first));
@@ -767,31 +821,29 @@ void infer_carries(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int* 
             }
             print_clause(out_refined[k]);
             k++;
-            printf("Inferred high carry %d\n", inputs_n);
+            printf("Inferred high carry (inputs %d, carry_id %d)\n", inputs_n, high_carry_id + 1);
         }
     }
 
-    if (vars_n < 6)
-        return;
+    // if (vars_n < 6)
+    //     return;
 
-    // Low carry must be 1 if no. of 1s >= 6
-    int low_carry_id = var_ids[vars_n - carries_n + 1];
-    if (input_1s_n >= 6 && s.value(low_carry_id) == l_Undef) {
-        out_refined.push();
-        for (int i = 0; i < vars.size(); i++) {
-            printf("%d: %d\n", vars[i].first + 1, int_value(s, vars[i].first));
-            out_refined[k].push(mkLit(vars[i].first, vars[i].second == l_True));
-        }
-        print_clause(out_refined[k]);
-        k++;
-        printf("Inferred low carry %d %d %d %d\n", inputs_n, input_1s_n, low_carry_id + 1, int_value(s, low_carry_id));
-    }
+    // // Low carry must be 1 if no. of 1s >= 6
+    // int low_carry_id = var_ids[vars_n - carries_n + 1];
+    // if (input_1s_n >= 6 && s.value(low_carry_id) == l_Undef) {
+    //     out_refined.push();
+    //     for (int i = 0; i < vars.size(); i++) {
+    //         printf("%d: %d\n", vars[i].first + 1, int_value(s, vars[i].first));
+    //         out_refined[k].push(mkLit(vars[i].first, vars[i].second == l_True));
+    //     }
+    //     print_clause(out_refined[k]);
+    //     k++;
+    //     printf("Inferred low carry %d %d %d %d\n", inputs_n, input_1s_n, low_carry_id + 1, int_value(s, low_carry_id));
+    // }
 }
 
 void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
 {
-    std::vector<std::pair<int32_t, int32_t>> equations;
-
     int k = 0;
     for (int i = 0; i < s.steps; i++) {
         int dw_0_base = s.var_map["DW_" + std::to_string(i) + "_g"];
@@ -870,6 +922,8 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
                 goto END_CALLBACK;
 #endif
 
+            // printf("DEBUG: %d %d <- %d %d, %d %d, %d %d\n", int_value(s, 1095), int_value(s, 1113), int_value(s, 1109 - 1), int_value(s, 10179 - 1), int_value(s, 18550 - 1), int_value(s, 18532 - 1), int_value(s, 3438 - 1), int_value(s, 12508 - 1));
+
             // Sigma0 2-bit conditions
             {
                 int x = a_3_base_f + (j + 2) % 32;
@@ -885,7 +939,10 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
                 int dz = da_3_base + (j + 22) % 32;
 
                 int var_ids[] = { x, x_prime, dx, y, y_prime, dy, z, z_prime, dz, sigma0_f, sigma0_g, dsigma0 };
-                // add_2_bit_conditions(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, (int*)var_ids, 12, equations);
+                // printf("DEBUG: %d %d <- %d %d, %d %d, %d\n", int_value(s, 1861 - 1), int_value(s, 1881 - 1), int_value(s, 19681 - 1), int_value(s, 19692 - 1), int_value(s, 10951 - 1), int_value(s, 7222 - 1), int_value(s, 16292 - 1));
+                // add_2_bit_conditions(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, (int*)var_ids, 12);
+                // if (out_refined.size() > 0)
+                //     goto END_CALLBACK;
             }
 
             // Sigma1 2-bit conditions
@@ -903,7 +960,7 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
                 int dz = da_3_base + (j + 25) % 32;
 
                 int var_ids[] = { x, x_prime, dx, y, y_prime, dy, z, z_prime, dz, sigma1_f, sigma1_g, dsigma1 };
-                // add_2_bit_conditions(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, (int*)var_ids, 12, equations);
+                // add_2_bit_conditions(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, (int*)var_ids, 12);
             }
 
             // TODO: s0
@@ -919,13 +976,13 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
 
                 // bool out_def_in_undef = int_value(s, o1) != -1 && int_value(s, o2) != -1 && (int_value(s, op1) == -1 || int_value(s, op2) == -1 || int_value(s, op3) == -1);
 
-                if (j > 0) {
-                    int var_ids[] = { op1, op2, op3, o1, o2 };
-                    infer_carries(s, out_refined, k, var_ids, 5, 1);
-                } else {
-                    int var_ids[] = { op1, op2, o1, o2 };
-                    infer_carries(s, out_refined, k, var_ids, 4, 1);
-                }
+                // if (j > 0) {
+                //     int var_ids[] = { op1, op2, op3, o1, o2 };
+                //     infer_carries(s, out_refined, k, var_ids, 5, 1);
+                // } else {
+                //     int var_ids[] = { op1, op2, o1, o2 };
+                //     infer_carries(s, out_refined, k, var_ids, 4, 1);
+                // }
 
                 // if (out_def_in_undef)
                 //     printf("ADD3: %d %d %d = %d %d\n", int_value(s, op1), int_value(s, op2), int_value(s, op3), int_value(s, o1), int_value(s, o2));
@@ -942,6 +999,8 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
                 // }
             }
 
+            // TODO: Compression 4 to 3
+
             // Compression: 5 to 3
             // g.cnf.diff_add(DA[i + 4], DT[i], Dsigma0[i], Dr2carry[i], Dr2Carry[i],
             // Df2[i]);
@@ -955,16 +1014,16 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
                 int o2 = dr2_carry; // t[j]
                 int o3 = da_4; // DA[i+4]
 
-                if (j > 2) {
-                    int var_ids[] = { op1, op2, op3, op4, op5, o1, o2, o3 };
-                    infer_carries(s, out_refined, k, var_ids, 8, 2);
-                } else if (j == 2 || j == 1) {
-                    int var_ids[] = { op1, op2, op3, op4, o1, o2, o3 };
-                    infer_carries(s, out_refined, k, var_ids, 7, 2);
-                } else {
-                    int var_ids[] = { op1, op2, op3, o1, o2 };
-                    infer_carries(s, out_refined, k, var_ids, 5, 1);
-                }
+                // if (j > 2) {
+                //     int var_ids[] = { op1, op2, op3, op4, op5, o1, o2, o3 };
+                //     infer_carries(s, out_refined, k, var_ids, 8, 2);
+                // } else if (j == 2 || j == 1) {
+                //     int var_ids[] = { op1, op2, op3, op4, o1, o2, o3 };
+                //     infer_carries(s, out_refined, k, var_ids, 7, 2);
+                // } else {
+                //     int var_ids[] = { op1, op2, op3, o1, o2 };
+                //     infer_carries(s, out_refined, k, var_ids, 5, 1);
+                // }
 
                 // if (int_value(s, o1) != -1 && int_value(s, o2) != -1 && int_value(s, o3) != -1 && (int_value(s, op1) == -1 || int_value(s, op2) == -1 || int_value(s, op3) == -1 || int_value(s, op4) == -1 || int_value(s, op5) == -1))
                 //     printf("ADD5: %d %d %d %d %d = %d %d %d\n", int_value(s, op1), int_value(s, op2), int_value(s, op3), int_value(s, op4), int_value(s, op5), int_value(s, o1), int_value(s, o2), int_value(s, o3));
@@ -995,16 +1054,16 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
                 int o2 = dw_carry; // t[j]
                 int o3 = dw_0; // DW[i]
 
-                if (j > 1) {
-                    int var_ids[] = { op1, op2, op3, op4, op5, op6, o1, o2, o3 };
-                    infer_carries(s, out_refined, k, var_ids, 9, 2);
-                } else if (j == 1) {
-                    int var_ids[] = { op1, op2, op3, op4, op5, o1, o2, o3 };
-                    infer_carries(s, out_refined, k, var_ids, 8, 2);
-                } else {
-                    int var_ids[] = { op1, op2, op3, op4, o1, o2, o3 };
-                    infer_carries(s, out_refined, k, var_ids, 7, 2);
-                }
+                // if (j > 1) {
+                //     int var_ids[] = { op1, op2, op3, op4, op5, op6, o1, o2, o3 };
+                //     infer_carries(s, out_refined, k, var_ids, 9, 2);
+                // } else if (j == 1) {
+                //     int var_ids[] = { op1, op2, op3, op4, op5, o1, o2, o3 };
+                //     infer_carries(s, out_refined, k, var_ids, 8, 2);
+                // } else {
+                //     int var_ids[] = { op1, op2, op3, op4, o1, o2, o3 };
+                //     infer_carries(s, out_refined, k, var_ids, 7, 2);
+                // }
 
                 // if (int_value(s, o1) != -1 && int_value(s, o2) != -1 && int_value(s, o3) != -1 && (int_value(s, op1) == -1 || int_value(s, op2) == -1 || int_value(s, op3) == -1 || int_value(s, op4) == -1 || int_value(s, op5) == -1 || int_value(s, op6) == -1))
                 //     printf("ADD6: %d %d %d %d %d %d = %d %d %d\n", int_value(s, op1), int_value(s, op2), int_value(s, op3), int_value(s, op4), int_value(s, op5), int_value(s, op6), int_value(s, o1), int_value(s, o2), int_value(s, o3));
@@ -1037,15 +1096,21 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
                 int o2 = dr0_carry; // t[j]
                 int o3 = dt; // DT[i]
 
+                // if (o1 == 23399 - 1) {
+                //     printf("DEBUG: 23399: %d; %d %d %d %d\n", int_value(s, 23399-1), int_value(s, 18959-1), int_value(s, 18991-1), int_value(s, 23366-1), int_value(s, 23397-1));
+                // }
+
                 if (j > 1) {
                     int var_ids[] = { op1, op2, op3, op4, op5, op6, op7, o1, o2, o3 };
                     infer_carries(s, out_refined, k, var_ids, 10, 2);
+                    if (out_refined.size() > 0)
+                        goto END_CALLBACK;
                 } else if (j == 1) {
-                    int var_ids[] = { op1, op2, op3, op4, op5, op6, o1, o2, o3 };
-                    infer_carries(s, out_refined, k, var_ids, 9, 2);
+                    // int var_ids[] = { op1, op2, op3, op4, op5, op6, o1, o2, o3 };
+                    // infer_carries(s, out_refined, k, var_ids, 9, 2);
                 } else {
-                    int var_ids[] = { op1, op2, op3, op4, op5, o1, o2, o3 };
-                    infer_carries(s, out_refined, k, var_ids, 8, 2);
+                    // int var_ids[] = { op1, op2, op3, op4, op5, o1, o2, o3 };
+                    // infer_carries(s, out_refined, k, var_ids, 8, 2);
                 }
 
                 // if (int_value(s, o1) != -1 && int_value(s, o2) != -1 && int_value(s, o3) != -1 && (int_value(s, op1) == -1 || int_value(s, op2) == -1 || int_value(s, op3) == -1 || int_value(s, op4) == -1 || int_value(s, op5) == -1 || int_value(s, op6) == -1 || int_value(s, op7) == -1))

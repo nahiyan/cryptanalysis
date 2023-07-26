@@ -274,6 +274,11 @@ void collision(int rounds)
             g.cnf.newVars(DK[i], 32, "DK_" + to_string(i));
             g.cnf.fixedValue(DK[i], 0, 32);
 
+            // if (i == 8) {
+            //     int j = 18;
+            //     printf("Found %d; %d %d %d %d %d %d %d\n", Dr0Carry[i][j], Dr0carry[i][j-1], Dr0Carry[i][j-2], DE[i][j], Dsigma1[i][j], Df1[i][j], DK[i][j], DW[i][j]);
+            // }
+
             g.cnf.diff_add(DT[i], DE[i], Dsigma1[i], Dr0carry[i], Dr0Carry[i], Df1[i],
                 DK[i], DW[i]);
 #endif

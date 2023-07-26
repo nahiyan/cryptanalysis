@@ -80,6 +80,12 @@ void SHA256::encode() {
   cnf.assign(E[1], in[6]);
   cnf.assign(E[0], in[7]);
 
+  // Map the initial A and E values
+  for (int k = 0; k < 4; k++) {
+    cnf.varNames["A_" + to_string(k) + "_" + cnf.formulaName] = A[k][0];
+    cnf.varNames["E_" + to_string(k) + "_" + cnf.formulaName] = E[k][0];
+  }
+
   /* Main loop */
   for (int i = 0; i < rounds; i++) {
     cnf.newVars(sigma0[i], 32, "Sigma0_" + to_string(i));
