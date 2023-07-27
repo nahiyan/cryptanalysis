@@ -120,12 +120,16 @@ void collision(int rounds)
             g.cnf.xor2(Ds1[i] + 22, r1 + 22, r2 + 22, 10);
             g.cnf.xor3(Ds1[i], r1, r2, DW[i - 2] + 10, 22);
             g.cnf.xor3Rules(Ds1[i], r1, r2, DW[i - 2] + 10, 22);
-            g.cnf.newVars(Dwcarry[i], 32, "Dw_carry_" + to_string(i));
-            g.cnf.newVars(DwCarry[i], 32, "Dw_Carry_" + to_string(i));
+            g.cnf.newVars(Dwcarry[i], 32, "add_Dw" + to_string(i) + "_x2");
+            g.cnf.newVars(DwCarry[i], 32, "add_Dw" + to_string(i) + "_x3");
             g.cnf.xor2(Dwcarry[i], f.wcarry[i], g.wcarry[i], 32);
             g.cnf.xor2(DwCarry[i], f.wCarry[i], g.wCarry[i], 32);
 
-            // w[i] = w[i-16] + s0 + w[i-7] + s1
+            // Addition: w[i] = w[i-16] + s0 + w[i-7] + s1
+            g.cnf.varName(DW[i - 16], "add_Dw" + to_string(i) + "_x0");
+            g.cnf.varName(Ds0[i], "add_Dw" + to_string(i) + "_x1");
+            g.cnf.varName(DW[i - 7], "add_Dw" + to_string(i) + "_x4");
+            g.cnf.varName(Ds1[i], "add_Dw" + to_string(i) + "_x5");
             g.cnf.diff_add(DW[i], DW[i - 16], Ds0[i], Dwcarry[i], DwCarry[i],
                 DW[i - 7], Ds1[i]);
         }
@@ -158,30 +162,40 @@ void collision(int rounds)
                 g.cnf.addClause(
                     { DE[i + 3][j], DE[i + 2][j], DE[i + 1][j], -Df1[i][j] }); // IF: --- -> -
             }
-            // T = E[i] + sigma1 + f1 + k[i] + w[i]
+            // Addition: T = E[i] + sigma1 + f1 + k[i] + w[i]
             g.cnf.newVars(DT[i], 32, "DT_" + to_string(i));
             g.cnf.xor2(DT[i], f.T[i], g.T[i], 32);
-            g.cnf.newVars(Dr0carry[i], 32, "Dr0_carry_" + to_string(i));
-            g.cnf.newVars(Dr0Carry[i], 32, "Dr0_Carry_" + to_string(i));
+            g.cnf.newVars(Dr0carry[i], 32, "add_DT" + to_string(i) + "_x2");
+            g.cnf.newVars(Dr0Carry[i], 32, "add_DT" + to_string(i) + "_x3");
             g.cnf.xor2(Dr0carry[i], f.r0carry[i], g.r0carry[i], 32);
             g.cnf.xor2(Dr0Carry[i], f.r0Carry[i], g.r0Carry[i], 32);
             g.cnf.newVars(DK[i], 32, "DK_" + to_string(i));
             g.cnf.fixedValue(DK[i], 0, 32);
 
-            g.cnf.diff_add(DT[i], DE[i], Dsigma1[i], Dr0carry[i], Dr0Carry[i], Df1[i],
-                DK[i], DW[i]);
-            // E[i+4] = A[i] + T
-            g.cnf.newVars(Dr1carry[i], 32, "Dr1_carry_" + to_string(i));
+            g.cnf.varName(DE[i], "add_DT" + to_string(i) + "_x0");
+            g.cnf.varName(Dsigma1[i], "add_DT" + to_string(i) + "_x1");
+            g.cnf.varName(Df1[i], "add_DT" + to_string(i) + "_x4");
+            g.cnf.varName(DK[i], "add_DT" + to_string(i) + "_x5");
+            g.cnf.varName(DW[i], "add_DT" + to_string(i) + "_x6");
+            g.cnf.diff_add(DT[i], DE[i], Dsigma1[i], Dr0carry[i], Dr0Carry[i], Df1[i], DK[i], DW[i]);
+
+            // Addition: E[i+4] = A[i] + T
+            g.cnf.varName(DA[i], "add_DE" + to_string(i + 4) + "_x0");
+            g.cnf.varName(DT[i], "add_DE" + to_string(i + 4) + "_x1");
+            g.cnf.newVars(Dr1carry[i], 32, "add_DE" + to_string(i + 4) + "_x2");
             g.cnf.xor2(Dr1carry[i], f.r1carry[i], g.r1carry[i], 32);
             g.cnf.diff_add(DE[i + 4], DA[i], DT[i], Dr1carry[i]);
-            // A[i+4] = T + sigma0 + f2
-            g.cnf.newVars(Dr2carry[i], 32, "Dr2_carry_" + to_string(i));
-            g.cnf.newVars(Dr2Carry[i] + 1, 31, "Dr2_Carry_" + to_string(i));
+
+            // Addition: A[i+4] = T + sigma0 + f2
+            g.cnf.varName(DT[i], "add_DA" + to_string(i + 4) + "_x0");
+            g.cnf.varName(Dsigma0[i], "add_DA" + to_string(i + 4) + "_x1");
+            g.cnf.newVars(Dr2carry[i], 32, "add_DA" + to_string(i + 4) + "_x2");
+            g.cnf.newVars(Dr2Carry[i] + 1, 31, "add_DA" + to_string(i + 4) + "_x3");
+            g.cnf.varName(Df2[i], "add_DA" + to_string(i + 4) + "_x4");
             g.cnf.xor2(Dr2carry[i], f.r2carry[i], g.r2carry[i], 32);
             g.cnf.xor2(Dr2Carry[i] + 1, f.r2Carry[i] + 1, g.r2Carry[i] + 1, 31);
 
-            g.cnf.diff_add(DA[i + 4], DT[i], Dsigma0[i], Dr2carry[i], Dr2Carry[i],
-                Df2[i]);
+            g.cnf.diff_add(DA[i + 4], DT[i], Dsigma0[i], Dr2carry[i], Dr2Carry[i], Df2[i]);
         }
     } else {
         /* Inputs should be different */
