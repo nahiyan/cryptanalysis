@@ -9,8 +9,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define DIFF_BITS 1
-
 using namespace std;
 
 /* config options */
@@ -43,18 +41,6 @@ void collision(int rounds)
 
     if (cfg_diff_desc) {
         /* Differential Path Variables */
-#if DIFF_BITS == 4
-        int DA[70][32][4], DE[70][32][4], DW[70][32][4];
-        int Ds0[64][32][4], Ds1[64][32][4];
-        int Dwcarry[64][32][4], DwCarry[64][32][4];
-        int Dsigma0[64][32][4], Dsigma1[64][32][4];
-        int Df1[64][32][4], Df2[64][32][4];
-        int DT[70][32][4];
-        int Dr0carry[64][32][4], Dr0Carry[64][32][4];
-        int DK[64][32][4];
-        int Dr1carry[64][32][4];
-        int Dr2carry[64][32][4], Dr2Carry[64][32][4];
-#else
         int DA[70][32], DE[70][32], DW[70][32];
         int Ds0[64][32], Ds1[64][32];
         int Dwcarry[64][32], DwCarry[64][32];
@@ -65,27 +51,14 @@ void collision(int rounds)
         int DK[64][32];
         int Dr1carry[64][32];
         int Dr2carry[64][32], Dr2Carry[64][32];
-#endif
         for (int i = 0; i < rounds + 4; i++) {
-#if DIFF_BITS == 4
-            g.cnf.newVarsD2(&DA[i][0][0], 32, 4, "DA_" + to_string(i));
-            g.cnf.newVarsD2(&DE[i][0][0], 32, 4, "DE_" + to_string(i));
-            g.cnf.diff4Bits(&DA[i][0][0], f.A[i], g.A[i]);
-            g.cnf.diff4Bits(&DE[i][0][0], f.E[i], g.E[i]);
-#else
             g.cnf.newVars(DA[i], 32, "DA_" + to_string(i));
             g.cnf.newVars(DE[i], 32, "DE_" + to_string(i));
             g.cnf.xor2(DA[i], f.A[i], g.A[i], 32);
             g.cnf.xor2(DE[i], f.E[i], g.E[i], 32);
-#endif
             if (i < rounds) {
-#if DIFF_BITS == 4
-                g.cnf.newVarsD2(&DW[i][0][0], 32, 4, "DW_" + to_string(i));
-                g.cnf.diff4Bits(&DW[i][0][0], f.w[i], g.w[i]);
-#else
                 g.cnf.newVars(DW[i], 32, "DW_" + to_string(i));
                 g.cnf.xor2(DW[i], f.w[i], g.w[i], 32);
-#endif
             }
         }
 
@@ -104,77 +77,30 @@ void collision(int rounds)
             if (i >= 0) {
                 for (int j = 0; j < 32; j++)
                     if (W[i][31 - j] == '-') {
-#if DIFF_BITS == 4
-                        g.cnf.fixedValue(&DW[i][j][0], 1, 1);
-                        g.cnf.fixedValue(&DW[i][j][1], 0, 1);
-                        g.cnf.fixedValue(&DW[i][j][2], 0, 1);
-                        g.cnf.fixedValue(&DW[i][j][3], 1, 1);
-#else
                         g.cnf.fixedValue(&DW[i][j], 0, 1);
-#endif
 
                     } else if (W[i][31 - j] == 'x') {
-#if DIFF_BITS == 4
-                        g.cnf.fixedValue(&DW[i][j][0], 0, 1);
-                        g.cnf.fixedValue(&DW[i][j][1], 1, 1);
-                        g.cnf.fixedValue(&DW[i][j][2], 1, 1);
-                        g.cnf.fixedValue(&DW[i][j][3], 0, 1);
-#else
                         g.cnf.fixedValue(&DW[i][j], 1, 1);
-#endif
                     }
             }
             for (int j = 0; j < 32; j++) {
                 if (A[i + 4][31 - j] == '-') {
-#if DIFF_BITS == 4
-                    g.cnf.fixedValue(&DA[i + 4][j][0], 1, 1);
-                    g.cnf.fixedValue(&DA[i + 4][j][1], 0, 1);
-                    g.cnf.fixedValue(&DA[i + 4][j][2], 0, 1);
-                    g.cnf.fixedValue(&DA[i + 4][j][3], 1, 1);
-#else
                     g.cnf.fixedValue(&DA[i + 4][j], 0, 1);
-#endif
+
                 } else if (A[i + 4][31 - j] == 'x') {
-#if DIFF_BITS == 4
-                    g.cnf.fixedValue(&DA[i + 4][j][0], 0, 1);
-                    g.cnf.fixedValue(&DA[i + 4][j][1], 1, 1);
-                    g.cnf.fixedValue(&DA[i + 4][j][2], 1, 1);
-                    g.cnf.fixedValue(&DA[i + 4][j][3], 0, 1);
-#else
                     g.cnf.fixedValue(&DA[i + 4][j], 1, 1);
-#endif
                 }
 
                 if (E[i + 4][31 - j] == '-') {
-#if DIFF_BITS == 4
-                    g.cnf.fixedValue(&DE[i + 4][j][0], 1, 1);
-                    g.cnf.fixedValue(&DE[i + 4][j][1], 0, 1);
-                    g.cnf.fixedValue(&DE[i + 4][j][2], 0, 1);
-                    g.cnf.fixedValue(&DE[i + 4][j][3], 1, 1);
-#else
                     g.cnf.fixedValue(&DE[i + 4][j], 0, 1);
-#endif
                 } else if (E[i + 4][31 - j] == 'x') {
-#if DIFF_BITS == 4
-                    g.cnf.fixedValue(&DE[i + 4][j][0], 0, 1);
-                    g.cnf.fixedValue(&DE[i + 4][j][1], 1, 1);
-                    g.cnf.fixedValue(&DE[i + 4][j][2], 1, 1);
-                    g.cnf.fixedValue(&DE[i + 4][j][3], 0, 1);
-#else
                     g.cnf.fixedValue(&DE[i + 4][j], 1, 1);
-#endif
                 }
             }
         }
 
         /* Differential propagation over message expansion */
         for (int i = 16; i < rounds; i++) {
-#if DIFF_BITS == 4
-            g.cnf.newVarsD2(&Ds0[i][0][0], 32, 4, "Ds0_" + to_string(i));
-            g.cnf.newVarsD2(&Ds1[i][0][0], 32, 4, "Ds1_" + to_string(i));
-            g.cnf.diff4Bits(&Ds0[i][0][0], f.s0[i], g.s0[i]);
-            g.cnf.diff4Bits(&Ds1[i][0][0], f.s1[i], g.s1[i]);
-#else
             g.cnf.newVars(Ds0[i], 32, "Ds0_" + to_string(i));
             g.cnf.newVars(Ds1[i], 32, "Ds1_" + to_string(i));
             g.cnf.xor2(Ds0[i], f.s0[i], g.s0[i], 32);
@@ -194,13 +120,6 @@ void collision(int rounds)
             g.cnf.xor2(Ds1[i] + 22, r1 + 22, r2 + 22, 10);
             g.cnf.xor3(Ds1[i], r1, r2, DW[i - 2] + 10, 22);
             g.cnf.xor3Rules(Ds1[i], r1, r2, DW[i - 2] + 10, 22);
-#endif
-#if DIFF_BITS == 4
-            g.cnf.newVarsD2(&Dwcarry[i][0][0], 32, 4, "Dw_carry_" + to_string(i));
-            g.cnf.newVarsD2(&DwCarry[i][0][0], 32, 4, "Dw_Carry_" + to_string(i));
-            g.cnf.diff4Bits(&Dwcarry[i][0][0], f.wcarry[i], g.wcarry[i]);
-            g.cnf.diff4Bits(&DwCarry[i][0][0], f.wCarry[i], g.wCarry[i]);
-#else
             g.cnf.newVars(Dwcarry[i], 32, "Dw_carry_" + to_string(i));
             g.cnf.newVars(DwCarry[i], 32, "Dw_Carry_" + to_string(i));
             g.cnf.xor2(Dwcarry[i], f.wcarry[i], g.wcarry[i], 32);
@@ -209,19 +128,12 @@ void collision(int rounds)
             // w[i] = w[i-16] + s0 + w[i-7] + s1
             g.cnf.diff_add(DW[i], DW[i - 16], Ds0[i], Dwcarry[i], DwCarry[i],
                 DW[i - 7], Ds1[i]);
-#endif
         }
 
         /* Differential propagation for round function */
         for (int i = 0; i < rounds; i++) {
             // sigma0 = Sigma0(A[i+3])
             // sigma1 = Sigma1(E[i+3])
-#if DIFF_BITS == 4
-            g.cnf.newVarsD2(&Dsigma0[i][0][0], 32, 4, "Dsigma0_" + to_string(i));
-            g.cnf.newVarsD2(&Dsigma1[i][0][0], 32, 4, "Dsigma1_" + to_string(i));
-            g.cnf.diff4Bits(&Dsigma0[i][0][0], f.sigma0[i], g.sigma0[i]);
-            g.cnf.diff4Bits(&Dsigma1[i][0][0], f.sigma1[i], g.sigma1[i]);
-#else
             g.cnf.newVars(Dsigma0[i], 32, "Dsigma0_" + to_string(i));
             g.cnf.newVars(Dsigma1[i], 32, "Dsigma1_" + to_string(i));
             g.cnf.xor2(Dsigma0[i], f.sigma0[i], g.sigma0[i], 32);
@@ -229,15 +141,8 @@ void collision(int rounds)
 
             g.Sigma0(Dsigma0[i], DA[i + 3]);
             g.Sigma1(Dsigma1[i], DE[i + 3]);
-#endif
             // f1 = IF(E[i+3], E[i+2], E[i+1])
             // f2 = MAJ(A[i+3], A[i+2], A[i+1])
-#if DIFF_BITS == 4
-            g.cnf.newVarsD2(&Df1[i][0][0], 32, 4, "Df1_" + to_string(i));
-            g.cnf.newVarsD2(&Df2[i][0][0], 32, 4, "Df2_" + to_string(i));
-            g.cnf.diff4Bits(&Df1[i][0][0], f.f1[i], g.f1[i]);
-            g.cnf.diff4Bits(&Df2[i][0][0], f.f2[i], g.f2[i]);
-#else
             g.cnf.newVars(Df1[i], 32, "Df1_" + to_string(i));
             g.cnf.newVars(Df2[i], 32, "Df2_" + to_string(i));
             g.cnf.xor2(Df1[i], f.f1[i], g.f1[i], 32);
@@ -253,18 +158,7 @@ void collision(int rounds)
                 g.cnf.addClause(
                     { DE[i + 3][j], DE[i + 2][j], DE[i + 1][j], -Df1[i][j] }); // IF: --- -> -
             }
-#endif
             // T = E[i] + sigma1 + f1 + k[i] + w[i]
-#if DIFF_BITS == 4
-            g.cnf.newVarsD2(&DT[i][0][0], 32, 4, "DT_" + to_string(i));
-            g.cnf.diff4Bits(&DT[i][0][0], f.T[i], g.T[i]);
-            g.cnf.newVarsD2(&Dr0carry[i][0][0], 32, 4, "Dr0_carry_" + to_string(i));
-            g.cnf.newVarsD2(&Dr0Carry[i][0][0], 32, 4, "Dr0_Carry_" + to_string(i));
-            g.cnf.diff4Bits(&Dr0carry[i][0][0], f.r0carry[i], g.r0carry[i]);
-            g.cnf.diff4Bits(&Dr0Carry[i][0][0], f.r0Carry[i], g.r0Carry[i]);
-            g.cnf.newVarsD2(&DK[i][0][0], 32, 4, "DK_" + to_string(i));
-            g.cnf.fixedValueD2(&DK[i][0][0], 0, 32, 4);
-#else
             g.cnf.newVars(DT[i], 32, "DT_" + to_string(i));
             g.cnf.xor2(DT[i], f.T[i], g.T[i], 32);
             g.cnf.newVars(Dr0carry[i], 32, "Dr0_carry_" + to_string(i));
@@ -274,30 +168,13 @@ void collision(int rounds)
             g.cnf.newVars(DK[i], 32, "DK_" + to_string(i));
             g.cnf.fixedValue(DK[i], 0, 32);
 
-            // if (i == 8) {
-            //     int j = 18;
-            //     printf("Found %d; %d %d %d %d %d %d %d\n", Dr0Carry[i][j], Dr0carry[i][j-1], Dr0Carry[i][j-2], DE[i][j], Dsigma1[i][j], Df1[i][j], DK[i][j], DW[i][j]);
-            // }
-
             g.cnf.diff_add(DT[i], DE[i], Dsigma1[i], Dr0carry[i], Dr0Carry[i], Df1[i],
                 DK[i], DW[i]);
-#endif
             // E[i+4] = A[i] + T
-#if DIFF_BITS == 4
-            g.cnf.newVarsD2(&Dr1carry[i][0][0], 32, 4, "Dr1_carry_" + to_string(i));
-            g.cnf.diff4Bits(&Dr1carry[i][0][0], f.r1carry[i], g.r1carry[i]);
-#else
             g.cnf.newVars(Dr1carry[i], 32, "Dr1_carry_" + to_string(i));
             g.cnf.xor2(Dr1carry[i], f.r1carry[i], g.r1carry[i], 32);
             g.cnf.diff_add(DE[i + 4], DA[i], DT[i], Dr1carry[i]);
-#endif
             // A[i+4] = T + sigma0 + f2
-#if DIFF_BITS == 4
-            g.cnf.newVarsD2(&Dr2carry[i][0][0], 32, 4, "Dr2_carry_" + to_string(i));
-            g.cnf.newVarsD2(&Dr2Carry[i][1][0], 31, 4, "Dr2_Carry_" + to_string(i));
-            g.cnf.diff4Bits(&Dr2carry[i][0][0], f.r2carry[i], g.r2carry[i]);
-            g.cnf.diff4Bits(&Dr2Carry[i][1][0], f.r2Carry[i] + 1, g.r2Carry[i] + 1, 31);
-#else
             g.cnf.newVars(Dr2carry[i], 32, "Dr2_carry_" + to_string(i));
             g.cnf.newVars(Dr2Carry[i] + 1, 31, "Dr2_Carry_" + to_string(i));
             g.cnf.xor2(Dr2carry[i], f.r2carry[i], g.r2carry[i], 32);
@@ -305,7 +182,6 @@ void collision(int rounds)
 
             g.cnf.diff_add(DA[i + 4], DT[i], Dsigma0[i], Dr2carry[i], Dr2Carry[i],
                 Df2[i]);
-#endif
         }
     } else {
         /* Inputs should be different */
