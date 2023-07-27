@@ -27,9 +27,8 @@ void xFormula::add(int *z, int *a, int *b, int *t, int *T, int *c, int *d, int *
         int m = addends[i].size() > 3 ? 3 : 2; 
         vector<int> sum(m);
         sum[0] = z[i];
-        newVars(&sum[1], m - 1);
-        t[i] = sum[1];
-        if ( m == 3 ) T[i] = sum[2];
+        sum[1] = t[i];
+        if ( m == 3 ) sum[2] = T[i];
         addends[i + 1].push_back(sum[1]);
         if ( m == 3 ) addends[i + 2].push_back(sum[2]);
         
