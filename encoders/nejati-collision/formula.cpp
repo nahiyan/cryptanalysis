@@ -22,6 +22,10 @@ Formula::~Formula()
 {
 }
 
+void Formula::varName(int *x, string name) {
+    varNames[name + "_" + formulaName] = x[0];
+}
+
 void Formula::newVars(int* x, int n, string name)
 {
     for (int i = 0; i < n; i++)
