@@ -1324,26 +1324,24 @@ lbool Solver::search(int nof_conflicts)
                         if (asserting)
                             uncheckedEnqueue(c[0], cr);
                     }
-                }
 
-                // Do not branch.
+                    // Do not branch.
+                    if (next != lit_Undef) {
+                        insertVarOrder(var(next));
+                        next = lit_Undef;
+                    }
+                } else if (next == lit_Undef)
+                    // Model found:
+                    return l_True;
+
                 if (next != lit_Undef) {
-                    printf("Next is %d\n", var(next));
-                    exit(0);
-                    insertVarOrder(var(next));
-                    next = lit_Undef;
-                }
-            } else if (next == lit_Undef)
-                // Model found:
-                return l_True;
-
-            if (next != lit_Undef) {
-                // Increase decision level and enqueue 'next'
-                newDecisionLevel();
+                    // Increase decision level and enqueue 'next'
+                    newDecisionLevel();
 #if BRANCHING_HEURISTIC == CHB
-                action = trail.size();
+                    action = trail.size();
 #endif
-                uncheckedEnqueue(next);
+                    uncheckedEnqueue(next);
+                }
             }
         }
     }
