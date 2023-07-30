@@ -4,7 +4,6 @@
 #include <set>
 #include <vector>
 #define DEBUG true
-#define DIFF_BITS 1
 #define IO_CONSTRAINT_ADD2_ID 0
 #define IO_CONSTRAINT_IF_ID 1
 #define IO_CONSTRAINT_MAJ_ID 2
@@ -164,136 +163,22 @@ char to_gc(int x, int x_prime)
 
 char to_gc(Minisat::Solver& s, int& id)
 {
-#if DIFF_BITS == 4
-    int d[4] = { int_value(s, id), int_value(s, id + 1), int_value(s, id + 2), int_value(s, id + 3) };
-    if (d[0] == 1 && d[1] == 1 && d[2] == 1 && d[3] == 1) {
-        return '?';
-    } else if (d[0] == 1 && d[1] == 0 && d[2] == 0 && d[3] == 1) {
-        return '-';
-    } else if (d[0] == 0 && d[1] == 1 && d[2] == 1 && d[3] == 0) {
-        return 'x';
-    } else if (d[0] == 1 && d[1] == 0 && d[2] == 0 && d[3] == 0) {
-        return '0';
-    } else if (d[0] == 0 && d[1] == 1 && d[2] == 0 && d[3] == 0) {
-        return 'u';
-    } else if (d[0] == 0 && d[1] == 0 && d[2] == 1 && d[3] == 0) {
-        return 'n';
-    } else if (d[0] == 0 && d[1] == 0 && d[2] == 0 && d[3] == 1) {
-        return '1';
-    } else if (d[0] == 1 && d[1] == 1 && d[2] == 0 && d[3] == 0) {
-        return '3';
-    } else if (d[0] == 1 && d[1] == 0 && d[2] == 1 && d[3] == 0) {
-        return '5';
-    } else if (d[0] == 1 && d[1] == 1 && d[2] == 1 && d[3] == 0) {
-        return '7';
-    } else if (d[0] == 0 && d[1] == 1 && d[2] == 0 && d[3] == 1) {
-        return 'A';
-    } else if (d[0] == 1 && d[1] == 1 && d[2] == 0 && d[3] == 1) {
-        return 'B';
-    } else if (d[0] == 0 && d[1] == 0 && d[2] == 1 && d[3] == 1) {
-        return 'C';
-    } else if (d[0] == 1 && d[1] == 0 && d[2] == 1 && d[3] == 1) {
-        return 'D';
-    } else if (d[0] == 0 && d[1] == 1 && d[2] == 1 && d[3] == 1) {
-        return 'E';
-    }
-#else
     int d = int_value(s, id);
     if (d == 0) {
         return '-';
     } else if (d == 1) {
         return 'x';
     }
-#endif
     return NULL;
 }
 
 void from_gc(char& gc, uint8_t* vals)
 {
-#if DIFF_BITS == 4
-    if (gc == '-') {
-        vals[0] = 1;
-        vals[1] = 0;
-        vals[2] = 0;
-        vals[3] = 1;
-    } else if (gc == 'x') {
-        vals[0] = 0;
-        vals[1] = 1;
-        vals[2] = 1;
-        vals[3] = 0;
-    } else if (gc == '?') {
-        vals[0] = 1;
-        vals[1] = 1;
-        vals[2] = 1;
-        vals[3] = 1;
-    } else if (gc == '0') {
-        vals[0] = 1;
-        vals[1] = 0;
-        vals[2] = 0;
-        vals[3] = 0;
-    } else if (gc == 'u') {
-        vals[0] = 0;
-        vals[1] = 1;
-        vals[2] = 0;
-        vals[3] = 0;
-    } else if (gc == 'n') {
-        vals[0] = 0;
-        vals[1] = 0;
-        vals[2] = 1;
-        vals[3] = 0;
-    } else if (gc == '1') {
-        vals[0] = 0;
-        vals[1] = 0;
-        vals[2] = 0;
-        vals[3] = 1;
-    } else if (gc == '3') {
-        vals[0] = 1;
-        vals[1] = 1;
-        vals[2] = 0;
-        vals[3] = 0;
-    } else if (gc == '5') {
-        vals[0] = 1;
-        vals[1] = 0;
-        vals[2] = 1;
-        vals[3] = 0;
-    } else if (gc == '7') {
-        vals[0] = 1;
-        vals[1] = 1;
-        vals[2] = 1;
-        vals[3] = 0;
-    } else if (gc == 'A') {
-        vals[0] = 0;
-        vals[1] = 1;
-        vals[2] = 0;
-        vals[3] = 1;
-    } else if (gc == 'B') {
-        vals[0] = 1;
-        vals[1] = 1;
-        vals[2] = 0;
-        vals[3] = 1;
-    } else if (gc == 'C') {
-        vals[0] = 0;
-        vals[1] = 0;
-        vals[2] = 1;
-        vals[3] = 1;
-    } else if (gc == 'D') {
-        vals[0] = 1;
-        vals[1] = 0;
-        vals[2] = 1;
-        vals[3] = 1;
-    } else if (gc == 'E') {
-        vals[0] = 0;
-        vals[1] = 1;
-        vals[2] = 1;
-        vals[3] = 1;
-    }
-#else
     if (gc == '-') {
         vals[0] = 0;
     } else if (gc == 'x') {
         vals[0] = 1;
     }
-#endif
 }
 
 void print_clause(vec<Lit>& clause)
@@ -431,54 +316,19 @@ bool check_consistency(std::vector<std::pair<int32_t, int32_t>>& equations)
 
 bool impose_rule_3i_1o(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, std::string& o, int& x, int& y, int& z, int& w)
 {
-#if DIFF_BITS == 4
-    int vars[DIFF_BITS * 4] = { x,
-        x + 1,
-        x + 2,
-        x + 3,
-        y,
-        y + 1,
-        y + 2,
-        y + 3,
-        z,
-        z + 1,
-        z + 2,
-        z + 3,
-        w,
-        w + 1,
-        w + 2,
-        w + 3 };
-    int vals[DIFF_BITS * 4] = { int_value(s, x),
-        int_value(s, x + 1),
-        int_value(s, x + 2),
-        int_value(s, x + 3),
-        int_value(s, y),
-        int_value(s, y + 1),
-        int_value(s, y + 2),
-        int_value(s, y + 3),
-        int_value(s, z),
-        int_value(s, z + 1),
-        int_value(s, z + 2),
-        int_value(s, z + 3),
-        int_value(s, w),
-        int_value(s, w + 1),
-        int_value(s, w + 2),
-        int_value(s, w + 3) };
-#else
-    int vars[DIFF_BITS * 4] = { x, y, z, w };
-    int vals[DIFF_BITS * 4] = { int_value(s, x), int_value(s, y), int_value(s, z), int_value(s, w) };
-#endif
+    int vars[4] = { x, y, z, w };
+    int vals[4] = { int_value(s, x), int_value(s, y), int_value(s, z), int_value(s, w) };
 
-    uint8_t o1_val[DIFF_BITS];
+    uint8_t o1_val[1];
     from_gc(o[0], o1_val);
 
-    for (int j = 0; j < DIFF_BITS; j++) {
-        if (vals[DIFF_BITS * 3 + j] == o1_val[j])
+    for (int j = 0; j < 1; j++) {
+        if (vals[3 + j] == o1_val[j])
             continue;
 
         out_refined.push();
-        out_refined[k].push(mkLit(vars[j + DIFF_BITS * 3], o1_val[j] == 0));
-        for (int i = 0; i < DIFF_BITS * 3; i++)
+        out_refined[k].push(mkLit(vars[j + 3], o1_val[j] == 0));
+        for (int i = 0; i < 3; i++)
             out_refined[k].push(mkLit(vars[i], vals[i] == 1));
 #if DEBUG
         print_clause(out_refined[k]);
@@ -514,10 +364,8 @@ bool impose_rule_3i_1o_w(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k,
 
     // TODO: Remove this check in the future
     // Skip if the rule's output isn't usable
-#if DIFF_BITS == 1
     if (r_value[0] != '-' && r_value[0] != 'x')
         return false;
-#endif
 
     // Skip if the output difference is already correct
     if (w_gc == r_value[0]) {
@@ -600,7 +448,6 @@ void copyClause(vec<Lit>& src, vec<Lit>& dst)
 // The variable IDs provided should include the operands and the output
 void add_2_bit_conditions(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int function_id, int* var_ids, int vars_n)
 {
-    assert(DIFF_BITS == 0);
     // Number of variables
     assert(vars_n % 3 == 0 && vars_n > 0); // Must be in triples and non-empty
     int chunks_n = vars_n / 3;
