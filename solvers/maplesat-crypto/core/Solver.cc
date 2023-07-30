@@ -20,9 +20,9 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 #include <math.h>
 
+#include "Crypto.h"
 #include "Solver.h"
 #include "mtl/Sort.h"
-#include "Crypto.h"
 #include <chrono>
 
 using namespace Minisat;
@@ -189,10 +189,11 @@ bool Solver::addClause_(vec<Lit>& ps)
 
     // Check if clause is satisfied and remove false/duplicate literals:
     sort(ps);
-    vec<Lit>    oc;
+    vec<Lit> oc;
     oc.clear();
 
-    Lit p; int i, j, flag = 0;
+    Lit p;
+    int i, j, flag = 0;
     for (i = j = 0, p = lit_Undef; i < ps.size(); i++) {
         oc.push(ps[i]);
         if (value(ps[i]) == l_True || ps[i] == ~p || value(ps[i]) == l_False)
@@ -450,7 +451,7 @@ void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
 
     wait = 0;
     auto finish = std::chrono::high_resolution_clock::now();
-    time_sum += std::chrono::duration_cast<std::chrono::microseconds>(finish-start).count();
+    time_sum += std::chrono::duration_cast<std::chrono::microseconds>(finish - start).count();
 }
 
 bool Solver::falsifiedClause(vec<Lit>& confl)
@@ -1177,7 +1178,7 @@ lbool Solver::search(int nof_conflicts)
             }
             if (output != NULL) {
                 for (int i = 0; i < learnt_clause.size(); i++)
-                    fprintf(output, "%i " , (var(learnt_clause[i]) + 1) * (-2 * sign(learnt_clause[i]) + 1) );
+                    fprintf(output, "%i ", (var(learnt_clause[i]) + 1) * (-2 * sign(learnt_clause[i]) + 1));
                 fprintf(output, "0\n");
             }
 
@@ -1434,7 +1435,7 @@ lbool Solver::solve_()
     if (verbosity >= 1)
         printf("===============================================================================\n");
 
-    printf("Time spent in callback: %.02fs\n", (float_t) time_sum / 1000000);
+    printf("Time spent in callback: %.02fs\n", (float_t)time_sum / 1000000);
 
     if (status == l_True) {
         // Extend & copy model:
