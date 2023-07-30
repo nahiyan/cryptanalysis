@@ -83,7 +83,7 @@ static void parse_DIMACS_main(B& in, Solver& S) {
                     ++in;
 
                     // Insert the variable map entries
-                    char var[20];
+                    char var[30];
                     int val;
                     sscanf(buffer, "%s %d", &var, &val);
                     S.var_map.insert({var, val - 1});
