@@ -30,7 +30,7 @@ class Formula
         Formula(string name = "");
         virtual ~Formula();
 
-        void varName(int *x, string name);
+        void varName(int *x, string name, int offset = 0);
 
         void newVars(int *x, int n = 32, string name = "");                     // Reserves new variable IDs for the bitvector 'x' of size 'n'
         void newVarsD2(int *x, int n = 32, int m = 4, string name = "");
