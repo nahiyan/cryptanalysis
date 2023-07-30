@@ -55,10 +55,13 @@ void SHA256::encode() {
     cnf.xor2(s1[i] + 22, r1 + 22, r2 + 22, 10);
 
     // Addition: w[i]
+    cnf.newVars(wCarry[i], 32, "add_w" + to_string(i) + "_z0");
+    cnf.newVars(wcarry[i], 32, "add_w" + to_string(i) + "_z1");
+
     cnf.varName(w[i - 16], "add_w" + to_string(i) + "_x0");
     cnf.varName(s0[i], "add_w" + to_string(i) + "_x1");
-    cnf.newVars(wcarry[i], 32, "add_w" + to_string(i) + "_x2");
-    cnf.newVars(wCarry[i], 32, "add_w" + to_string(i) + "_x3");
+    cnf.varName(wcarry[i], "add_w" + to_string(i) + "_x2", -1);
+    cnf.varName(wCarry[i], "add_w" + to_string(i) + "_x3", -2);
     cnf.varName(w[i - 7], "add_w" + to_string(i) + "_x4");
     cnf.varName(s1[i], "add_w" + to_string(i) + "_x5");
     cnf.add(w[i], w[i - 16], s0[i], wcarry[i], wCarry[i], w[i - 7], s1[i]);
@@ -124,28 +127,33 @@ void SHA256::encode() {
     cnf.maj3(f2[i], A[i + 3], A[i + 2], A[i + 1]);
 
     // Addition: T[i]
-    cnf.newVars(T[i], 32, "T_" + to_string(i));
+    cnf.newVars(r0Carry[i], 32, "add_T" + to_string(i) + "_z0");
+    cnf.newVars(r0carry[i], 32, "add_T" + to_string(i) + "_z1");
+    cnf.newVars(T[i], 32, "T" + to_string(i));
 
     cnf.varName(E[i], "add_T" + to_string(i) + "_x0");
     cnf.varName(sigma1[i], "add_T" + to_string(i) + "_x1");
-    cnf.newVars(r0carry[i], 32, "add_T" + to_string(i) + "_x2");
-    cnf.newVars(r0Carry[i], 32, "add_T" + to_string(i) + "_x3");
+    cnf.varName(r0carry[i], "add_T" + to_string(i) + "_x2", -1);
+    cnf.varName(r0Carry[i], "add_T" + to_string(i) + "_x3", -2);
     cnf.varName(f1[i], "add_T" + to_string(i) + "_x4");
     cnf.varName(k[i], "add_T" + to_string(i) + "_x5");
     cnf.varName(w[i], "add_T" + to_string(i) + "_x6");
     cnf.add(T[i], E[i], sigma1[i], r0carry[i], r0Carry[i], f1[i], k[i], w[i]);
 
     // Addition: E[i + 4]
+    cnf.newVars(r1carry[i], 32, "add_E" + to_string(i + 4) + "_z0");
     cnf.varName(A[i], "add_E" + to_string(i + 4) + "_x0");
     cnf.varName(T[i], "add_E" + to_string(i + 4) + "_x1");
-    cnf.newVars(r1carry[i], 32, "add_E" + to_string(i + 4) + "_x2");
+    cnf.varName(r1carry[i], "add_E" + to_string(i + 4) + "_x2", -1);
     cnf.add(E[i + 4], A[i], T[i], r1carry[i]);
 
     // Addition: A[i + 4]
+    cnf.newVars(r2Carry[i], 32, "add_A" + to_string(i + 4) + "_z0");
+    cnf.newVars(r2carry[i], 32, "add_A" + to_string(i + 4) + "_z1");
     cnf.varName(T[i], "add_A" + to_string(i + 4) + "_x0");
     cnf.varName(sigma0[i], "add_A" + to_string(i + 4) + "_x1");
-    cnf.newVars(r2carry[i], 32, "add_A" + to_string(i + 4) + "_x2");
-    cnf.newVars(r2Carry[i], 32, "add_A" + to_string(i + 4) + "_x3");
+    cnf.varName(r2carry[i], "add_A" + to_string(i + 4) + "_x2", -1);
+    cnf.varName(r2Carry[i], "add_A" + to_string(i + 4) + "_x3", -2);
     cnf.varName(f2[i], "add_A" + to_string(i + 4) + "_x4");
     cnf.add(A[i + 4], T[i], sigma0[i], r2carry[i], r2Carry[i], f2[i]);
   }
