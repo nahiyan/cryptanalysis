@@ -414,30 +414,13 @@ time_t time_sum = 0;
 void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    wait++;
-    if (wait != 300 && !complete) {
+    if (++wait != 300 && !complete) {
         return;
     }
 
-    // if (adds == 4) {
-    //     printf("Debug: %d\n", value(22338-1));
-    //     printf("Debug: %d\n", value(22210-1));
-    //     printf("Debug: %d\n", value(18695-1));
-    //     printf("Debug: %d\n", value(22305-1));
-    //     printf("Debug: %d\n", value(22336-1));
-    // }
-
-    int vars[] = {21997, 21837, 18609, 21964, 21995, 22337, 22209, 18694, 22304, 22335, 22331, 22171, 18688, 22298, 22329, 22341, 22181, 18698, 22308, 22339, 22338, 22210, 18695, 22305, 22336};
-    printf("Debug start\n");
-    for (int i = 0; i < sizeof(vars) / sizeof(int); i++) {
-        printf("%d %d, ", vars[i], value(vars[i] - 1) == l_True ? 1 : value(vars[i] - 1) == l_False ? 0 : -1);
-        if ((i + 1) % 5 == 0)
-            printf("\n");
-    }
-    printf("Debug end\n");
-
-    // if (adds >= 5) {   
-    //     printf("Stopping clause additions\n");
+    // if (adds > 0) {
+    //     printf("Stopping clause additions (%d added)\n", adds);
+    //     fflush(stdout);
     //     return;
     // }
 
@@ -699,7 +682,7 @@ void Solver::analyze(CRef confl, vec<Lit>& out_learnt, int& out_btlevel)
         //     printf("%s%d ", sign(c[i]) ? "-" : "", var(c[i]) + 1);
         // }
         // printf("\n");
-        
+
         if (c.learnt() && c.activity() > 2)
             c.activity() = lbd(c);
 #else

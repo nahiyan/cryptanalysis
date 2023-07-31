@@ -108,7 +108,10 @@ int main(int argc, char** argv)
         S.verbosity = verb;
         
         solver = &S;
+        
+        // CDCL(Crypto)
         loadRules(*solver, "rules.db");
+
         // Use signal handlers that forcibly quit until the solver will be able to respond to
         // interrupts:
         signal(SIGINT, SIGINT_exit);
@@ -150,6 +153,9 @@ int main(int argc, char** argv)
         
         parse_DIMACS(in, S);
         gzclose(in);
+        
+        // CDCL(Crypto)
+        processVarMap(*solver);
 
         if (S.verbosity > 0){
             printf("|  Number of variables:  %12d                                         |\n", S.nVars());

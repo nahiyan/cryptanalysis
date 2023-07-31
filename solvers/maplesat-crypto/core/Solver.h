@@ -28,6 +28,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "core/SolverTypes.h"
 #include <unordered_map>
 #include <string>
+#include <vector>
 
 
 namespace Minisat {
@@ -174,6 +175,12 @@ public:
     std::unordered_map<std::string, int> var_map;
     std::unordered_map<std::string, std::string> rules;
     int steps = 0;
+    struct var_ids {
+        std::vector<int> add_w_f[48], add_w_g[48];
+        std::vector<int> add_t_f[64], add_t_g[64];
+        std::vector<int> add_e_f[64], add_e_g[64];
+        std::vector<int> add_a_f[64], add_a_g[64];
+    } var_ids_;
 
 protected:
 
