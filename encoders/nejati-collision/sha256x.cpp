@@ -29,13 +29,13 @@ void SHA256::encode() {
     cnf.rotr(r1, w[i - 15], 7);
     cnf.rotr(r2, w[i - 15], 18);
     
-    // j: 0-28
+    // s0: j: 0-28
     cnf.varName(r1, "s0_" + to_string(i) + "_x0");
     cnf.varName(r2, "s0_" + to_string(i) + "_x1");
     cnf.varName(w[i - 15] + 3, "s0_" + to_string(i) + "_x2");
     cnf.xor3(s0[i], r1, r2, w[i - 15] + 3, 29);
 
-    // j: 29-31
+    // s0: j: 29-31
     cnf.varName(r1 + 29, "s0_" + to_string(i) + "_x0_");
     cnf.varName(r2 + 29, "s0_" + to_string(i) + "_x1_");
     cnf.xor2(s0[i] + 29, r1 + 29, r2 + 29, 3);
@@ -43,13 +43,13 @@ void SHA256::encode() {
     cnf.rotr(r1, w[i - 2], 17);
     cnf.rotr(r2, w[i - 2], 19);
 
-    // j: 0-21
+    // s1: j: 0-21
     cnf.varName(r1, "s1_" + to_string(i) + "_x0");
     cnf.varName(r2, "s1_" + to_string(i) + "_x1");
     cnf.varName(w[i - 2] + 10, "s1_" + to_string(i) + "_x2");
     cnf.xor3(s1[i], r1, r2, w[i - 2] + 10, 22);
 
-    // j: 22-31
+    // s1: j: 22-31
     cnf.varName(r1 + 22, "s1_" + to_string(i) + "_x0_");
     cnf.varName(r2 + 22, "s1_" + to_string(i) + "_x1_");
     cnf.xor2(s1[i] + 22, r1 + 22, r2 + 22, 10);
@@ -116,14 +116,24 @@ void SHA256::encode() {
 
   /* Main loop */
   for (int i = 0; i < rounds; i++) {
-    cnf.newVars(sigma0[i], 32, "Sigma0_" + to_string(i));
-    cnf.newVars(sigma1[i], 32, "Sigma1_" + to_string(i));
-    Sigma0(sigma0[i], A[i + 3]);
-    Sigma1(sigma1[i], E[i + 3]);
+    // Sigmas
+    cnf.newVars(sigma0[i]);
+    cnf.newVars(sigma1[i]);
+    Sigma0(sigma0[i], A[i + 3], "sigma0_" + std::to_string(i) + "_");
+    Sigma1(sigma1[i], E[i + 3], "sigma1_" + std::to_string(i) + "_");
 
-    cnf.newVars(f1[i], 32, "f1_" + to_string(i));
-    cnf.newVars(f2[i], 32, "f2_" + to_string(i));
+    // If
+    cnf.newVars(f1[i], 32, "if_" + to_string(i) + "_z");
+    cnf.varName(E[i + 3], "if_" + to_string(i) + "_x0");
+    cnf.varName(E[i + 2], "if_" + to_string(i) + "_x1");
+    cnf.varName(E[i + 1], "if_" + to_string(i) + "_x2");
     cnf.ch(f1[i], E[i + 3], E[i + 2], E[i + 1]);
+
+    // Majority
+    cnf.newVars(f2[i], 32, "maj_" + to_string(i) + "_z");
+    cnf.varName(A[i + 3], "maj_" + to_string(i) + "_x0");
+    cnf.varName(A[i + 2], "maj_" + to_string(i) + "_x1");
+    cnf.varName(A[i + 1], "maj_" + to_string(i) + "_x2");
     cnf.maj3(f2[i], A[i + 3], A[i + 2], A[i + 1]);
 
     // Addition: T[i]
@@ -176,18 +186,30 @@ void SHA256::fixOutput(unsigned target[8]) {
     cnf.fixedValue(out[i], target[i]);
 }
 
-void SHA256::Sigma0(int *z, int *x) {
+void SHA256::Sigma0(int *z, int *x, std::string prefix) {
   int r1[32], r2[32], r3[32];
   cnf.rotr(r1, x, 2);
   cnf.rotr(r2, x, 13);
   cnf.rotr(r3, x, 22);
+  if (prefix != "") {
+    cnf.varName(r1, prefix + "x0");
+    cnf.varName(r2, prefix + "x1");
+    cnf.varName(r3, prefix + "x2");
+    cnf.varName(z, prefix + "z");
+  }
   cnf.xor3(z, r1, r2, r3);
 }
 
-void SHA256::Sigma1(int *z, int *x) {
+void SHA256::Sigma1(int *z, int *x, std::string prefix) {
   int r1[32], r2[32], r3[32];
   cnf.rotr(r1, x, 6);
   cnf.rotr(r2, x, 11);
   cnf.rotr(r3, x, 25);
+  if (prefix != ""){
+    cnf.varName(r1, prefix + "x0");
+    cnf.varName(r2, prefix + "x1");
+    cnf.varName(r3, prefix + "x2");
+    cnf.varName(z, prefix + "z");
+  }
   cnf.xor3(z, r1, r2, r3);
 }

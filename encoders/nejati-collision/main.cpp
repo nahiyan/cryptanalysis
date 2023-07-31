@@ -138,18 +138,26 @@ void collision(int rounds)
         for (int i = 0; i < rounds; i++) {
             // sigma0 = Sigma0(A[i+3])
             // sigma1 = Sigma1(E[i+3])
-            g.cnf.newVars(Dsigma0[i], 32, "Dsigma0_" + to_string(i));
-            g.cnf.newVars(Dsigma1[i], 32, "Dsigma1_" + to_string(i));
+            g.cnf.newVars(Dsigma0[i]);
+            g.cnf.newVars(Dsigma1[i]);
             g.cnf.xor2(Dsigma0[i], f.sigma0[i], g.sigma0[i], 32);
             g.cnf.xor2(Dsigma1[i], f.sigma1[i], g.sigma1[i], 32);
 
-            g.Sigma0(Dsigma0[i], DA[i + 3]);
-            g.Sigma1(Dsigma1[i], DE[i + 3]);
+            g.Sigma0(Dsigma0[i], DA[i + 3], "Dsigma0_" + to_string(i) + "_");
+            g.Sigma1(Dsigma1[i], DE[i + 3], "Dsigma1_" + to_string(i) + "_");
+
             // f1 = IF(E[i+3], E[i+2], E[i+1])
             // f2 = MAJ(A[i+3], A[i+2], A[i+1])
-            g.cnf.newVars(Df1[i], 32, "Df1_" + to_string(i));
-            g.cnf.newVars(Df2[i], 32, "Df2_" + to_string(i));
+            g.cnf.newVars(Df1[i], 32, "Dif_" + to_string(i) + "_z");
+            g.cnf.varName(DE[i + 3], "Dif_" + to_string(i) + "_x0");
+            g.cnf.varName(DE[i + 2], "Dif_" + to_string(i) + "_x1");
+            g.cnf.varName(DE[i + 1], "Dif_" + to_string(i) + "_x2");
             g.cnf.xor2(Df1[i], f.f1[i], g.f1[i], 32);
+            
+            g.cnf.newVars(Df2[i], 32, "Dmaj_" + to_string(i) + "_z");
+            g.cnf.varName(DA[i + 3], "Dmaj_" + to_string(i) + "_x0");
+            g.cnf.varName(DA[i + 2], "Dmaj_" + to_string(i) + "_x1");
+            g.cnf.varName(DA[i + 1], "Dmaj_" + to_string(i) + "_x2");
             g.cnf.xor2(Df2[i], f.f2[i], g.f2[i], 32);
 
             for (int j = 0; j < 32; j++) {
