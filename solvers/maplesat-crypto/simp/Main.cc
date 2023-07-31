@@ -237,6 +237,11 @@ int main(int argc, char** argv)
             } else
                 fprintf(S.output, "INDET\n");
             fclose(S.output);
+        } else if (ret == l_True) {
+            for (int i = 0; i < S.nVars(); i++)
+                if (S.model[i] != l_Undef)
+                    printf("%s%s%d", (i == 0) ? "" : " ", (S.model[i] == l_True) ? "" : "-", i + 1);
+            printf(" 0\n");
         }
 
 #ifdef NDEBUG
