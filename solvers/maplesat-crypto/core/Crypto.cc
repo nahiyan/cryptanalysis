@@ -126,6 +126,37 @@ void loadRules(Minisat::Solver& solver, const char* filename)
     // exit(0);
 }
 
+void add_to_var_ids(Solver& solver, std::string prefix, std::string suffix, std::vector<int>& var_ids, int inputs_n, int outputs_n)
+{
+    for (int i = 0; i < inputs_n; i++)
+        var_ids.push_back(solver.var_map[prefix + "x" + std::to_string(i) + suffix]);
+
+    for (int i = 0; i < outputs_n; i++)
+        var_ids.push_back(solver.var_map[prefix + "z" + std::to_string(i) + suffix]);
+}
+
+void processVarMap(Solver& solver)
+{
+    printf("Varmap: %d %d\n", solver.var_map.size(), solver.steps);
+    for (int i = 0; i < solver.steps; i++) {
+        // add_w
+        add_to_var_ids(solver, "add_w" + std::to_string(i) + "_", "_f", solver.var_ids_.add_w_f[i], 6, 2);
+        add_to_var_ids(solver, "add_w" + std::to_string(i) + "_", "_g", solver.var_ids_.add_w_g[i], 6, 2);
+
+        // add_t
+        add_to_var_ids(solver, "add_T" + std::to_string(i) + "_", "_f", solver.var_ids_.add_t_f[i], 7, 2);
+        add_to_var_ids(solver, "add_T" + std::to_string(i) + "_", "_g", solver.var_ids_.add_t_g[i], 7, 2);
+
+        // add_e
+        add_to_var_ids(solver, "add_E" + std::to_string(i + 4) + "_", "_f", solver.var_ids_.add_e_f[i], 3, 1);
+        add_to_var_ids(solver, "add_E" + std::to_string(i + 4) + "_", "_g", solver.var_ids_.add_e_g[i], 3, 1);
+
+        // add_a
+        add_to_var_ids(solver, "add_A" + std::to_string(i + 4) + "_", "_f", solver.var_ids_.add_a_f[i], 5, 2);
+        add_to_var_ids(solver, "add_A" + std::to_string(i + 4) + "_", "_g", solver.var_ids_.add_a_g[i], 5, 2);
+    }
+}
+
 int int_value(Minisat::Solver& s, int var)
 {
     auto value = s.value(var);
@@ -504,14 +535,27 @@ void add_2_bit_conditions(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k
     }
 }
 
-void infer_carries(Solver& s, vec<vec<Lit>>& out_refined, int& k, int* var_ids, int vars_n, int carries_n)
+// Prepare the vector of all the operands and carries of addition (may also remove operands equal to carries from previous columns)
+std::vector<int> prepare_add_vec(std::vector<int>& ids, int amount, int carry_removal_n = 0)
 {
-    int inputs_n = vars_n - carries_n - 1, input_1s_n = 0, input_1s_ids[6];
+    std::vector<int> new_vec;
+    for (int i = 0; i < ids.size(); i++) {
+        if (carry_removal_n > 0 && i == 3 || carry_removal_n == 2 && i == 2)
+            continue;
+
+        new_vec.push_back(ids[i] + amount);
+    }
+    return new_vec;
+}
+
+void infer_carries(Solver& s, vec<vec<Lit>>& out_refined, int& k, std::vector<int>& var_ids, int vars_n, int carries_n)
+{
+    int inputs_n = vars_n - carries_n - 1, input_1s_n = 0, input_1s_ids[inputs_n];
     for (int i = 0; i < inputs_n; i++) {
         if (s.value(var_ids[i]) == l_True)
             input_1s_ids[input_1s_n++] = var_ids[i];
-        if (input_1s_n == 6)
-            break;
+        // if (input_1s_n == 6)
+        //     break;
     }
 
     // High carry must be 1 if no. of 1s >= 4
@@ -520,10 +564,11 @@ void infer_carries(Solver& s, vec<vec<Lit>>& out_refined, int& k, int* var_ids, 
         if (input_1s_n >= 4 && s.value(high_carry_id) != l_True) {
             out_refined.push();
             out_refined[k].push(mkLit(high_carry_id, s.value(high_carry_id) == l_True));
-            printf("Debug: %d, %d %d %d %d\n", int_value(s, high_carry_id), int_value(s, input_1s_ids[0]), int_value(s, input_1s_ids[1]), int_value(s, input_1s_ids[2]), int_value(s, input_1s_ids[3]));
             for (int i = 0; i < 4; i++)
                 out_refined[k].push(mkLit(input_1s_ids[i], true));
+
             // assert(falsifiedClause(s, out_refined[k]));
+            printf("Debug: %d, %d %d %d %d\n", int_value(s, high_carry_id), int_value(s, input_1s_ids[0]), int_value(s, input_1s_ids[1]), int_value(s, input_1s_ids[2]), int_value(s, input_1s_ids[3]));
             print_clause(out_refined[k]);
             k++;
             printf("Inferred high carry (inputs %d, carry_id %d)\n", inputs_n, high_carry_id + 1);
@@ -546,97 +591,37 @@ void infer_carries(Solver& s, vec<vec<Lit>>& out_refined, int& k, int* var_ids, 
     }
 }
 
-void add7_var_ids(Solver& s, int& i, int& j, char block_id, int* var_ids)
+void add_addition_clauses(Solver& s, vec<vec<Lit>>& out_refined, int& k, int i, int j, std::vector<int>& f, std::vector<int>& g, int vars_n, int carries_n)
 {
-    // Set the input bits
-    for (int index = 0; index < 7; index++)
-        var_ids[index] = s.var_map["add_T" + std::to_string(i) + "_x" + std::to_string(index) + "_" + block_id] + j;
+    if (j > 1) {
+        std::vector<int> ids_f = prepare_add_vec(f, j);
+        infer_carries(s, out_refined, k, ids_f, vars_n, carries_n);
+        // if (out_refined.size() > 0) {
+        //     printf("i,j = %d,%d\n", i, j);
+        //     goto END_CALLBACK;
+        // }
+        std::vector<int> ids_g = prepare_add_vec(g, j);
+        infer_carries(s, out_refined, k, ids_g, vars_n, carries_n);
+    } else if (j == 1) {
+        std::vector<int> ids_f = prepare_add_vec(f, j);
+        infer_carries(s, out_refined, k, ids_f, vars_n - 1, carries_n);
 
-    // Set the output bits in order: {high, low} carries, and sum
-    var_ids[7] = s.var_map["add_T" + std::to_string(i) + "_z0_" + block_id] + j;
-    var_ids[8] = s.var_map["add_T" + std::to_string(i) + "_z1_" + block_id] + j;
-    var_ids[9] = s.var_map["T" + std::to_string(i) + "_" + block_id];
+        std::vector<int> ids_g = prepare_add_vec(g, j);
+        infer_carries(s, out_refined, k, ids_g, vars_n - 1, carries_n);
+    } else {
+        std::vector<int> ids_f = prepare_add_vec(f, j);
+        infer_carries(s, out_refined, k, ids_f, vars_n - 2, carries_n);
 
-    // if (var_ids[7] == 3218 - 1 && j > 1) {
-    //     printf("Debug: ");
-    //     for (int i = 0; i < 10; i++) {
-    //         printf("%d(%d) ", var_ids[i] + 1, int_value(s, var_ids[i]));
-    //     }
-    //     printf("\n");
-    // }
+        std::vector<int> ids_g = prepare_add_vec(g, j);
+        infer_carries(s, out_refined, k, ids_g, vars_n - 2, carries_n);
+    }
 }
 
 void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
 {
     int k = 0;
     for (int i = 0; i < s.steps; i++) {
-        // int dw_base[1];
-        // for (int count = 0; count < 1; count++)
-        //     dw_base[count] = s.var_map["DW_" + std::to_string(i + count) + "_g"];
-        // int da_base[5];
-        // for (int count = 0; count < 5; count++)
-        //     da_base[count] = s.var_map["DA_" + std::to_string(i + count) + "_g"];
-        // int a_3_base_f = s.var_map["A_" + std::to_string(i + 3) + "_f"];
-        // int a_3_base_g = s.var_map["A_" + std::to_string(i + 3) + "_g"];
-        // int de_4_base = s.var_map["DE_" + std::to_string(i + 4) + "_g"];
-        // int de_3_base = s.var_map["DE_" + std::to_string(i + 3) + "_g"];
-        // int de_2_base = s.var_map["DE_" + std::to_string(i + 2) + "_g"];
-        // int de_1_base = s.var_map["DE_" + std::to_string(i + 1) + "_g"];
-        // int de_0_base = s.var_map["DE_" + std::to_string(i) + "_g"];
-        // int df1_base = s.var_map["Df1_" + std::to_string(i) + "_g"];
-        // int df2_base = s.var_map["Df2_" + std::to_string(i) + "_g"];
-        // int dsigma0_base = s.var_map["Dsigma0_" + std::to_string(i) + "_g"];
-        // int dsigma1_base = s.var_map["Dsigma1_" + std::to_string(i) + "_g"];
-        // int sigma0_f_base = s.var_map["Sigma0_" + std::to_string(i) + "_f"];
-        // int sigma1_f_base = s.var_map["Sigma1_" + std::to_string(i) + "_f"];
-        // int sigma0_g_base = s.var_map["Sigma0_" + std::to_string(i) + "_g"];
-        // int sigma1_g_base = s.var_map["Sigma1_" + std::to_string(i) + "_g"];
-        // int ds0_base = s.var_map["Ds0_" + std::to_string(i) + "_g"];
-        // int ds1_base = s.var_map["Ds1_" + std::to_string(i) + "_g"];
-        // int dt_base = s.var_map["DT_" + std::to_string(i) + "_g"];
-        // int dk_base = s.var_map["DK_" + std::to_string(i) + "_g"];
-        // int dr1_carry_base = s.var_map["Dr1_carry_" + std::to_string(i) + "_g"];
-        // int dr2_carry_base = s.var_map["Dr2_carry_" + std::to_string(i) + "_g"];
-        // int dr2_carry2_base = s.var_map["Dr2_Carry_" + std::to_string(i) + "_g"];
-        // int dr0_carry_base = s.var_map["Dr0_carry_" + std::to_string(i) + "_g"];
-        // int dr0_carry2_base = s.var_map["Dr0_Carry_" + std::to_string(i) + "_g"];
-        // int dw_carry_base = s.var_map["Dw_carry_" + std::to_string(i) + "_g"];
-        // int dw_carry2_base = s.var_map["Dw_Carry_" + std::to_string(i) + "_g"];
-
         for (int j = 0; j < 32; j++) {
-            // int dw[] = { dw_base[0] + j }; // DW[i]
-            // int da_4 = da_4_base + j; // DA[i+4]
-            // int da_3 = da_3_base + j; // DA[i+3]
-            // int da_2 = da_2_base + j; // DA[i+2]
-            // int da_1 = da_1_base + j; // DA[i+1]
-            // // int a_3_f = a_3_base_f + j ; // A[i+3]
-            // // int a_3_g = a_3_base_g + j ; // A[i+3]'
-            // int da_0 = da_0_base + j; // DA[i]
-            // int de_4 = de_4_base + j; // DE[i+4]
-            // int de_3 = de_3_base + j; // DE[i+3]
-            // int de_2 = de_2_base + j; // DE[i+2]
-            // int de_1 = de_1_base + j; // DE[i+1]
-            // int de_0 = de_0_base + j; // DE[i]
-            // int df1 = df1_base + j; // Df1 <- IF
-            // int df2 = df2_base + j; // Df2 <- MAJ
-            // int dsigma0 = dsigma0_base + j; // DSigma0
-            // int dsigma1 = dsigma1_base + j; // DSigma1
-            // int sigma0_f = sigma0_f_base + j; // Sigma0
-            // int sigma0_g = sigma0_g_base + j; // Sigma0'
-            // int sigma1_f = sigma1_f_base + j; // Sigma1
-            // int sigma1_g = sigma1_g_base + j; // Sigma1'
-            // int ds0 = ds0_base + j; // DS0
-            // int ds1 = ds1_base + j; // DS1
-            // int dt = dt_base + j; // DT
-            // int dk = dk_base + j; // DT
-            // int dr1_carry = dr1_carry_base + j; // Dr1_carry
-            // int dr2_carry = dr2_carry_base + j; // Dr2_carry
-            // int dr2_carry2 = dr2_carry2_base + (j - 1); // Dr2_carry2
-            // int dr0_carry = dr0_carry_base + j; // Dr0_carry
-            // int dr0_carry2 = dr0_carry2_base + j; // Dr0_carry2
-            // int dw_carry = dw_carry_base + j; // Dw_carry
-            // int dw_carry2 = dw_carry2_base + j; // Dw_carry2
-
             // IF
 
             // printf("DEBUG: %d %d <- %d %d, %d %d, %d %d\n", int_value(s, 1095), int_value(s, 1113), int_value(s, 1109 - 1), int_value(s, 10179 - 1), int_value(s, 18550 - 1), int_value(s, 18532 - 1), int_value(s, 3438 - 1), int_value(s, 12508 - 1));
@@ -684,161 +669,21 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
             // TODO: s1
 
             // Compression: 3 to 2
-            // {
-            //     int op1 = da_0;
-            //     int op2 = dt;
-            //     int op3 = dr1_carry - 1;
-            //     int o1 = dr1_carry;
-            //     int o2 = de_4;
-
-            //     // bool out_def_in_undef = int_value(s, o1) != -1 && int_value(s, o2) != -1 && (int_value(s, op1) == -1 || int_value(s, op2) == -1 || int_value(s, op3) == -1);
-
-            //     // if (j > 0) {
-            //     //     int var_ids[] = { op1, op2, op3, o1, o2 };
-            //     //     infer_carries(s, out_refined, k, var_ids, 5, 1);
-            //     // } else {
-            //     //     int var_ids[] = { op1, op2, o1, o2 };
-            //     //     infer_carries(s, out_refined, k, var_ids, 4, 1);
-            //     // }
-
-            //     // if (out_def_in_undef)
-            //     //     printf("ADD3: %d %d %d = %d %d\n", int_value(s, op1), int_value(s, op2), int_value(s, op3), int_value(s, o1), int_value(s, o2));
-
-            //     // if (int_value(s, op1) == -1 || int_value(s, op2) == -1 || int_value(s, op3) == -1 || int_value(s, o1) == -1 || int_value(s, o2) == -1)
-            //     //     printf("%d %d %d = %d %d\n", int_value(s, op1), int_value(s, op2), int_value(s, op3), int_value(s, o1), int_value(s, o2));
-
-            //     // if (int_value(s, op1) != -1 && int_value(s, op2) != -1) {
-            //     //     if (j > 0 && int_value(s, op3) != -1) {
-            //     //         // comp_3_2(s, out_refined, k, i, j, op1, op2, op3, o1, o2);
-            //     //     } else if (j == 0) {
-            //     //         // comp_2_2(s, out_refined, k, i, j, op1, op2, o1, o2);
-            //     //     }
-            //     // }
-            // }
-
-            // TODO: Compression 4 to 3
+            add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_e_f[i], s.var_ids_.add_e_g[i], 5, 1);
 
             // Compression: 5 to 3
-            // g.cnf.diff_add(DA[i + 4], DT[i], Dsigma0[i], Dr2carry[i], Dr2Carry[i],
-            // Df2[i]);
-            // {
-            //     int op1 = dt;
-            //     int op2 = dsigma0;
-            //     int op3 = df2;
-            //     int op4 = dr2_carry - 1; // t[j - 1]
-            //     int op5 = dr2_carry2 - 2; // T[j - 2]
-            //     int o1 = dr2_carry2; // T[j]
-            //     int o2 = dr2_carry; // t[j]
-            //     int o3 = da_4; // DA[i+4]
-
-            //     // if (j > 2) {
-            //     //     int var_ids[] = { op1, op2, op3, op4, op5, o1, o2, o3 };
-            //     //     infer_carries(s, out_refined, k, var_ids, 8, 2);
-            //     // } else if (j == 2 || j == 1) {
-            //     //     int var_ids[] = { op1, op2, op3, op4, o1, o2, o3 };
-            //     //     infer_carries(s, out_refined, k, var_ids, 7, 2);
-            //     // } else {
-            //     //     int var_ids[] = { op1, op2, op3, o1, o2 };
-            //     //     infer_carries(s, out_refined, k, var_ids, 5, 1);
-            //     // }
-
-            //     // if (int_value(s, o1) != -1 && int_value(s, o2) != -1 && int_value(s, o3) != -1 && (int_value(s, op1) == -1 || int_value(s, op2) == -1 || int_value(s, op3) == -1 || int_value(s, op4) == -1 || int_value(s, op5) == -1))
-            //     //     printf("ADD5: %d %d %d %d %d = %d %d %d\n", int_value(s, op1), int_value(s, op2), int_value(s, op3), int_value(s, op4), int_value(s, op5), int_value(s, o1), int_value(s, o2), int_value(s, o3));
-
-            //     // if (int_value(s, op1) != -1 && int_value(s, op2) != -1 && int_value(s, op3) != -1) {
-            //     //     if (j > 2 && int_value(s, op4) != -1 && int_value(s, op5) != -1) {
-            //     //         comp_5_3(s, out_refined, k, i, j, op1, op2, op3, op4, op5, o1, o2,
-            //     //             o3);
-            //     //     } else if ((j == 2 || j == 1) && int_value(s, op4) != -1) {
-            //     //         comp_4_3(s, out_refined, k, i, j, op1, op2, op3, op4, o1, o2, o3);
-            //     //     } else if (j == 0) {
-            //     //         comp_3_2(s, out_refined, k, i, j, op1, op2, op3, o2, o3);
-            //     //     }
-            //     // }
-            // }
+            // g.cnf.diff_add(DA[i + 4], DT[i], Dsigma0[i], Dr2carry[i], Dr2Carry[i], Df2[i]);
+            add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_a_f[i], s.var_ids_.add_a_g[i], 7, 2);
 
             // Compression: 6 to 3
-            // g.cnf.diff_add(DW[i], DW[i - 16], Ds0[i], Dwcarry[i], DwCarry[i], DW[i
-            // - 7], Ds1[i]);
-            // if (i >= 16) {
-            //     int op1 = s.var_map["DW_" + std::to_string(i - 16) + "_g"] + j;
-            //     int op2 = ds0;
-            //     int op3 = s.var_map["DW_" + std::to_string(i - 7) + "_g"] + j;
-            //     int op4 = ds1;
-            //     int op5 = dw_carry - 1; // t[j - 1]
-            //     int op6 = dw_carry2 - 2; // T[j - 2]
-            //     int o1 = dw_carry2; // T[j]
-            //     int o2 = dw_carry; // t[j]
-            //     int o3 = dw_0; // DW[i]
-
-            //     // if (j > 1) {
-            //     //     int var_ids[] = { op1, op2, op3, op4, op5, op6, o1, o2, o3 };
-            //     //     infer_carries(s, out_refined, k, var_ids, 9, 2);
-            //     // } else if (j == 1) {
-            //     //     int var_ids[] = { op1, op2, op3, op4, op5, o1, o2, o3 };
-            //     //     infer_carries(s, out_refined, k, var_ids, 8, 2);
-            //     // } else {
-            //     //     int var_ids[] = { op1, op2, op3, op4, o1, o2, o3 };
-            //     //     infer_carries(s, out_refined, k, var_ids, 7, 2);
-            //     // }
-
-            //     // if (int_value(s, o1) != -1 && int_value(s, o2) != -1 && int_value(s, o3) != -1 && (int_value(s, op1) == -1 || int_value(s, op2) == -1 || int_value(s, op3) == -1 || int_value(s, op4) == -1 || int_value(s, op5) == -1 || int_value(s, op6) == -1))
-            //     //     printf("ADD6: %d %d %d %d %d %d = %d %d %d\n", int_value(s, op1), int_value(s, op2), int_value(s, op3), int_value(s, op4), int_value(s, op5), int_value(s, op6), int_value(s, o1), int_value(s, o2), int_value(s, o3));
-
-            //     // if (s.value(op1) != l_Undef && s.value(op2) != l_Undef && s.value(op3) != l_Undef && s.value(op4) != l_Undef) {
-            //     //     if (j > 1 && int_value(s, op5) != -1 && int_value(s, op6) != -1) {
-            //     //         comp_6_3(s, out_refined, k, i, j, op1, op2, op3, op4, op5, op6, o1,
-            //     //             o2, o3);
-            //     //     } else if (j == 1 && int_value(s, op5) != -1) {
-            //     //         comp_5_3(s, out_refined, k, i, j, op1, op2, op3, op4, op5, o1, o2,
-            //     //             o3);
-            //     //     } else if (j == 0) {
-            //     //         comp_4_3(s, out_refined, k, i, j, op1, op2, op3, op4, o1, o2, o3);
-            //     //     }
-            //     // }
-            // }
+            // g.cnf.diff_add(DW[i], DW[i - 16], Ds0[i], Dwcarry[i], DwCarry[i], DW[i - 7], Ds1[i]);
+            if (i >= 16) {
+                add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_w_f[i - 16], s.var_ids_.add_w_g[i - 16], 8, 2);
+            }
 
             // Compression: 7 to 3
             // g.cnf.diff_add(DT[i], DE[i], Dsigma1[i], Dr0carry[i], Dr0Carry[i], Df1[i], DK[i], DW[i]);
-            {
-                int var_ids_f[10], var_ids_g[10]; // 7 inputs + 3 outputs
-                add7_var_ids(s, i, j, 'f', var_ids_f);
-                add7_var_ids(s, i, j, 'g', var_ids_g);
-                if (j > 1) {
-                    infer_carries(s, out_refined, k, var_ids_f, 10, 2);
-                    // if (out_refined.size() > 0) {
-                    //     printf("i,j = %d,%d\n", i, j);
-                    //     goto END_CALLBACK;
-                    // }
-                    infer_carries(s, out_refined, k, var_ids_g, 10, 2);
-                    // if (out_refined.size() > 0) {
-                    //     printf("i,j = %d,%d\n", i, j);
-                    //     goto END_CALLBACK;
-                    // }
-                } else if (j == 1) {
-                    // int var_ids[] = { op1, op2, op3, op4, op5, op6, o1, o2, o3 };
-                    // infer_carries(s, out_refined, k, var_ids, 9, 2);
-                } else {
-                    // int var_ids[] = { op1, op2, op3, op4, op5, o1, o2, o3 };
-                    // infer_carries(s, out_refined, k, var_ids, 8, 2);
-                }
-
-                // if (int_value(s, o1) != -1 && int_value(s, o2) != -1 && int_value(s, o3) != -1 && (int_value(s, op1) == -1 || int_value(s, op2) == -1 || int_value(s, op3) == -1 || int_value(s, op4) == -1 || int_value(s, op5) == -1 || int_value(s, op6) == -1 || int_value(s, op7) == -1))
-                //     printf("ADD7: %d %d %d %d %d %d %d = %d %d %d\n", int_value(s, op1), int_value(s, op2), int_value(s, op3), int_value(s, op4), int_value(s, op5), int_value(s, op6), int_value(s, op7), int_value(s, o1), int_value(s, o2), int_value(s, o3));
-
-                // if (int_value(s, op1) != -1 && int_value(s, op2) != -1 && int_value(s, op3) != -1 && int_value(s, op4) != -1 && int_value(s, op5) != -1) {
-                //     if (j > 1 && int_value(s, op6) != -1 && int_value(s, op7) != -1) {
-                //         comp_7_3(s, out_refined, k, i, j, op1, op2, op3, op4, op5, op6, op7,
-                //             o1, o2, o3);
-                //     } else if (j == 1 && int_value(s, op6)) {
-                //         comp_6_3(s, out_refined, k, i, j, op1, op2, op3, op4, op5, op6, o1,
-                //             o2, o3);
-                //     } else if (j == 0) {
-                //         comp_5_3(s, out_refined, k, i, j, op1, op2, op3, op4, op5, o1, o2,
-                //             o3);
-                //     }
-                // }
-            }
+            add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_t_f[i], s.var_ids_.add_t_g[i], 10, 2);
         }
     }
 END_CALLBACK:
