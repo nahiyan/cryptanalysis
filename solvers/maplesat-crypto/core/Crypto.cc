@@ -30,8 +30,6 @@
 #define TWO_BIT_CONSTRAINT_ADD6_ID 23
 #define TWO_BIT_CONSTRAINT_ADD7_ID 24
 
-// TODO: Add support for 4-bit diff.
-
 void loadRule(Minisat::Solver& solver, FILE*& db, int& id)
 {
     int key_size = 0, val_size = 0;
