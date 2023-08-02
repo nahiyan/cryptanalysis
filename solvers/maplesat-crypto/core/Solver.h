@@ -176,11 +176,25 @@ public:
     std::unordered_map<std::string, std::string> rules;
     int steps = 0;
     struct var_ids {
-        std::vector<int> add_w_f[48], add_w_g[48];
-        std::vector<int> add_t_f[64], add_t_g[64];
-        std::vector<int> add_e_f[64], add_e_g[64];
-        std::vector<int> add_a_f[64], add_a_g[64];
+        std::vector<int> if_[64];
+        std::vector<int> maj[64];
+        
+        std::vector<int> sigma0[64];
+        std::vector<int> sigma1[64];
+
+        std::vector<int> s0[48];
+        std::vector<int> s1[48];
+
+        std::vector<int> add_w[48];
+        std::vector<int> add_t[64];
+        std::vector<int> add_e[64];
+        std::vector<int> add_a[64];
     } var_ids_;
+    struct stats {
+        int two_bit_clauses_n[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+        int carry_infer_high_clauses_n[4] = {0, 0, 0, 0};
+        int carry_infer_low_clauses_n[4] = {0, 0, 0, 0};
+    } stats;
 
 protected:
 

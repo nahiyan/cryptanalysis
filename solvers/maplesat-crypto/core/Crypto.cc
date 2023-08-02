@@ -124,34 +124,62 @@ void loadRules(Minisat::Solver& solver, const char* filename)
     // exit(0);
 }
 
-void add_to_var_ids(Solver& solver, std::string prefix, std::string suffix, std::vector<int>& var_ids, int inputs_n, int outputs_n)
+void add_to_var_ids(Solver& solver, std::string prefix, std::vector<int>& var_ids, int inputs_n, int outputs_n)
 {
-    for (int i = 0; i < inputs_n; i++)
-        var_ids.push_back(solver.var_map[prefix + "x" + std::to_string(i) + suffix]);
+    for (int i = 0; i < inputs_n; i++) {
+        var_ids.push_back(solver.var_map[prefix + "x" + std::to_string(i) + "_f"]);
+        var_ids.push_back(solver.var_map[prefix + "x" + std::to_string(i) + "_g"]);
 
-    for (int i = 0; i < outputs_n; i++)
-        var_ids.push_back(solver.var_map[prefix + "z" + std::to_string(i) + suffix]);
+        std::string diff_name = prefix + "x" + std::to_string(i) + "_g";
+        diff_name.insert(diff_name.substr(0, 4) == "add_" ? 4 : 0, "D");
+        var_ids.push_back(solver.var_map[diff_name]);
+    }
+
+    for (int i = 0; i < outputs_n; i++) {
+        // TODO: Make the indexing consistent in the variable map
+        std::string z_index = outputs_n == 1 ? "" : std::to_string(i);
+        var_ids.push_back(solver.var_map[prefix + "z" + z_index + "_f"]);
+        var_ids.push_back(solver.var_map[prefix + "z" + z_index + "_g"]);
+
+        std::string diff_name = prefix + "z" + z_index + "_g";
+        diff_name.insert(diff_name.substr(0, 4) == "add_" ? 4 : 0, "D");
+        var_ids.push_back(solver.var_map[diff_name]);
+    }
 }
 
 void processVarMap(Solver& solver)
 {
-    printf("Varmap: %d %d\n", solver.var_map.size(), solver.steps);
+    printf("Var. map entries: %d\n", solver.var_map.size());
     for (int i = 0; i < solver.steps; i++) {
+        // if
+        add_to_var_ids(solver, "if_" + std::to_string(i) + "_", solver.var_ids_.if_[i], 3, 1);
+
+        // maj
+        add_to_var_ids(solver, "maj_" + std::to_string(i) + "_", solver.var_ids_.maj[i], 3, 1);
+
+        // sigma0
+        add_to_var_ids(solver, "sigma0_" + std::to_string(i) + "_", solver.var_ids_.sigma0[i], 3, 1);
+
+        // sigma1
+        add_to_var_ids(solver, "sigma1_" + std::to_string(i) + "_", solver.var_ids_.sigma1[i], 3, 1);
+
+        // s0
+        add_to_var_ids(solver, "s0_" + std::to_string(i + 16) + "_", solver.var_ids_.s0[i], 3, 1);
+
+        // s1
+        add_to_var_ids(solver, "s1_" + std::to_string(i + 16) + "_", solver.var_ids_.s1[i], 3, 1);
+
         // add_w
-        add_to_var_ids(solver, "add_w" + std::to_string(i) + "_", "_f", solver.var_ids_.add_w_f[i], 6, 2);
-        add_to_var_ids(solver, "add_w" + std::to_string(i) + "_", "_g", solver.var_ids_.add_w_g[i], 6, 2);
+        add_to_var_ids(solver, "add_w" + std::to_string(i + 16) + "_", solver.var_ids_.add_w[i], 6, 2);
 
         // add_t
-        add_to_var_ids(solver, "add_T" + std::to_string(i) + "_", "_f", solver.var_ids_.add_t_f[i], 7, 2);
-        add_to_var_ids(solver, "add_T" + std::to_string(i) + "_", "_g", solver.var_ids_.add_t_g[i], 7, 2);
+        add_to_var_ids(solver, "add_T" + std::to_string(i) + "_", solver.var_ids_.add_t[i], 7, 2);
 
         // add_e
-        add_to_var_ids(solver, "add_E" + std::to_string(i + 4) + "_", "_f", solver.var_ids_.add_e_f[i], 3, 1);
-        add_to_var_ids(solver, "add_E" + std::to_string(i + 4) + "_", "_g", solver.var_ids_.add_e_g[i], 3, 1);
+        add_to_var_ids(solver, "add_E" + std::to_string(i + 4) + "_", solver.var_ids_.add_e[i], 3, 1);
 
         // add_a
-        add_to_var_ids(solver, "add_A" + std::to_string(i + 4) + "_", "_f", solver.var_ids_.add_a_f[i], 5, 2);
-        add_to_var_ids(solver, "add_A" + std::to_string(i + 4) + "_", "_g", solver.var_ids_.add_a_g[i], 5, 2);
+        add_to_var_ids(solver, "add_A" + std::to_string(i + 4) + "_", solver.var_ids_.add_a[i], 5, 2);
     }
 }
 
@@ -159,7 +187,7 @@ int int_value(Minisat::Solver& s, int var)
 {
     auto value = s.value(var);
     return value == l_True ? 1 : value == l_False ? 0
-                                                  : -1;
+                                                  : 2;
 }
 
 char to_gc(lbool x, lbool x_prime)
@@ -292,12 +320,6 @@ bool check_consistency(std::vector<std::pair<int32_t, int32_t>>& equations)
             auto var1_inv_in_existing_set = existing_set->find(-var1) == existing_set->end() ? false : true;
             auto var2_inv_in_existing_set = existing_set->find(-var2) == existing_set->end() ? false : true;
 
-            // Invert the lone variable to try to prevent a conflict
-            // if (var1_inv_in_existing_set)
-            //     var2 *= -1;
-            // else if (var2_inv_in_existing_set)
-            //     var1 *= -1;
-
             // Add the var to an existing set
             if (var1_exists)
                 rels[var1_abs]->insert(var2);
@@ -346,7 +368,7 @@ bool check_consistency(std::vector<std::pair<int32_t, int32_t>>& equations)
 // TODO: Get rid of unwanted vector
 // TODO: Reduce redundancy
 // The variable IDs provided should include the operands and the output
-void add_2_bit_conditions(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int function_id, int* var_ids, int vars_n)
+void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int function_id, std::vector<int> var_ids, int vars_n)
 {
     // Number of variables
     assert(vars_n % 3 == 0 && vars_n > 0); // Must be in triples and non-empty
@@ -371,8 +393,6 @@ void add_2_bit_conditions(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k
 
         int& dx_id = var_ids[i + 2];
         lbool dx_value = s.value(var_ids[i + 2]);
-
-        // printf("Values: %d %d %d; IDs: %d %d %d\n", int_value(s, x_id), int_value(s, x_prime_id), int_value(s, dx_id), x_id + 1, x_prime_id + 1, dx_id + 1);
 
         if (x_value != l_Undef && x_prime_value != l_Undef) {
             rule_key[j] = to_gc(x_value, x_prime_value);
@@ -446,20 +466,19 @@ void add_2_bit_conditions(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k
             if (var1_value == l_Undef && var2_value == l_Undef)
                 continue;
 
-            // printf("1175 = %d\n", int_value(s, 1175 - 1));
-            // printf("1110 = %d\n", int_value(s, 1110 - 1));
+            // printf("\nUsing key %s: %s\n", rule_key, rule_value.c_str());
 
-            printf("\nUsing key %s: %s\n", rule_key, rule_value.c_str());
+            // printf("Related vars: %d and %d; values: %d and %d\n", var1_id + 1, var2_id + 1, int_value(s, var1_id), int_value(s, var2_id));
 
-            printf("Related vars: %d and %d; values: %d and %d\n", var1_id + 1, var2_id + 1, int_value(s, var1_id), int_value(s, var2_id));
-
-            printf("DEBUG: ");
-            for (int l = 0; l < base_clause.size(); l++) {
-                printf("%d = %d, ", var(base_clause[l]) + 1, int_value(s, var(base_clause[i])));
-            }
-            printf("\n");
+            // printf("DEBUG: ");
+            // for (int l = 0; l < base_clause.size(); l++) {
+            //     printf("%d = %d, ", var(base_clause[l]) + 1, int_value(s, var(base_clause[i])));
+            // }
+            // printf("\n");
 
             // DEBUG
+            printf("2-bit conditions met (%d): ", function_id);
+
             if (rule_value[rule_i] == '1') {
                 out_refined.push();
                 if (var1_value == l_Undef) {
@@ -490,9 +509,6 @@ void add_2_bit_conditions(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k
                     out_refined[k].push(base_clause[l]);
                 }
                 k++;
-
-                print_clause(out_refined[k - 1]);
-                print_clause(out_refined[k - 2]);
             } else {
                 out_refined.push();
                 if (var1_value == l_Undef) {
@@ -523,10 +539,15 @@ void add_2_bit_conditions(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k
                     out_refined[k].push(base_clause[l]);
                 }
                 k++;
-
-                print_clause(out_refined[k - 1]);
-                print_clause(out_refined[k - 2]);
             }
+
+            for (int count = 0; count < out_refined[k - 1].size(); count++)
+                printf(count == 0 ? "%d " : "%d", int_value(s, var(out_refined[k - 1][count])));
+            printf("\n");
+            print_clause(out_refined[k - 1]);
+            print_clause(out_refined[k - 2]);
+
+            s.stats.two_bit_clauses_n[function_id - TWO_BIT_CONSTRAINT_IF_ID] += 2;
         }
 
         visited.insert(var1_id);
@@ -534,85 +555,143 @@ void add_2_bit_conditions(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k
 }
 
 // Prepare the vector of all the operands and carries of addition (may also remove operands equal to carries from previous columns)
-std::vector<int> prepare_add_vec(std::vector<int>& ids, int amount, int carry_removal_n = 0)
+void prepare_add_vec(std::vector<int>& ids, std::vector<int>& f, std::vector<int>& g, int carries_n, int amount, int carry_removal_n = 0)
 {
-    std::vector<int> new_vec;
-    for (int i = 0; i < ids.size(); i++) {
-        if (carry_removal_n > 0 && i == 3 || carry_removal_n == 2 && i == 2)
+    int inputs_n = ids.size() - carries_n * 3;
+    for (int i = 0, j = 0; i < inputs_n; i += 3, j++) {
+        if (carry_removal_n > 0 && j == 3 || carry_removal_n == 2 && j == 2)
             continue;
 
-        new_vec.push_back(ids[i] + amount);
+        f.push_back(ids[i] + amount);
+        g.push_back(ids[i + 1] + amount);
     }
+
+    for (int i = inputs_n; i < ids.size(); i += 3) {
+        f.push_back(ids[i] + amount);
+        g.push_back(ids[i + 1] + amount);
+    }
+}
+
+std::vector<int> prepare_func_vec(std::vector<int>& ids, int amount)
+{
+    std::vector<int> new_vec;
+    for (int i = 0; i < ids.size(); i++)
+        new_vec.push_back(ids[i] + amount);
     return new_vec;
 }
 
-void infer_carries(Solver& s, vec<vec<Lit>>& out_refined, int& k, std::vector<int>& var_ids, int vars_n, int carries_n)
+void infer_carries(Solver& s, vec<vec<Lit>>& out_refined, int& k, std::vector<int>& var_ids, int carries_n, int function_id)
 {
-    int inputs_n = vars_n - carries_n - 1, input_1s_n = 0, input_1s_ids[inputs_n];
+    int inputs_n = var_ids.size() - carries_n - 1;
+    int input_1s_n = 0, input_1s_ids[inputs_n];
+    int input_0s_n = 0, input_0s_ids[inputs_n];
+    int input_us_n = 0, input_us_ids[inputs_n];
     for (int i = 0; i < inputs_n; i++) {
         if (s.value(var_ids[i]) == l_True)
             input_1s_ids[input_1s_n++] = var_ids[i];
-        // if (input_1s_n == 6)
-        //     break;
+        else if (s.value(var_ids[i]) == l_False)
+            input_0s_ids[input_0s_n++] = var_ids[i];
+        else
+            input_us_ids[input_us_n++] = var_ids[i];
     }
 
-    // High carry must be 1 if no. of 1s >= 4
     if (carries_n == 2) {
-        int high_carry_id = var_ids[vars_n - 3];
-        if (input_1s_n >= 4 && s.value(high_carry_id) != l_True) {
-            out_refined.push();
-            out_refined[k].push(mkLit(high_carry_id, s.value(high_carry_id) == l_True));
-            for (int i = 0; i < 4; i++)
-                out_refined[k].push(mkLit(input_1s_ids[i], true));
+        int high_carry_id = var_ids[inputs_n];
+        lbool high_carry_value = s.value(high_carry_id);
+        bool inferred = false;
 
-            // assert(falsifiedClause(s, out_refined[k]));
-            printf("Debug: %d, %d %d %d %d\n", int_value(s, high_carry_id), int_value(s, input_1s_ids[0]), int_value(s, input_1s_ids[1]), int_value(s, input_1s_ids[2]), int_value(s, input_1s_ids[3]));
-            print_clause(out_refined[k]);
+        // High carry must be 1 if no. of 1s >= 4
+        if (input_1s_n >= 4 && high_carry_value != l_True) {
+            out_refined.push();
+            out_refined[k].push(mkLit(high_carry_id));
+            for (int i = 0; i < input_1s_n; i++)
+                out_refined[k].push(~mkLit(input_1s_ids[i]));
             k++;
+            inferred = true;
+            // High carry must be 0 if no. of 0s >= 4
+        } else if (input_0s_n >= 4 && high_carry_value != l_False) {
+            out_refined.push();
+            out_refined[k].push(~mkLit(high_carry_id));
+            for (int i = 0; i < input_0s_n; i++)
+                out_refined[k].push(mkLit(input_0s_ids[i]));
+            k++;
+            inferred = true;
+        }
+
+        if (inferred) {
             printf("Inferred high carry (inputs %d, carry_id %d)\n", inputs_n, high_carry_id + 1);
+            print_clause(out_refined[k - 1]);
+            s.stats.carry_infer_high_clauses_n[function_id]++;
         }
     }
 
-    if (vars_n < 6)
-        return;
-
+    // TODO: Fix bug with the following clause injection process
     // Low carry must be 1 if no. of 1s >= 6
-    int low_carry_id = var_ids[vars_n - 2];
-    if (input_1s_n >= 6 && s.value(low_carry_id) != l_True) {
+    int low_carry_id = var_ids[inputs_n + 1];
+    lbool low_carry_value = s.value(low_carry_id);
+    bool inferred = false;
+    if (low_carry_value != l_True && input_1s_n >= 6) {
         out_refined.push();
-        out_refined[k].push(mkLit(low_carry_id, false));
-        for (int i = 0; i < 6; i++)
-            out_refined[k].push(mkLit(input_1s_ids[i], true));
-        print_clause(out_refined[k]);
+        out_refined[k].push(mkLit(low_carry_id));
+        for (int i = 0; i < input_1s_n; i++)
+            out_refined[k].push(~mkLit(input_1s_ids[i]));
+        for (int i = 0; i < input_0s_n; i++)
+            out_refined[k].push(mkLit(input_0s_ids[i]));
         k++;
-        printf("Inferred low carry (inputs %d, carry_id %d)\n", inputs_n, low_carry_id + 1);
+        inferred = true;
+    } else if (low_carry_value != l_False && input_0s_n >= 6) {
+        out_refined.push();
+        out_refined[k].push(~mkLit(low_carry_id));
+        for (int i = 0; i < input_1s_n; i++)
+            out_refined[k].push(~mkLit(input_1s_ids[i]));
+        for (int i = 0; i < input_0s_n; i++)
+            out_refined[k].push(mkLit(input_0s_ids[i]));
+        k++;
+        inferred = true;
     }
+
+    // if (low_carry_value != l_True && ((input_1s_n >= 6) || (input_1s_n >= 2 && input_1s_n + input_us_n < 4))) {
+    //     out_refined.push();
+    //     out_refined[k].push(mkLit(low_carry_id));
+    //     for (int i = 0; i < input_1s_n; i++)
+    //         out_refined[k].push(~mkLit(input_1s_ids[i]));
+    //     for (int i = 0; i < input_0s_n; i++)
+    //         out_refined[k].push(mkLit(input_0s_ids[i]));
+    //     k++;
+    //     inferred = true;
+    // } else if (low_carry_value != l_False && ((input_0s_n >= 6) || (input_1s_n >= 4 && input_1s_n + input_us_n < 6))) {
+    //     out_refined.push();
+    //     out_refined[k].push(~mkLit(low_carry_id));
+    //     for (int i = 0; i < input_1s_n; i++)
+    //         out_refined[k].push(~mkLit(input_1s_ids[i]));
+    //     for (int i = 0; i < input_0s_n; i++)
+    //         out_refined[k].push(mkLit(input_0s_ids[i]));
+    //     k++;
+    //     inferred = true;
+    // }
+
+    if (inferred) {
+        printf("Inferred low carry (inputs %d, carry_id %d)\n", inputs_n, low_carry_id + 1);
+        print_clause(out_refined[k - 1]);
+        s.stats.carry_infer_low_clauses_n[function_id]++;
+    }
+
+    // TODO: Implement r1 == 0 ==> sum(inp[]) <= 3
+    // TODO: Implement r1 == 1 ==> sum(inp[]) >= 4
 }
 
-void add_addition_clauses(Solver& s, vec<vec<Lit>>& out_refined, int& k, int i, int j, std::vector<int>& f, std::vector<int>& g, int vars_n, int carries_n)
+void add_addition_clauses(Solver& s, vec<vec<Lit>>& out_refined, int& k, int i, int j, std::vector<int>& ids, int carries_n, int function_id)
 {
-    if (j > 1) {
-        std::vector<int> ids_f = prepare_add_vec(f, j);
-        infer_carries(s, out_refined, k, ids_f, vars_n, carries_n);
-        // if (out_refined.size() > 0) {
-        //     printf("i,j = %d,%d\n", i, j);
-        //     goto END_CALLBACK;
-        // }
-        std::vector<int> ids_g = prepare_add_vec(g, j);
-        infer_carries(s, out_refined, k, ids_g, vars_n, carries_n);
-    } else if (j == 1) {
-        std::vector<int> ids_f = prepare_add_vec(f, j);
-        infer_carries(s, out_refined, k, ids_f, vars_n - 1, carries_n);
+    std::vector<int> ids_f, ids_g;
+    if (j > 1)
+        prepare_add_vec(ids, ids_f, ids_g, carries_n, j, 0);
+    else if (j == 1)
+        prepare_add_vec(ids, ids_f, ids_g, carries_n, j, 1);
+    else
+        prepare_add_vec(ids, ids_f, ids_g, carries_n, j, 2);
 
-        std::vector<int> ids_g = prepare_add_vec(g, j);
-        infer_carries(s, out_refined, k, ids_g, vars_n - 1, carries_n);
-    } else {
-        std::vector<int> ids_f = prepare_add_vec(f, j);
-        infer_carries(s, out_refined, k, ids_f, vars_n - 2, carries_n);
-
-        std::vector<int> ids_g = prepare_add_vec(g, j);
-        infer_carries(s, out_refined, k, ids_g, vars_n - 2, carries_n);
-    }
+    infer_carries(s, out_refined, k, ids_f, carries_n, function_id);
+    infer_carries(s, out_refined, k, ids_g, carries_n, function_id);
 }
 
 void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
@@ -620,70 +699,55 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
     int k = 0;
     for (int i = 0; i < s.steps; i++) {
         for (int j = 0; j < 32; j++) {
-            // IF
-
-            // printf("DEBUG: %d %d <- %d %d, %d %d, %d %d\n", int_value(s, 1095), int_value(s, 1113), int_value(s, 1109 - 1), int_value(s, 10179 - 1), int_value(s, 18550 - 1), int_value(s, 18532 - 1), int_value(s, 3438 - 1), int_value(s, 12508 - 1));
-
-            // Sigma0 2-bit conditions
-            // {
-            //     int x = a_3_base_f + (j + 2) % 32;
-            //     int x_prime = a_3_base_g + (j + 2) % 32;
-            //     int dx = da_3_base + (j + 2) % 32;
-
-            //     int y = a_3_base_f + (j + 13) % 32;
-            //     int y_prime = a_3_base_g + (j + 13) % 32;
-            //     int dy = da_3_base + (j + 13) % 32;
-
-            //     int z = a_3_base_f + (j + 22) % 32;
-            //     int z_prime = a_3_base_g + (j + 22) % 32;
-            //     int dz = da_3_base + (j + 22) % 32;
-
-            //     int var_ids[] = { x, x_prime, dx, y, y_prime, dy, z, z_prime, dz, sigma0_f, sigma0_g, dsigma0 };
-            //     // printf("DEBUG: %d %d <- %d %d, %d %d, %d\n", int_value(s, 1861 - 1), int_value(s, 1881 - 1), int_value(s, 19681 - 1), int_value(s, 19692 - 1), int_value(s, 10951 - 1), int_value(s, 7222 - 1), int_value(s, 16292 - 1));
-            //     // add_2_bit_conditions(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, (int*)var_ids, 12);
-            //     // if (out_refined.size() > 0)
-            //     //     goto END_CALLBACK;
-            // }
-
-            // Sigma1 2-bit conditions
-            // {
-            //     int x = a_3_base_f + (j + 6) % 32;
-            //     int x_prime = a_3_base_g + (j + 6) % 32;
-            //     int dx = da_3_base + (j + 6) % 32;
-
-            //     int y = a_3_base_f + (j + 11) % 32;
-            //     int y_prime = a_3_base_g + (j + 11) % 32;
-            //     int dy = da_3_base + (j + 11) % 32;
-
-            //     int z = a_3_base_f + (j + 25) % 32;
-            //     int z_prime = a_3_base_g + (j + 25) % 32;
-            //     int dz = da_3_base + (j + 25) % 32;
-
-            //     int var_ids[] = { x, x_prime, dx, y, y_prime, dy, z, z_prime, dz, sigma1_f, sigma1_g, dsigma1 };
-            //     // add_2_bit_conditions(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, (int*)var_ids, 12);
-            // }
-
-            // TODO: s0
-            // TODO: s1
-
-            // Compression: 3 to 2
-            add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_e_f[i], s.var_ids_.add_e_g[i], 5, 1);
-
-            // Compression: 5 to 3
-            // g.cnf.diff_add(DA[i + 4], DT[i], Dsigma0[i], Dr2carry[i], Dr2Carry[i], Df2[i]);
-            add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_a_f[i], s.var_ids_.add_a_g[i], 7, 2);
-
-            // Compression: 6 to 3
-            // g.cnf.diff_add(DW[i], DW[i - 16], Ds0[i], Dwcarry[i], DwCarry[i], DW[i - 7], Ds1[i]);
-            if (i >= 16) {
-                add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_w_f[i - 16], s.var_ids_.add_w_g[i - 16], 8, 2);
+            // If
+            {
+                std::vector<int> ids = prepare_func_vec(s.var_ids_.if_[i], j);
+                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_IF_ID, ids, 12);
             }
 
-            // Compression: 7 to 3
-            // g.cnf.diff_add(DT[i], DE[i], Dsigma1[i], Dr0carry[i], Dr0Carry[i], Df1[i], DK[i], DW[i]);
-            add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_t_f[i], s.var_ids_.add_t_g[i], 10, 2);
+            // Maj
+            {
+                std::vector<int> ids = prepare_func_vec(s.var_ids_.maj[i], j);
+                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_MAJ_ID, ids, 12);
+            }
+
+            // // sigma0
+            // {
+            //     std::vector<int> ids = prepare_func_vec(s.var_ids_.sigma0[i], j);
+            //     add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, ids, 12);
+            // }
+
+            // // sigma1
+            // {
+            //     std::vector<int> ids = prepare_func_vec(s.var_ids_.sigma1[i], j);
+            //     add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, ids, 12);
+            // }
+
+            // // s0
+            // if (j <= 28) {
+            //     std::vector<int> ids = prepare_func_vec(s.var_ids_.s0[i], j);
+            //     add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, ids, 12);
+            // }
+
+            // // s1
+            // if (j <= 21) {
+            //     std::vector<int> ids = prepare_func_vec(s.var_ids_.s1[i], j);
+            //     add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, ids, 12);
+            // }
+
+            // Add E
+            add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_e[i], 1, 0);
+
+            // Add A
+            add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_a[i], 2, 1);
+
+            // Add W
+            if (i >= 16) {
+                add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_w[i - 16], 2, 2);
+            }
+
+            // Add T
+            add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_t[i], 2, 3);
         }
     }
-END_CALLBACK:
-    return;
 }

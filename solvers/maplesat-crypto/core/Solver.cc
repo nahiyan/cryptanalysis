@@ -24,6 +24,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "Solver.h"
 #include "mtl/Sort.h"
 #include <chrono>
+#include <set>
 
 using namespace Minisat;
 
@@ -411,25 +412,40 @@ Lit Solver::pickBranchLit()
 int wait = 0;
 int adds = 0;
 time_t time_sum = 0;
+std::set<int> debug_vars;
 void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
 {
     auto start = std::chrono::high_resolution_clock::now();
-    if (++wait != 300 && !complete) {
+    if (++wait != 3000 && !complete) {
         return;
     }
 
-    // if (adds > 0) {
-    //     printf("Stopping clause additions (%d added)\n", adds);
+    fflush(stdout);
+
+    if (debug_vars.size() > 0) {
+        printf("Debug: ");
+        for(int const& var: debug_vars)
+            printf("%d = %d, ", var + 1, value(var));
+
+        printf("\n");
+        debug_vars.clear();
+    }
+
+    // if (adds > 10) {
+    //     printf("Skipping clause additions (%d added so far)\n", adds);
     //     fflush(stdout);
     //     return;
     // }
 
     add_clauses(*this, out_refined);
-    if (out_refined.size() > 1)
-        printf("Warning! Clause count: %d\n", out_refined.size());
-    else if (out_refined.size() > 0)
-        printf("Clause count: %d\n", out_refined.size());
-    fflush(stdout);
+    for (int i = 0; i < out_refined.size(); i++)
+        debug_vars.insert(var(out_refined[i][0]));
+    
+    // if (out_refined.size() > 1)
+    //     printf("Warning! Clause count: %d\n", out_refined.size());
+    // else if (out_refined.size() > 0)
+    //     printf("Clause count: %d\n", out_refined.size());
+    // fflush(stdout);
     adds += out_refined.size();
 
     wait = 0;
@@ -865,6 +881,27 @@ void Solver::analyzeFinal(Lit p, vec<Lit>& out_conflict)
 
 void Solver::uncheckedEnqueue(Lit p, CRef from)
 {
+    // if (value(p) != l_Undef) {
+    //     printf("uncheckedEnqueue fail: %d, %d %d %d %d\n", value(3218 - 1), value(3122 - 1), value(3249 - 1), value(3216 - 1), value(2514 - 1));
+
+    //     printf("Trail: ");
+    //     int dl = 0;
+    //     for (int i = 0; i < trail.size(); i++) {
+    //         int dl_end = trail_lim[dl];
+    //         printf("%s%d ", sign(trail[i]) ? "-" : "", var(trail[i]) + 1, dl);
+
+    //         // Check the reason clause
+    //         if (dl == 112 && reason(var(trail[i])) == CRef_Undef) {
+    //             printf("%d has no reason clause\n", var(trail[i]) + 1);
+    //         }
+
+    //         if (i == dl_end - 1) {
+    //             printf("\nDL: %d\n\n", dl);
+    //             dl++;
+    //         }
+    //     }
+    //     fflush(stdout);
+    // }
     assert(value(p) == l_Undef);
     picked[var(p)] = conflicts;
 #if ANTI_EXPLORATION
@@ -1418,7 +1455,22 @@ lbool Solver::solve_()
     if (verbosity >= 1)
         printf("===============================================================================\n");
 
-    printf("Time spent in callback: %.02fs\n", (float_t)time_sum / 1000000);
+    printf("Time spent in callback: %.02fs\n", (float_t)time_sum / 1e6);
+    
+    printf("Two-bit clauses:\n");
+    printf("If: %d\n", stats.two_bit_clauses_n[0]);
+    printf("Maj: %d\n", stats.two_bit_clauses_n[1]);
+    printf("XOR3: %d\n", stats.two_bit_clauses_n[2]);
+    printf("ADD3: %d\n", stats.two_bit_clauses_n[4]);
+    printf("ADD4: %d\n", stats.two_bit_clauses_n[4]);
+    printf("ADD5: %d\n", stats.two_bit_clauses_n[5]);
+    printf("ADD6: %d\n", stats.two_bit_clauses_n[6]);
+    printf("ADD7: %d\n", stats.two_bit_clauses_n[7]);
+    printf("Carry inference clauses:\n");
+    printf("ADD(E): %d %d\n", stats.carry_infer_high_clauses_n[0], stats.carry_infer_low_clauses_n[0]);
+    printf("ADD(A): %d %d\n", stats.carry_infer_high_clauses_n[1], stats.carry_infer_low_clauses_n[1]);
+    printf("ADD(W): %d %d\n", stats.carry_infer_high_clauses_n[2], stats.carry_infer_low_clauses_n[2]);
+    printf("ADD(T): %d %d\n", stats.carry_infer_high_clauses_n[3], stats.carry_infer_low_clauses_n[3]);
 
     if (status == l_True) {
         // Extend & copy model:
