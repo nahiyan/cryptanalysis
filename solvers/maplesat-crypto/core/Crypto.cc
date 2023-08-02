@@ -470,7 +470,7 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
             printf("2-bit conditions met (%d): ", function_id);
 
             if (rule_value[rule_i] == '1') {
-                for (int count = 0; count < 1; count++) {
+                for (int count = 0; count < 2; count++) {
                     out_refined.push();
                     if (var1_value == l_Undef) {
                         out_refined[k].push(mkLit(var1_id, count == 0 ? true : false));
@@ -487,7 +487,7 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
                     k++;
                 }
             } else {
-                for (int count = 0; count < 1; count++) {
+                for (int count = 0; count < 2; count++) {
                     out_refined.push();
                     if (var1_value == l_Undef) {
                         out_refined[k].push(mkLit(var1_id, count == 0 ? true : false));
@@ -546,7 +546,7 @@ std::vector<int> prepare_func_vec(std::vector<int>& ids, int amount)
 
 void infer_carries(Solver& s, vec<vec<Lit>>& out_refined, int& k, std::vector<int>& var_ids, int carries_n, int function_id)
 {
-    int inputs_n = var_ids.size() - carries_n - 1;
+    int inputs_n = var_ids.size() - carries_n;
     int input_1s_n = 0, input_1s_ids[inputs_n];
     int input_0s_n = 0, input_0s_ids[inputs_n];
     int input_us_n = 0, input_us_ids[inputs_n];
@@ -583,7 +583,7 @@ void infer_carries(Solver& s, vec<vec<Lit>>& out_refined, int& k, std::vector<in
         }
 
         if (inferred) {
-            printf("Inferred high carry (inputs %d, carry_id %d)\n", inputs_n, high_carry_id + 1);
+            printf("Inferred high carry (function: %d, inputs %d, carry_id %d)\n", function_id, inputs_n, high_carry_id + 1);
             print_clause(out_refined[k - 1]);
             s.stats.carry_infer_high_clauses_n[function_id]++;
         }
@@ -591,7 +591,7 @@ void infer_carries(Solver& s, vec<vec<Lit>>& out_refined, int& k, std::vector<in
 
     // TODO: Fix bug with the following clause injection process
     // Low carry must be 1 if no. of 1s >= 6
-    int low_carry_id = var_ids[inputs_n + 1];
+    int low_carry_id = var_ids[var_ids.size() - 1];
     lbool low_carry_value = s.value(low_carry_id);
     bool inferred = false;
     if (low_carry_value != l_True && input_1s_n >= 6) {
