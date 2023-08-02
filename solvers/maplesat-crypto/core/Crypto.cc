@@ -711,29 +711,29 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
                 add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_MAJ_ID, ids, 12);
             }
 
-            // // sigma0
-            // {
-            //     std::vector<int> ids = prepare_func_vec(s.var_ids_.sigma0[i], j);
-            //     add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, ids, 12);
-            // }
+            // sigma0
+            {
+                std::vector<int> ids = prepare_func_vec(s.var_ids_.sigma0[i], j);
+                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, ids, 12);
+            }
 
-            // // sigma1
-            // {
-            //     std::vector<int> ids = prepare_func_vec(s.var_ids_.sigma1[i], j);
-            //     add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, ids, 12);
-            // }
+            // sigma1
+            {
+                std::vector<int> ids = prepare_func_vec(s.var_ids_.sigma1[i], j);
+                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, ids, 12);
+            }
 
-            // // s0
-            // if (j <= 28) {
-            //     std::vector<int> ids = prepare_func_vec(s.var_ids_.s0[i], j);
-            //     add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, ids, 12);
-            // }
+            // s0
+            if (j <= 28) {
+                std::vector<int> ids = prepare_func_vec(s.var_ids_.s0[i], j);
+                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, ids, 12);
+            }
 
-            // // s1
-            // if (j <= 21) {
-            //     std::vector<int> ids = prepare_func_vec(s.var_ids_.s1[i], j);
-            //     add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, ids, 12);
-            // }
+            // s1
+            if (j <= 21) {
+                std::vector<int> ids = prepare_func_vec(s.var_ids_.s1[i], j);
+                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, ids, 12);
+            }
 
             // Add E
             add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_e[i], 1, 0);
