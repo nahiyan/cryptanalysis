@@ -466,79 +466,43 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
             if (var1_value == l_Undef && var2_value == l_Undef)
                 continue;
 
-            // printf("\nUsing key %s: %s\n", rule_key, rule_value.c_str());
-
-            // printf("Related vars: %d and %d; values: %d and %d\n", var1_id + 1, var2_id + 1, int_value(s, var1_id), int_value(s, var2_id));
-
-            // printf("DEBUG: ");
-            // for (int l = 0; l < base_clause.size(); l++) {
-            //     printf("%d = %d, ", var(base_clause[l]) + 1, int_value(s, var(base_clause[i])));
-            // }
-            // printf("\n");
-
             // DEBUG
             printf("2-bit conditions met (%d): ", function_id);
 
             if (rule_value[rule_i] == '1') {
-                out_refined.push();
-                if (var1_value == l_Undef) {
-                    out_refined[k].push(mkLit(var1_id, true));
-                    out_refined[k].push(mkLit(var2_id, false));
-                } else {
-                    out_refined[k].push(mkLit(var2_id, false));
-                    out_refined[k].push(mkLit(var1_id, true));
+                for (int count = 0; count < 1; count++) {
+                    out_refined.push();
+                    if (var1_value == l_Undef) {
+                        out_refined[k].push(mkLit(var1_id, count == 0 ? true : false));
+                        out_refined[k].push(mkLit(var2_id, count == 0 ? false : true));
+                    } else {
+                        out_refined[k].push(mkLit(var2_id, count == 0 ? false : true));
+                        out_refined[k].push(mkLit(var1_id, count == 0 ? true : false));
+                    }
+                    for (int l = 0; l < base_clause.size(); l++) {
+                        if (var(base_clause[l]) == var1_id || var(base_clause[l]) == var2_id)
+                            continue;
+                        out_refined[k].push(base_clause[l]);
+                    }
+                    k++;
                 }
-                for (int l = 0; l < base_clause.size(); l++) {
-                    if (var(base_clause[l]) == var1_id || var(base_clause[l]) == var2_id)
-                        continue;
-                    out_refined[k].push(base_clause[l]);
-                }
-                k++;
-
-                out_refined.push();
-                if (var1_value == l_Undef) {
-                    out_refined[k].push(mkLit(var1_id, false));
-                    out_refined[k].push(mkLit(var2_id, true));
-                } else {
-                    out_refined[k].push(mkLit(var2_id, true));
-                    out_refined[k].push(mkLit(var1_id, false));
-                }
-                for (int l = 0; l < base_clause.size(); l++) {
-                    if (var(base_clause[l]) == var1_id || var(base_clause[l]) == var2_id)
-                        continue;
-                    out_refined[k].push(base_clause[l]);
-                }
-                k++;
             } else {
-                out_refined.push();
-                if (var1_value == l_Undef) {
-                    out_refined[k].push(mkLit(var1_id, true));
-                    out_refined[k].push(mkLit(var2_id, true));
-                } else {
-                    out_refined[k].push(mkLit(var2_id, true));
-                    out_refined[k].push(mkLit(var1_id, true));
+                for (int count = 0; count < 1; count++) {
+                    out_refined.push();
+                    if (var1_value == l_Undef) {
+                        out_refined[k].push(mkLit(var1_id, count == 0 ? true : false));
+                        out_refined[k].push(mkLit(var2_id, count == 0 ? true : false));
+                    } else {
+                        out_refined[k].push(mkLit(var2_id, count == 0 ? true : false));
+                        out_refined[k].push(mkLit(var1_id, count == 0 ? true : false));
+                    }
+                    for (int l = 0; l < base_clause.size(); l++) {
+                        if (var(base_clause[l]) == var1_id || var(base_clause[l]) == var2_id)
+                            continue;
+                        out_refined[k].push(base_clause[l]);
+                    }
+                    k++;
                 }
-                for (int l = 0; l < base_clause.size(); l++) {
-                    if (var(base_clause[l]) == var1_id || var(base_clause[l]) == var2_id)
-                        continue;
-                    out_refined[k].push(base_clause[l]);
-                }
-                k++;
-
-                out_refined.push();
-                if (var1_value == l_Undef) {
-                    out_refined[k].push(mkLit(var1_id, false));
-                    out_refined[k].push(mkLit(var2_id, false));
-                } else {
-                    out_refined[k].push(mkLit(var2_id, false));
-                    out_refined[k].push(mkLit(var1_id, false));
-                }
-                for (int l = 0; l < base_clause.size(); l++) {
-                    if (var(base_clause[l]) == var1_id || var(base_clause[l]) == var2_id)
-                        continue;
-                    out_refined[k].push(base_clause[l]);
-                }
-                k++;
             }
 
             for (int count = 0; count < out_refined[k - 1].size(); count++)
