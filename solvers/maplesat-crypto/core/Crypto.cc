@@ -136,8 +136,7 @@ void add_to_var_ids(Solver& solver, std::string prefix, std::vector<int>& var_id
     }
 
     for (int i = 0; i < outputs_n; i++) {
-        // TODO: Make the indexing consistent in the variable map
-        std::string z_index = outputs_n == 1 ? "" : std::to_string(i);
+        std::string z_index = std::to_string(i);
         var_ids.push_back(solver.var_map[prefix + "z" + z_index + "_f"]);
         var_ids.push_back(solver.var_map[prefix + "z" + z_index + "_g"]);
 

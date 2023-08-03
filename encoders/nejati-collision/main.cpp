@@ -148,13 +148,13 @@ void collision(int rounds)
 
             // f1 = IF(E[i+3], E[i+2], E[i+1])
             // f2 = MAJ(A[i+3], A[i+2], A[i+1])
-            g.cnf.newVars(Df1[i], 32, "Dif_" + to_string(i) + "_z");
+            g.cnf.newVars(Df1[i], 32, "Dif_" + to_string(i) + "_z0");
             g.cnf.varName(DE[i + 3], "Dif_" + to_string(i) + "_x0");
             g.cnf.varName(DE[i + 2], "Dif_" + to_string(i) + "_x1");
             g.cnf.varName(DE[i + 1], "Dif_" + to_string(i) + "_x2");
             g.cnf.xor2(Df1[i], f.f1[i], g.f1[i], 32);
             
-            g.cnf.newVars(Df2[i], 32, "Dmaj_" + to_string(i) + "_z");
+            g.cnf.newVars(Df2[i], 32, "Dmaj_" + to_string(i) + "_z0");
             g.cnf.varName(DA[i + 3], "Dmaj_" + to_string(i) + "_x0");
             g.cnf.varName(DA[i + 2], "Dmaj_" + to_string(i) + "_x1");
             g.cnf.varName(DA[i + 1], "Dmaj_" + to_string(i) + "_x2");
