@@ -550,11 +550,38 @@ void prepare_add_vec(std::vector<int>& ids, std::vector<int>& f, std::vector<int
     }
 }
 
-std::vector<int> prepare_func_vec(std::vector<int>& ids, int amount)
+int r_rotate_id(int id, int amount, int offset)
+{
+    return (id - amount) + (amount + offset) % 32;
+}
+
+std::vector<int> prepare_func_vec(std::vector<int>& ids, int offset, int function_id = -1)
 {
     std::vector<int> new_vec;
-    for (int i = 0; i < ids.size(); i++)
-        new_vec.push_back(ids[i] + amount);
+    if (function_id == 0 || function_id == 1)
+        for (int i = 0; i < ids.size(); i++) {
+            int r_rotate_amount = 0;
+            if (i >= 0 && i <= 2)
+                r_rotate_amount = function_id == 0 ? 2 : 6;
+            else if (i >= 3 && i <= 5)
+                r_rotate_amount = function_id == 0 ? 13 : 11;
+            else if (i >= 6 && i <= 8)
+                r_rotate_amount = function_id == 0 ? 22 : 25;
+            new_vec.push_back(r_rotate_id(ids[i], r_rotate_amount, offset));
+        }
+    else if (function_id == 2 || function_id == 3)
+        for (int i = 0; i < ids.size(); i++) {
+            int r_rotate_amount = 0;
+            if (i >= 0 && i <= 2)
+                r_rotate_amount = function_id == 2 ? 7 : 17;
+            else if (i >= 3 && i <= 5)
+                r_rotate_amount = function_id == 2 ? 18 : 19;
+            new_vec.push_back(r_rotate_id(ids[i], r_rotate_amount, offset));
+        }
+    else
+        for (int i = 0; i < ids.size(); i++)
+            new_vec.push_back(ids[i] + offset);
+
     return new_vec;
 }
 
@@ -608,27 +635,7 @@ void infer_carries(Solver& s, vec<vec<Lit>>& out_refined, int& k, std::vector<in
     int low_carry_id = var_ids[var_ids.size() - 1];
     lbool low_carry_value = s.value(low_carry_id);
     bool inferred = false;
-    if (low_carry_value != l_True && input_1s_n >= 6) {
-        out_refined.push();
-        out_refined[k].push(mkLit(low_carry_id));
-        for (int i = 0; i < input_1s_n; i++)
-            out_refined[k].push(~mkLit(input_1s_ids[i]));
-        for (int i = 0; i < input_0s_n; i++)
-            out_refined[k].push(mkLit(input_0s_ids[i]));
-        k++;
-        inferred = true;
-    } else if (low_carry_value != l_False && input_0s_n >= 6) {
-        out_refined.push();
-        out_refined[k].push(~mkLit(low_carry_id));
-        for (int i = 0; i < input_1s_n; i++)
-            out_refined[k].push(~mkLit(input_1s_ids[i]));
-        for (int i = 0; i < input_0s_n; i++)
-            out_refined[k].push(mkLit(input_0s_ids[i]));
-        k++;
-        inferred = true;
-    }
-
-    // if (low_carry_value != l_True && ((input_1s_n >= 6) || (input_1s_n >= 2 && input_1s_n + input_us_n < 4))) {
+    // if (low_carry_value != l_True && input_1s_n >= 6) {
     //     out_refined.push();
     //     out_refined[k].push(mkLit(low_carry_id));
     //     for (int i = 0; i < input_1s_n; i++)
@@ -637,7 +644,7 @@ void infer_carries(Solver& s, vec<vec<Lit>>& out_refined, int& k, std::vector<in
     //         out_refined[k].push(mkLit(input_0s_ids[i]));
     //     k++;
     //     inferred = true;
-    // } else if (low_carry_value != l_False && ((input_0s_n >= 6) || (input_1s_n >= 4 && input_1s_n + input_us_n < 6))) {
+    // } else if (low_carry_value != l_False && input_0s_n >= 6) {
     //     out_refined.push();
     //     out_refined[k].push(~mkLit(low_carry_id));
     //     for (int i = 0; i < input_1s_n; i++)
@@ -648,8 +655,29 @@ void infer_carries(Solver& s, vec<vec<Lit>>& out_refined, int& k, std::vector<in
     //     inferred = true;
     // }
 
+    // TODO: Check if the logic is correct
+    if (low_carry_value != l_True && ((input_1s_n >= 6) || (input_1s_n >= 2 && input_1s_n + input_us_n < 4))) {
+        out_refined.push();
+        out_refined[k].push(mkLit(low_carry_id));
+        for (int i = 0; i < input_1s_n; i++)
+            out_refined[k].push(~mkLit(input_1s_ids[i]));
+        for (int i = 0; i < input_0s_n; i++)
+            out_refined[k].push(mkLit(input_0s_ids[i]));
+        k++;
+        inferred = true;
+    } else if (low_carry_value != l_False && ((input_0s_n >= 6) || (input_1s_n >= 4 && input_1s_n + input_us_n < 6))) {
+        out_refined.push();
+        out_refined[k].push(~mkLit(low_carry_id));
+        for (int i = 0; i < input_1s_n; i++)
+            out_refined[k].push(~mkLit(input_1s_ids[i]));
+        for (int i = 0; i < input_0s_n; i++)
+            out_refined[k].push(mkLit(input_0s_ids[i]));
+        k++;
+        inferred = true;
+    }
+
     if (inferred) {
-        printf("Inferred low carry (inputs %d, carry_id %d)\n", inputs_n, low_carry_id + 1);
+        printf("Inferred low carry (function: %d, inputs %d, carry_id %d)\n", function_id, inputs_n, low_carry_id + 1);
         print_clause(out_refined[k - 1]);
         s.stats.carry_infer_low_clauses_n[function_id]++;
     }
