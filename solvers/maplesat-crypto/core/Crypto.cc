@@ -162,14 +162,16 @@ void processVarMap(Solver& solver)
         // sigma1
         add_to_var_ids(solver, "sigma1_" + std::to_string(i) + "_", solver.var_ids_.sigma1[i], 3, 1);
 
-        // s0
-        add_to_var_ids(solver, "s0_" + std::to_string(i + 16) + "_", solver.var_ids_.s0[i], 3, 1);
+        if (i >= 16) {
+            // s0
+            add_to_var_ids(solver, "s0_" + std::to_string(i) + "_", solver.var_ids_.s0[i - 16], 3, 1);
 
-        // s1
-        add_to_var_ids(solver, "s1_" + std::to_string(i + 16) + "_", solver.var_ids_.s1[i], 3, 1);
+            // s1
+            add_to_var_ids(solver, "s1_" + std::to_string(i) + "_", solver.var_ids_.s1[i - 16], 3, 1);
 
-        // add_w
-        add_to_var_ids(solver, "add_w" + std::to_string(i + 16) + "_", solver.var_ids_.add_w[i], 6, 2);
+            // add_w
+            add_to_var_ids(solver, "add_w" + std::to_string(i) + "_", solver.var_ids_.add_w[i - 16], 6, 2);
+        }
 
         // add_t
         add_to_var_ids(solver, "add_T" + std::to_string(i) + "_", solver.var_ids_.add_t[i], 7, 2);
