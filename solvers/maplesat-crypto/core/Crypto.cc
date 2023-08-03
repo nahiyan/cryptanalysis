@@ -369,20 +369,21 @@ bool check_consistency(std::vector<std::pair<int32_t, int32_t>>& equations)
 // TODO: Get rid of unwanted vector
 // TODO: Reduce redundancy
 // The variable IDs provided should include the operands and the output
-void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int function_id, std::vector<int> var_ids, int vars_n)
+void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int operation_id, int function_id, std::vector<int> var_ids)
 {
     // Number of variables
+    int vars_n = var_ids.size();
     assert(vars_n % 3 == 0 && vars_n > 0); // Must be in triples and non-empty
     int chunks_n = vars_n / 3;
 
     // Lay out the rule key's foundation
     int key_size = chunks_n + 2;
     char rule_key[key_size];
-    rule_key[0] = function_id;
+    rule_key[0] = operation_id;
     rule_key[key_size - 1] = NULL;
 
     // Process chunk-wise (each chunk has 3 bits)
-    vec<Lit> base_clause;
+    std::set<Lit> base_clause;
     bool hasXOrDash = false;
     for (int i = 0, j = 1; i < vars_n; i += 3, j++) {
         // There are 3 possible ways to derive the GC of the chunk: from x and x_, from dx and x or x_, or from dx alone, else we can't
@@ -395,10 +396,11 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
         int& dx_id = var_ids[i + 2];
         lbool dx_value = s.value(var_ids[i + 2]);
 
+        // TODO: Consider enforcing the relationship instead of just helping the solver propagate
         if (x_value != l_Undef && x_prime_value != l_Undef) {
             rule_key[j] = to_gc(x_value, x_prime_value);
-            base_clause.push(mkLit(x_id, x_value == l_True));
-            base_clause.push(mkLit(x_prime_id, x_prime_value == l_True));
+            base_clause.insert(mkLit(x_id, x_value == l_True));
+            base_clause.insert(mkLit(x_prime_id, x_prime_value == l_True));
         } else if (dx_value != l_Undef && (x_value != l_Undef || x_prime_value != l_Undef)) {
             // y is x or x' that is defined
             int y_id;
@@ -418,12 +420,12 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
             else
                 rule_key[j] = x_defined && y_value == l_False ? 'n' : 'u';
 
-            base_clause.push(mkLit(y_id, y_value == l_True));
-            base_clause.push(mkLit(dx_id, dx_value == l_True));
+            base_clause.insert(mkLit(y_id, y_value == l_True));
+            base_clause.insert(mkLit(dx_id, dx_value == l_True));
         } else if (dx_value != l_Undef) {
             rule_key[j] = dx_value == l_True ? 'x' : '-';
             hasXOrDash = true;
-            base_clause.push(mkLit(dx_id, dx_value == l_True));
+            base_clause.insert(mkLit(dx_id, dx_value == l_True));
         } else {
             // Terminate since we can't derive the rule if we don't know any of {1, u, n, 0, x, -}, and without the rule we can't derive the 2-bit conditions
             return;
@@ -438,7 +440,6 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
     if (rule_it == s.rules.end())
         return;
     auto rule_value = rule_it->second;
-    // printf("Found for key %s: %s\n", rule_key, rule_value.c_str());
 
     // Derive the relationships between the x and x_ of the chunks and enforce them through clauses
     std::set<int> visited;
@@ -447,13 +448,11 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
         int var1_id = var_ids[i];
         for (int j = 0; j < vars_n - 3; j += 3) {
             int var2_id = var_ids[j];
-            // printf("Trying %d\n", var2_id + 1);
             if (var2_id == var1_id || visited.find(var2_id) != visited.end())
                 continue;
             rule_i++;
             if (rule_value[rule_i] == '2')
                 continue;
-            // printf("Passed %d with %d; %c in %d\n", var1_id + 1, var2_id + 1, rule_value[rule_i], rule_i);
 
             // Inferred variables should be undefined
             lbool var1_value = s.value(var1_id);
@@ -468,42 +467,56 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
                 continue;
 
             // DEBUG
-            printf("2-bit conditions met (%d): ", function_id);
+            printf("2-bit conditions met (%d, %d): %s %s ", operation_id, function_id, rule_it->first.c_str(), rule_it->second.c_str());
 
-            if (rule_value[rule_i] == '1') {
-                for (int count = 0; count < 2; count++) {
-                    out_refined.push();
-                    if (var1_value == l_Undef) {
-                        out_refined[k].push(mkLit(var1_id, count == 0 ? true : false));
-                        out_refined[k].push(mkLit(var2_id, count == 0 ? false : true));
+            bool constrainEquality = rule_value[rule_i] == '1';
+            for (int count = 0; count < 2; count++) {
+                out_refined.push();
+
+                // Determine the signs of var1 and var2
+                bool signs[4];
+                if (constrainEquality) {
+                    if (count == 0) {
+                        signs[0] = true;
+                        signs[1] = false;
+                        signs[2] = false;
+                        signs[3] = true;
                     } else {
-                        out_refined[k].push(mkLit(var2_id, count == 0 ? false : true));
-                        out_refined[k].push(mkLit(var1_id, count == 0 ? true : false));
+                        signs[0] = false;
+                        signs[1] = true;
+                        signs[2] = true;
+                        signs[3] = false;
                     }
-                    for (int l = 0; l < base_clause.size(); l++) {
-                        if (var(base_clause[l]) == var1_id || var(base_clause[l]) == var2_id)
-                            continue;
-                        out_refined[k].push(base_clause[l]);
-                    }
-                    k++;
-                }
-            } else {
-                for (int count = 0; count < 2; count++) {
-                    out_refined.push();
-                    if (var1_value == l_Undef) {
-                        out_refined[k].push(mkLit(var1_id, count == 0 ? true : false));
-                        out_refined[k].push(mkLit(var2_id, count == 0 ? true : false));
+                } else if (!constrainEquality) {
+                    if (count == 0) {
+                        signs[0] = true;
+                        signs[1] = true;
+                        signs[2] = true;
+                        signs[3] = true;
                     } else {
-                        out_refined[k].push(mkLit(var2_id, count == 0 ? true : false));
-                        out_refined[k].push(mkLit(var1_id, count == 0 ? true : false));
+                        signs[0] = false;
+                        signs[1] = false;
+                        signs[2] = false;
+                        signs[3] = false;
                     }
-                    for (int l = 0; l < base_clause.size(); l++) {
-                        if (var(base_clause[l]) == var1_id || var(base_clause[l]) == var2_id)
-                            continue;
-                        out_refined[k].push(base_clause[l]);
-                    }
-                    k++;
                 }
+
+                // Push var1 and var2
+                if (var1_value == l_Undef) {
+                    out_refined[k].push(mkLit(var1_id, signs[0]));
+                    out_refined[k].push(mkLit(var2_id, signs[1]));
+                } else {
+                    out_refined[k].push(mkLit(var2_id, signs[2]));
+                    out_refined[k].push(mkLit(var1_id, signs[3]));
+                }
+
+                // Push the other lits
+                for (auto& lit : base_clause) {
+                    if (var(lit) == var1_id || var(lit) == var2_id)
+                        continue;
+                    out_refined[k].push(lit);
+                }
+                k++;
             }
 
             for (int count = 0; count < out_refined[k - 1].size(); count++)
@@ -512,7 +525,7 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
             print_clause(out_refined[k - 1]);
             print_clause(out_refined[k - 2]);
 
-            s.stats.two_bit_clauses_n[function_id - TWO_BIT_CONSTRAINT_IF_ID] += 2;
+            s.stats.two_bit_clauses_n[operation_id - TWO_BIT_CONSTRAINT_IF_ID] += 2;
         }
 
         visited.insert(var1_id);
