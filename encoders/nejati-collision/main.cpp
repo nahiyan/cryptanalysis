@@ -101,8 +101,8 @@ void collision(int rounds)
 
         /* Differential propagation over message expansion */
         for (int i = 16; i < rounds; i++) {
-            g.cnf.newVars(Ds0[i], 32, "Ds0_" + to_string(i));
-            g.cnf.newVars(Ds1[i], 32, "Ds1_" + to_string(i));
+            g.cnf.newVars(Ds0[i], 32, "Ds0_" + to_string(i) + "_z0");
+            g.cnf.newVars(Ds1[i], 32, "Ds1_" + to_string(i) + "_z0");
             g.cnf.xor2(Ds0[i], f.s0[i], g.s0[i], 32);
             g.cnf.xor2(Ds1[i], f.s1[i], g.s1[i], 32);
 

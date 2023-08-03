@@ -708,37 +708,39 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
             // If
             {
                 std::vector<int> ids = prepare_func_vec(s.var_ids_.if_[i], j);
-                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_IF_ID, ids, 12);
+                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_IF_ID, 0, ids);
             }
 
             // Maj
             {
                 std::vector<int> ids = prepare_func_vec(s.var_ids_.maj[i], j);
-                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_MAJ_ID, ids, 12);
+                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_MAJ_ID, 1, ids);
             }
 
             // sigma0
             {
-                std::vector<int> ids = prepare_func_vec(s.var_ids_.sigma0[i], j);
-                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, ids, 12);
+                std::vector<int> ids = prepare_func_vec(s.var_ids_.sigma0[i], j, 0);
+                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, 2, ids);
             }
 
             // sigma1
             {
-                std::vector<int> ids = prepare_func_vec(s.var_ids_.sigma1[i], j);
-                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, ids, 12);
+                std::vector<int> ids = prepare_func_vec(s.var_ids_.sigma1[i], j, 1);
+                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, 3, ids);
             }
 
-            // s0
-            if (j <= 28) {
-                std::vector<int> ids = prepare_func_vec(s.var_ids_.s0[i], j);
-                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, ids, 12);
-            }
+            if (i >= 16) {
+                // s0
+                if (j <= 28) {
+                    std::vector<int> ids = prepare_func_vec(s.var_ids_.s0[i - 16], j, 2);
+                    add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, 4, ids);
+                }
 
-            // s1
-            if (j <= 21) {
-                std::vector<int> ids = prepare_func_vec(s.var_ids_.s1[i], j);
-                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, ids, 12);
+                // s1
+                if (j <= 21) {
+                    std::vector<int> ids = prepare_func_vec(s.var_ids_.s1[i - 16], j, 3);
+                    add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, 5, ids);
+                }
             }
 
             // Add E
