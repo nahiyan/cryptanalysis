@@ -26,13 +26,14 @@ void SHA256::encode() {
     cnf.newVars(s1[i]);
 
     int r1[32], r2[32];
-    cnf.rotr(r1, w[i - 15], 7);
-    cnf.rotr(r2, w[i - 15], 18);
     
     // s0: j: 0-28
+    cnf.rotr(r1, w[i - 15], 7);
+    cnf.rotr(r2, w[i - 15], 18);
     cnf.varName(r1, "s0_" + to_string(i) + "_x0");
     cnf.varName(r2, "s0_" + to_string(i) + "_x1");
     cnf.varName(w[i - 15] + 3, "s0_" + to_string(i) + "_x2");
+    cnf.varName(s0[i], "s0_" + to_string(i) + "_z0");
     cnf.xor3(s0[i], r1, r2, w[i - 15] + 3, 29);
 
     // s0: j: 29-31
@@ -40,10 +41,10 @@ void SHA256::encode() {
     cnf.varName(r2 + 29, "s0_" + to_string(i) + "_x1_");
     cnf.xor2(s0[i] + 29, r1 + 29, r2 + 29, 3);
 
-    cnf.rotr(r1, w[i - 2], 17);
-    cnf.rotr(r2, w[i - 2], 19);
 
     // s1: j: 0-21
+    cnf.rotr(r1, w[i - 2], 17);
+    cnf.rotr(r2, w[i - 2], 19);
     cnf.varName(r1, "s1_" + to_string(i) + "_x0");
     cnf.varName(r2, "s1_" + to_string(i) + "_x1");
     cnf.varName(w[i - 2] + 10, "s1_" + to_string(i) + "_x2");
