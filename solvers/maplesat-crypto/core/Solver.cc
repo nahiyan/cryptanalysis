@@ -25,6 +25,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "mtl/Sort.h"
 #include <chrono>
 #include <set>
+#include <algorithm>
 
 using namespace Minisat;
 
@@ -387,6 +388,22 @@ Lit Solver::pickBranchLit()
     return next == var_Undef ? lit_Undef : mkLit(next, rnd_pol ? drand(random_seed) < 0.5 : polarity[next]);
 }
 
+std::string random_string( size_t length )
+{
+    auto randchar = []() -> char
+    {
+        const char charset[] =
+        "0123456789"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz";
+        const size_t max_index = (sizeof(charset) - 1);
+        return charset[ rand() % max_index ];
+    };
+    std::string str(length,0);
+    std::generate_n(str.begin(), length, randchar);
+    return str;
+}
+
 // A callback function for programmatic interface. This function is called
 // very frequently, if the analysis is expensive then add code to skip the analysis on
 // most calls. However, if complete is set to true, do not skip the analysis or else the
@@ -413,40 +430,47 @@ int wait = 0;
 int adds = 0;
 time_t time_sum = 0;
 std::set<int> debug_vars;
+std::string clauses_file_name = random_string(10);
+FILE* clauses_file = fopen(("clauses_" + random_string(10) + ".txt").c_str(), "w");
+
 void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
 {
     auto start = std::chrono::high_resolution_clock::now();
     if (++wait != 3000 && !complete) {
         return;
     }
-
+    if (time_sum == 0)
+        printf("Clauses file: clauses_%s.txt\n", clauses_file_name.c_str());
     fflush(stdout);
 
-    if (debug_vars.size() > 0) {
-        printf("Debug: ");
-        for(int const& var: debug_vars)
-            printf("%d = %d, ", var + 1, value(var));
+    // if (debug_vars.size() > 0) {
+    //     printf("Debug: ");
+    //     for(int const& var: debug_vars)
+    //         printf("%d = %d, ", var + 1, value(var));
 
-        printf("\n");
-        debug_vars.clear();
-    }
-
-    // if (adds > 10) {
-    //     printf("Skipping clause additions (%d added so far)\n", adds);
-    //     fflush(stdout);
-    //     return;
+    //     printf("\n");
+    //     debug_vars.clear();
     // }
 
     add_clauses(*this, out_refined);
-    for (int i = 0; i < out_refined.size(); i++)
-        debug_vars.insert(var(out_refined[i][0]));
+    for (int i = 0; i < out_refined.size(); i++) {
+        // debug_vars.insert(var(out_refined[i][0]));
+        
+        auto& clause_ = out_refined[i];
+        for (int i = 0; i < clause_.size(); i++) {
+            fprintf(clauses_file, "%s%d", sign(clause_[i]) ? "-" : "", var(clause_[i]) + 1);
+            if (i != clause_.size() - 1)
+                fprintf(clauses_file, " ");
+        }
+        fprintf(clauses_file, "\n");
+    }
     
     // if (out_refined.size() > 1)
     //     printf("Warning! Clause count: %d\n", out_refined.size());
     // else if (out_refined.size() > 0)
     //     printf("Clause count: %d\n", out_refined.size());
     // fflush(stdout);
-    adds += out_refined.size();
+    // adds += out_refined.size();
 
     wait = 0;
     auto finish = std::chrono::high_resolution_clock::now();

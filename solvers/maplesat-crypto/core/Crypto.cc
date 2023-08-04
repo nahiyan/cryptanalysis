@@ -383,7 +383,7 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
     rule_key[key_size - 1] = NULL;
 
     // Process chunk-wise (each chunk has 3 bits)
-    std::set<Lit> base_clause;
+    std::vector<Lit> base_clause;
     bool hasXOrDash = false;
     for (int i = 0, j = 1; i < vars_n; i += 3, j++) {
         // There are 3 possible ways to derive the GC of the chunk: from x and x_, from dx and x or x_, or from dx alone, else we can't
@@ -399,8 +399,8 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
         // TODO: Consider enforcing the relationship instead of just helping the solver propagate
         if (x_value != l_Undef && x_prime_value != l_Undef) {
             rule_key[j] = to_gc(x_value, x_prime_value);
-            base_clause.insert(mkLit(x_id, x_value == l_True));
-            base_clause.insert(mkLit(x_prime_id, x_prime_value == l_True));
+            base_clause.push_back(mkLit(x_id, x_value == l_True));
+            base_clause.push_back(mkLit(x_prime_id, x_prime_value == l_True));
         } else if (dx_value != l_Undef && (x_value != l_Undef || x_prime_value != l_Undef)) {
             // y is x or x' that is defined
             int y_id;
@@ -420,12 +420,12 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
             else
                 rule_key[j] = x_defined && y_value == l_False ? 'n' : 'u';
 
-            base_clause.insert(mkLit(y_id, y_value == l_True));
-            base_clause.insert(mkLit(dx_id, dx_value == l_True));
+            base_clause.push_back(mkLit(y_id, y_value == l_True));
+            base_clause.push_back(mkLit(dx_id, dx_value == l_True));
         } else if (dx_value != l_Undef) {
             rule_key[j] = dx_value == l_True ? 'x' : '-';
             hasXOrDash = true;
-            base_clause.insert(mkLit(dx_id, dx_value == l_True));
+            base_clause.push_back(mkLit(dx_id, dx_value == l_True));
         } else {
             // Terminate since we can't derive the rule if we don't know any of {1, u, n, 0, x, -}, and without the rule we can't derive the 2-bit conditions
             return;
@@ -469,13 +469,13 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
             // DEBUG
             printf("2-bit conditions met (%d, %d): %s %s ", operation_id, function_id, rule_it->first.c_str(), rule_it->second.c_str());
 
-            bool constrainEquality = rule_value[rule_i] == '1';
+            bool are_equal = rule_value[rule_i] == '1';
             for (int count = 0; count < 2; count++) {
                 out_refined.push();
 
                 // Determine the signs of var1 and var2
                 bool signs[4];
-                if (constrainEquality) {
+                if (are_equal) {
                     if (count == 0) {
                         signs[0] = true;
                         signs[1] = false;
@@ -487,7 +487,7 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
                         signs[2] = true;
                         signs[3] = false;
                     }
-                } else if (!constrainEquality) {
+                } else if (!are_equal) {
                     if (count == 0) {
                         signs[0] = true;
                         signs[1] = true;
