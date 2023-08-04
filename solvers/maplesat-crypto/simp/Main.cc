@@ -155,7 +155,7 @@ int main(int argc, char** argv)
         gzclose(in);
         
         // CDCL(Crypto)
-        processVarMap(*solver);
+        process_var_map(*solver);
 
         if (S.verbosity > 0){
             printf("|  Number of variables:  %12d                                         |\n", S.nVars());

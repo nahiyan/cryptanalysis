@@ -146,7 +146,7 @@ void add_to_var_ids(Solver& solver, std::string prefix, std::vector<int>& var_id
     }
 }
 
-void processVarMap(Solver& solver)
+void process_var_map(Solver& solver)
 {
     printf("Var. map entries: %d\n", solver.var_map.size());
     for (int i = 0; i < solver.steps; i++) {
@@ -533,20 +533,20 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
 }
 
 // Prepare the vector of all the operands and carries of addition (may also remove operands equal to carries from previous columns)
-void prepare_add_vec(std::vector<int>& ids, std::vector<int>& f, std::vector<int>& g, int carries_n, int amount, int carry_removal_n = 0)
+void prepare_add_vec(std::vector<int>& ids, std::vector<int>& f, std::vector<int>& g, int carries_n, int offset, int carry_removal_n = 0)
 {
     int inputs_n = ids.size() - carries_n * 3;
     for (int i = 0, j = 0; i < inputs_n; i += 3, j++) {
         if (carry_removal_n > 0 && j == 3 || carry_removal_n == 2 && j == 2)
             continue;
 
-        f.push_back(ids[i] + amount);
-        g.push_back(ids[i + 1] + amount);
+        f.push_back(ids[i] + offset);
+        g.push_back(ids[i + 1] + offset);
     }
 
     for (int i = inputs_n; i < ids.size(); i += 3) {
-        f.push_back(ids[i] + amount);
-        g.push_back(ids[i + 1] + amount);
+        f.push_back(ids[i] + offset);
+        g.push_back(ids[i + 1] + offset);
     }
 }
 
