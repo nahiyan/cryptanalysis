@@ -1,5 +1,6 @@
 #include "Crypto.h"
 #include <algorithm>
+#include <chrono>
 #include <map>
 #include <set>
 #include <vector>
@@ -366,8 +367,6 @@ bool check_consistency(std::vector<std::pair<int32_t, int32_t>>& equations)
     return true;
 }
 
-// TODO: Get rid of unwanted vector
-// TODO: Reduce redundancy
 // The variable IDs provided should include the operands and the output
 void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int operation_id, int function_id, std::vector<int> var_ids)
 {
@@ -453,79 +452,114 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
             rule_i++;
             if (rule_value[rule_i] == '2')
                 continue;
+            bool are_equal = rule_value[rule_i] == '1';
 
             // Inferred variables should be undefined
             lbool var1_value = s.value(var1_id);
             lbool var2_value = s.value(var2_id);
 
-            // Skip if both the values are defined
-            if (var1_value != l_Undef && var2_value != l_Undef)
-                continue;
+            // // Skip if both vars are defined and equal when they are supposed to be
+            // if (are_equal && var1_value != l_Undef && var2_value != l_Undef && var1_value == var2_value)
+            //     continue;
+
+            // // Skip if both vars are defined and inequal when they are supposed to be
+            // if (!are_equal && var1_value != l_Undef && var2_value != l_Undef && var1_value != var2_value)
+            //     continue;
+
+            // DEBUG
+            // if (var1_value != l_Undef && var2_value != l_Undef) {
+            //     if (are_equal && var1_value != var2_value)
+            //         printf("Candidate: %d %d %d\n", var1_value, var2_value, are_equal);
+            //     else if (!are_equal && var1_value == var2_value)
+            //         printf("Candidate: %d %d %d\n", var1_value, var2_value, are_equal);
+            // }
+
+            // if (var1_value == l_Undef || var2_value == l_Undef) {
+            //     printf("Candidate 2: %d %d %d (%d)\n", var1_value, var2_value, are_equal, operation_id);
+            // }
 
             // Skip if both the values are undefined
             if (var1_value == l_Undef && var2_value == l_Undef)
                 continue;
 
+            // Skip if both the values are defined
+            bool both_undefined = false;
+            if (var1_value != l_Undef && var2_value != l_Undef)
+                continue;
+
             // DEBUG
             printf("2-bit conditions met (%d, %d): %s %s ", operation_id, function_id, rule_it->first.c_str(), rule_it->second.c_str());
 
-            bool are_equal = rule_value[rule_i] == '1';
+            int add_count = 0;
+            // Construct the clauses
+            int vars[] = { var1_id, var2_id };
+            std::vector<Lit> clauses[2];
             for (int count = 0; count < 2; count++) {
-                out_refined.push();
-
-                // Determine the signs of var1 and var2
-                bool signs[4];
-                if (are_equal) {
-                    if (count == 0) {
-                        signs[0] = true;
-                        signs[1] = false;
-                        signs[2] = false;
-                        signs[3] = true;
-                    } else {
-                        signs[0] = false;
-                        signs[1] = true;
-                        signs[2] = true;
-                        signs[3] = false;
-                    }
-                } else if (!are_equal) {
-                    if (count == 0) {
-                        signs[0] = true;
-                        signs[1] = true;
-                        signs[2] = true;
-                        signs[3] = true;
-                    } else {
-                        signs[0] = false;
-                        signs[1] = false;
-                        signs[2] = false;
-                        signs[3] = false;
-                    }
-                }
-
-                // Push var1 and var2
-                if (var1_value == l_Undef) {
-                    out_refined[k].push(mkLit(var1_id, signs[0]));
-                    out_refined[k].push(mkLit(var2_id, signs[1]));
-                } else {
-                    out_refined[k].push(mkLit(var2_id, signs[2]));
-                    out_refined[k].push(mkLit(var1_id, signs[3]));
-                }
-
-                // Push the other lits
-                for (auto& lit : base_clause) {
-                    if (var(lit) == var1_id || var(lit) == var2_id)
-                        continue;
-                    out_refined[k].push(lit);
-                }
-                k++;
+                for (auto& var : vars)
+                    clauses[count].push_back(mkLit(var));
+                for (auto& lit : base_clause)
+                    clauses[count].push_back(lit);
             }
 
-            for (int count = 0; count < out_refined[k - 1].size(); count++)
+            // Set the signs of the head variables
+            for (int count = 0; count < 2; count++) {
+                if (are_equal) {
+                    if (count == 1)
+                        clauses[count][0] = ~clauses[count][0];
+                    else
+                        clauses[count][1] = ~clauses[count][1];
+                } else {
+                    if (count == 1) {
+                        clauses[count][0] = ~clauses[count][0];
+                        clauses[count][1] = ~clauses[count][1];
+                    }
+                }
+            }
+
+            // Resolve conflicts of the head variables with the pre-requisites
+            for (auto& clause : clauses) {
+                bool add = true;
+                for (int count = 0; count < 2; count++)
+                    for (int count2 = 2; count2 < clause.size(); count2++)
+                        if (clause[count] == clause[count2])
+                            clause.erase(clause.begin() + count);
+                        else if (~clause[count] == clause[count2])
+                            add = false;
+
+                if (add) {
+                    if (s.value(clause[1]) == l_Undef) {
+                        Lit temp = clause[0];
+                        clause[0] = clause[1];
+                        clause[1] = temp;
+                    }
+
+                    out_refined.push();
+                    for (auto& lit : clause)
+                        out_refined[k].push(lit);
+                    k++;
+                    add_count++;
+                }
+            }
+
+            // DEBUG
+            for (int count = 0; add_count > 0 && count < out_refined[k - 1].size(); count++)
                 printf(count == 0 ? "%d " : "%d", int_value(s, var(out_refined[k - 1][count])));
             printf("\n");
-            print_clause(out_refined[k - 1]);
-            print_clause(out_refined[k - 2]);
 
-            s.stats.two_bit_clauses_n[operation_id - TWO_BIT_CONSTRAINT_IF_ID] += 2;
+            // if (both_undefined)
+            //     printf("Both undefined\n");
+
+            printf("Base clause: ");
+            for (auto& item : base_clause) {
+                printf("%s%d ", sign(item) ? "-" : "", var(item) + 1);
+            }
+            printf("\n");
+
+            for (int count = 1; count <= add_count; count++) {
+                print_clause(out_refined[k - count]);
+            }
+
+            s.stats.two_bit_clauses_n[operation_id - TWO_BIT_CONSTRAINT_IF_ID] += add_count;
         }
 
         visited.insert(var1_id);
