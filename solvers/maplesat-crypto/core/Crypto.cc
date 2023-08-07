@@ -664,31 +664,10 @@ void infer_carries(Solver& s, vec<vec<Lit>>& out_refined, int& k, std::vector<in
         }
     }
 
-    // TODO: Fix bug with the following clause injection process
     // Low carry must be 1 if no. of 1s >= 6
     int low_carry_id = var_ids[var_ids.size() - 1];
     lbool low_carry_value = s.value(low_carry_id);
     bool inferred = false;
-    // if (low_carry_value != l_True && input_1s_n >= 6) {
-    //     out_refined.push();
-    //     out_refined[k].push(mkLit(low_carry_id));
-    //     for (int i = 0; i < input_1s_n; i++)
-    //         out_refined[k].push(~mkLit(input_1s_ids[i]));
-    //     for (int i = 0; i < input_0s_n; i++)
-    //         out_refined[k].push(mkLit(input_0s_ids[i]));
-    //     k++;
-    //     inferred = true;
-    // } else if (low_carry_value != l_False && input_0s_n >= 6) {
-    //     out_refined.push();
-    //     out_refined[k].push(~mkLit(low_carry_id));
-    //     for (int i = 0; i < input_1s_n; i++)
-    //         out_refined[k].push(~mkLit(input_1s_ids[i]));
-    //     for (int i = 0; i < input_0s_n; i++)
-    //         out_refined[k].push(mkLit(input_0s_ids[i]));
-    //     k++;
-    //     inferred = true;
-    // }
-
     // TODO: Check if the logic is correct
     if (low_carry_value != l_True && ((input_1s_n >= 6) || (input_1s_n >= 2 && input_1s_n + input_us_n < 4))) {
         out_refined.push();
@@ -739,57 +718,77 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
     int k = 0;
     for (int i = 0; i < s.steps; i++) {
         for (int j = 0; j < 32; j++) {
+            auto start = std::chrono::high_resolution_clock::now();
             // If
             {
                 std::vector<int> ids = prepare_func_vec(s.var_ids_.if_[i], j);
                 add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_IF_ID, 0, ids);
+                // if (k > 0) return;
             }
 
             // Maj
             {
                 std::vector<int> ids = prepare_func_vec(s.var_ids_.maj[i], j);
                 add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_MAJ_ID, 1, ids);
+                // if (k > 0) return;
             }
 
-            // sigma0
+            // Sigma0
             {
                 std::vector<int> ids = prepare_func_vec(s.var_ids_.sigma0[i], j, 0);
                 add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, 2, ids);
+                // if (k > 0) return;
             }
 
-            // sigma1
+            // Sigma1
             {
                 std::vector<int> ids = prepare_func_vec(s.var_ids_.sigma1[i], j, 1);
                 add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, 3, ids);
+                // if (k > 0) return;
             }
 
             if (i >= 16) {
-                // s0
+                // S0
                 if (j <= 28) {
                     std::vector<int> ids = prepare_func_vec(s.var_ids_.s0[i - 16], j, 2);
                     add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, 4, ids);
+                    // if (k > 0) return;
+                } else {
+                    // TODO: Implement XOR2 2-bit conditions
                 }
 
-                // s1
+                // S1
                 if (j <= 21) {
                     std::vector<int> ids = prepare_func_vec(s.var_ids_.s1[i - 16], j, 3);
                     add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, 5, ids);
+                    // if (k > 0) return;
+                } else {
+                    // TODO: Implement XOR2 2-bit conditions
                 }
             }
+            auto end = std::chrono::high_resolution_clock::now();
+            s.stats.two_bit_time_sum += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
+            auto start2 = std::chrono::high_resolution_clock::now();
             // Add E
             add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_e[i], 1, 0);
+            // if (k > 0) return;
 
             // Add A
             add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_a[i], 2, 1);
+            // if (k > 0) return;
 
             // Add W
             if (i >= 16) {
                 add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_w[i - 16], 2, 2);
+                // if (k > 0) return;
             }
 
             // Add T
             add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_t[i], 2, 3);
+            // if (k > 0) return;
+            auto end2 = std::chrono::high_resolution_clock::now();
+            s.stats.carry_inference_time_sum += std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2).count();
         }
     }
 }
