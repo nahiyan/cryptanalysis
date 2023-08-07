@@ -427,54 +427,46 @@ std::string random_string( size_t length )
 //           least one clause.
 
 int wait = 0;
-int adds = 0;
-time_t time_sum = 0;
-std::set<int> debug_vars;
-std::string clauses_file_name = random_string(10);
-FILE* clauses_file = fopen(("clauses_" + random_string(10) + ".txt").c_str(), "w");
+std::set<int> watchlist;
 
 void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
 {
-    auto start = std::chrono::high_resolution_clock::now();
-    if (++wait != 3000 && !complete) {
+    if (++wait != 300 && !complete) {
         return;
     }
-    if (time_sum == 0)
-        printf("Clauses file: clauses_%s.txt\n", clauses_file_name.c_str());
-    fflush(stdout);
+    stats.callback_count++;
+    wait = 0;
+    // TODO: Find out why the time duration is affected by other time duration calculations
+    // auto start = std::chrono::high_resolution_clock::now();
 
-    // if (debug_vars.size() > 0) {
-    //     printf("Debug: ");
-    //     for(int const& var: debug_vars)
-    //         printf("%d = %d, ", var + 1, value(var));
+    // Watch the variables from the previously added clauses
+    if (watchlist.size() > 0) {
+        printf("Debug: ");
+        for(int const& var: watchlist)
+            printf("%d = %d, ", var + 1, value(var));
 
-    //     printf("\n");
-    //     debug_vars.clear();
-    // }
+        printf("\n");
+        watchlist.clear();
+    }
 
     add_clauses(*this, out_refined);
+
+    // Add the newly added clause variables to the watch list
     for (int i = 0; i < out_refined.size(); i++) {
-        // debug_vars.insert(var(out_refined[i][0]));
-        
-        auto& clause_ = out_refined[i];
-        for (int i = 0; i < clause_.size(); i++) {
-            fprintf(clauses_file, "%s%d", sign(clause_[i]) ? "-" : "", var(clause_[i]) + 1);
-            if (i != clause_.size() - 1)
-                fprintf(clauses_file, " ");
+        for (int j = 0; j < out_refined[i].size(); j++) {
+            watchlist.insert(var(out_refined[i][j]));
         }
-        fprintf(clauses_file, "\n");
     }
     
-    // if (out_refined.size() > 1)
-    //     printf("Warning! Clause count: %d\n", out_refined.size());
-    // else if (out_refined.size() > 0)
-    //     printf("Clause count: %d\n", out_refined.size());
-    // fflush(stdout);
-    // adds += out_refined.size();
+    if (out_refined.size() > 1)
+        printf("Warning! Clause count: %d\n", out_refined.size());
+    else if (out_refined.size() > 0)
+        printf("Clause count: %d\n", out_refined.size());
+    fflush(stdout);
+    stats.clauses_added += out_refined.size();
 
-    wait = 0;
-    auto finish = std::chrono::high_resolution_clock::now();
-    time_sum += std::chrono::duration_cast<std::chrono::microseconds>(finish - start).count();
+    // auto end = std::chrono::high_resolution_clock::now();
+    // stats.total_time_sum += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 }
 
 bool Solver::falsifiedClause(vec<Lit>& confl)
@@ -1479,9 +1471,10 @@ lbool Solver::solve_()
     if (verbosity >= 1)
         printf("===============================================================================\n");
 
-    printf("Time spent in callback: %.02fs\n", (float_t)time_sum / 1e6);
+    printf("Clauses added: %d (%d in average)\n", stats.clauses_added, stats.clauses_added / stats.callback_count);
+    printf("Time spent in callback: %.02fs\n", (float_t)stats.total_time_sum / 1e6);
     
-    printf("Two-bit clauses:\n");
+    printf("Two-bit clauses (%.02fs):\n", (float_t)stats.two_bit_time_sum / 1e6);
     printf("If: %d\n", stats.two_bit_clauses_n[0]);
     printf("Maj: %d\n", stats.two_bit_clauses_n[1]);
     printf("XOR3: %d\n", stats.two_bit_clauses_n[2]);
@@ -1490,7 +1483,7 @@ lbool Solver::solve_()
     printf("ADD5: %d\n", stats.two_bit_clauses_n[5]);
     printf("ADD6: %d\n", stats.two_bit_clauses_n[6]);
     printf("ADD7: %d\n", stats.two_bit_clauses_n[7]);
-    printf("Carry inference clauses:\n");
+    printf("Carry inference clauses (%.02fs):\n", (float_t)stats.carry_inference_time_sum / 1e6);
     printf("ADD(E): %d %d\n", stats.carry_infer_high_clauses_n[0], stats.carry_infer_low_clauses_n[0]);
     printf("ADD(A): %d %d\n", stats.carry_infer_high_clauses_n[1], stats.carry_infer_low_clauses_n[1]);
     printf("ADD(W): %d %d\n", stats.carry_infer_high_clauses_n[2], stats.carry_infer_low_clauses_n[2]);

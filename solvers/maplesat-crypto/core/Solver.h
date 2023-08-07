@@ -194,6 +194,11 @@ public:
         int two_bit_clauses_n[8] = {0, 0, 0, 0, 0, 0, 0, 0};
         int carry_infer_high_clauses_n[4] = {0, 0, 0, 0};
         int carry_infer_low_clauses_n[4] = {0, 0, 0, 0};
+        int callback_count = 0;
+        int clauses_added = 0;
+        int64_t total_time_sum = 0;
+        int64_t two_bit_time_sum = 0;
+        int64_t carry_inference_time_sum = 0;
     } stats;
 
 protected:
