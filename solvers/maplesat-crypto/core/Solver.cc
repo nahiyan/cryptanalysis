@@ -1472,7 +1472,7 @@ lbool Solver::solve_()
         printf("===============================================================================\n");
 
     printf("Clauses added: %d (%d in average)\n", stats.clauses_added, stats.clauses_added / stats.callback_count);
-    printf("Time spent in callback: %.02fs\n", (float_t)stats.total_time_sum / 1e6);
+    // printf("Time spent in callback: %.02fs\n", (float_t)stats.total_time_sum / 1e6);
     
     printf("Two-bit clauses (%.02fs):\n", (float_t)stats.two_bit_time_sum / 1e6);
     printf("If: %d\n", stats.two_bit_clauses_n[0]);
