@@ -440,23 +440,23 @@ void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
     // auto start = std::chrono::high_resolution_clock::now();
 
     // Watch the variables from the previously added clauses
-    if (watchlist.size() > 0) {
-        printf("Debug: ");
-        for(int const& var: watchlist)
-            printf("%d = %d, ", var + 1, value(var));
+    // if (watchlist.size() > 0) {
+    //     printf("Debug: ");
+    //     for(int const& var: watchlist)
+    //         printf("%d = %d, ", var + 1, value(var));
 
-        printf("\n");
-        watchlist.clear();
-    }
+    //     printf("\n");
+    //     watchlist.clear();
+    // }
 
     add_clauses(*this, out_refined);
 
     // Add the newly added clause variables to the watch list
-    for (int i = 0; i < out_refined.size(); i++) {
-        for (int j = 0; j < out_refined[i].size(); j++) {
-            watchlist.insert(var(out_refined[i][j]));
-        }
-    }
+    // for (int i = 0; i < out_refined.size(); i++) {
+    //     for (int j = 0; j < out_refined[i].size(); j++) {
+    //         watchlist.insert(var(out_refined[i][j]));
+    //     }
+    // }
     
     if (out_refined.size() > 1)
         printf("Warning! Clause count: %d\n", out_refined.size());

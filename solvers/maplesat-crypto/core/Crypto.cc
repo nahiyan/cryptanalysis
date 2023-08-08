@@ -488,7 +488,7 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
                 continue;
 
             // DEBUG
-            printf("2-bit conditions met (%d, %d): %s %s ", operation_id, function_id, rule_it->first.c_str(), rule_it->second.c_str());
+            printf("2-bit conditions met (%d, %d): %s %s (%d, %d) ", operation_id, function_id, rule_it->first.c_str(), rule_it->second.c_str(), var1_id + 1, var2_id + 1);
 
             int add_count = 0;
             // Construct the clauses
