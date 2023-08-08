@@ -59,6 +59,7 @@ void SHA256::encode() {
     // Addition: w[i]
     cnf.newVars(wCarry[i], 32, "add_w" + to_string(i) + "_z0");
     cnf.newVars(wcarry[i], 32, "add_w" + to_string(i) + "_z1");
+    cnf.varName(w[i], "add_w" + to_string(i) + "_z2");
 
     cnf.varName(w[i - 16], "add_w" + to_string(i) + "_x0");
     cnf.varName(s0[i], "add_w" + to_string(i) + "_x1");
@@ -141,7 +142,7 @@ void SHA256::encode() {
     // Addition: T[i]
     cnf.newVars(r0Carry[i], 32, "add_T" + to_string(i) + "_z0");
     cnf.newVars(r0carry[i], 32, "add_T" + to_string(i) + "_z1");
-    cnf.newVars(T[i], 32, "T" + to_string(i));
+    cnf.newVars(T[i], 32, "add_T" + to_string(i) + "_z2");
 
     cnf.varName(E[i], "add_T" + to_string(i) + "_x0");
     cnf.varName(sigma1[i], "add_T" + to_string(i) + "_x1");
@@ -154,6 +155,7 @@ void SHA256::encode() {
 
     // Addition: E[i + 4]
     cnf.newVars(r1carry[i], 32, "add_E" + to_string(i + 4) + "_z0");
+    cnf.varName(E[i + 4], "add_E" + to_string(i + 4) + "_z1");
     cnf.varName(A[i], "add_E" + to_string(i + 4) + "_x0");
     cnf.varName(T[i], "add_E" + to_string(i + 4) + "_x1");
     cnf.varName(r1carry[i], "add_E" + to_string(i + 4) + "_x2", -1);
@@ -162,6 +164,7 @@ void SHA256::encode() {
     // Addition: A[i + 4]
     cnf.newVars(r2Carry[i], 32, "add_A" + to_string(i + 4) + "_z0");
     cnf.newVars(r2carry[i], 32, "add_A" + to_string(i + 4) + "_z1");
+    cnf.varName(A[i + 4], "add_A" + to_string(i + 4) + "_z2");
     cnf.varName(T[i], "add_A" + to_string(i + 4) + "_x0");
     cnf.varName(sigma0[i], "add_A" + to_string(i + 4) + "_x1");
     cnf.varName(r2carry[i], "add_A" + to_string(i + 4) + "_x2", -1);
