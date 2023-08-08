@@ -821,31 +821,40 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
                 } else {
                     // TODO: Implement XOR2 2-bit conditions
                 }
+
+                // Add W
+                add_addition_2_bit_clauses(s, out_refined, k, i, j, s.var_ids_.add_w[i - 16], 2, 2);
             }
+
+            // Add E
+            add_addition_2_bit_clauses(s, out_refined, k, i, j, s.var_ids_.add_e[i], 1, 0);
+
+            // Add A
+            add_addition_2_bit_clauses(s, out_refined, k, i, j, s.var_ids_.add_a[i], 2, 1);
+
+            // Add T
+            add_addition_2_bit_clauses(s, out_refined, k, i, j, s.var_ids_.add_t[i], 2, 3);
+
             auto end = std::chrono::high_resolution_clock::now();
             s.stats.two_bit_time_sum += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
             auto start2 = std::chrono::high_resolution_clock::now();
             // Add E
             add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_e[i], 1, 0);
-            add_addition_2_bit_clauses(s, out_refined, k, i, j, s.var_ids_.add_e[i], 1, 0);
             // if (k > 0) return;
 
             // Add A
             add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_a[i], 2, 1);
-            add_addition_2_bit_clauses(s, out_refined, k, i, j, s.var_ids_.add_a[i], 2, 1);
             // if (k > 0) return;
 
             // Add W
             if (i >= 16) {
                 add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_w[i - 16], 2, 2);
-                add_addition_2_bit_clauses(s, out_refined, k, i, j, s.var_ids_.add_w[i - 16], 2, 2);
                 // if (k > 0) return;
             }
 
             // Add T
             add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_t[i], 2, 3);
-            add_addition_2_bit_clauses(s, out_refined, k, i, j, s.var_ids_.add_t[i], 2, 3);
             // if (k > 0) return;
             auto end2 = std::chrono::high_resolution_clock::now();
             s.stats.carry_inference_time_sum += std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2).count();
