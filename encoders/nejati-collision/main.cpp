@@ -191,15 +191,14 @@ void collision(int rounds)
 
             g.cnf.xor2(Dr0carry[i], f.r0carry[i], g.r0carry[i], 32);
             g.cnf.xor2(Dr0Carry[i], f.r0Carry[i], g.r0Carry[i], 32);
-            g.cnf.newVars(DK[i], 32, "DK_" + to_string(i));
-            g.cnf.fixedValue(DK[i], 0, 32);
 
             g.cnf.varName(DE[i], "add_DT" + to_string(i) + "_x0");
             g.cnf.varName(Dsigma1[i], "add_DT" + to_string(i) + "_x1");
             g.cnf.varName(Dr0carry[i], "add_DT" + to_string(i) + "_x2", -1);
             g.cnf.varName(Dr0Carry[i], "add_DT" + to_string(i) + "_x3", -2);
             g.cnf.varName(Df1[i], "add_DT" + to_string(i) + "_x4");
-            g.cnf.varName(DK[i], "add_DT" + to_string(i) + "_x5");
+            g.cnf.newVars(DK[i], 32, "add_DT" + to_string(i) + "_x5");
+            g.cnf.fixedValue(DK[i], 0, 32);
             g.cnf.varName(DW[i], "add_DT" + to_string(i) + "_x6");
             g.cnf.diff_add(DT[i], DE[i], Dsigma1[i], Dr0carry[i], Dr0Carry[i], Df1[i], DK[i], DW[i]);
 

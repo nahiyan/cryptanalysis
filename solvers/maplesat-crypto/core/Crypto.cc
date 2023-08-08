@@ -171,17 +171,17 @@ void process_var_map(Solver& solver)
             add_to_var_ids(solver, "s1_" + std::to_string(i) + "_", solver.var_ids_.s1[i - 16], 3, 1);
 
             // add_w
-            add_to_var_ids(solver, "add_w" + std::to_string(i) + "_", solver.var_ids_.add_w[i - 16], 6, 2);
+            add_to_var_ids(solver, "add_w" + std::to_string(i) + "_", solver.var_ids_.add_w[i - 16], 6, 3);
         }
 
         // add_t
-        add_to_var_ids(solver, "add_T" + std::to_string(i) + "_", solver.var_ids_.add_t[i], 7, 2);
+        add_to_var_ids(solver, "add_T" + std::to_string(i) + "_", solver.var_ids_.add_t[i], 7, 3);
 
         // add_e
-        add_to_var_ids(solver, "add_E" + std::to_string(i + 4) + "_", solver.var_ids_.add_e[i], 3, 1);
+        add_to_var_ids(solver, "add_E" + std::to_string(i + 4) + "_", solver.var_ids_.add_e[i], 3, 2);
 
         // add_a
-        add_to_var_ids(solver, "add_A" + std::to_string(i + 4) + "_", solver.var_ids_.add_a[i], 5, 2);
+        add_to_var_ids(solver, "add_A" + std::to_string(i + 4) + "_", solver.var_ids_.add_a[i], 5, 3);
     }
 }
 
@@ -569,7 +569,7 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
 // Prepare the vector of all the operands and carries of addition (may also remove operands equal to carries from previous columns)
 void prepare_add_vec(std::vector<int>& ids, std::vector<int>& f, std::vector<int>& g, int carries_n, int offset, int carry_removal_n = 0)
 {
-    int inputs_n = ids.size() - carries_n * 3;
+    int inputs_n = ids.size() - (carries_n + 1) * 3;
     for (int i = 0, j = 0; i < inputs_n; i += 3, j++) {
         if (carry_removal_n > 0 && j == 3 || carry_removal_n == 2 && j == 2)
             continue;
@@ -578,10 +578,34 @@ void prepare_add_vec(std::vector<int>& ids, std::vector<int>& f, std::vector<int
         g.push_back(ids[i + 1] + offset);
     }
 
-    for (int i = inputs_n; i < ids.size(); i += 3) {
+    // Add the carries but ignore the sum
+    for (int i = inputs_n; i < ids.size() - 3; i += 3) {
         f.push_back(ids[i] + offset);
         g.push_back(ids[i + 1] + offset);
     }
+}
+
+std::vector<int> prepare_add_2_bit_vec(std::vector<int>& ids, int carries_n, int offset, int carry_removal_n = 0)
+{
+    std::vector<int> new_vec;
+    int inputs_n = ids.size() - (carries_n + 1) * 3;
+    for (int i = 0, j = 0; i < inputs_n; i += 3, j++) {
+        if (carry_removal_n > 0 && j == 3 || carry_removal_n == 2 && j == 2)
+            continue;
+
+        new_vec.push_back(ids[i] + offset);
+        new_vec.push_back(ids[i + 1] + offset);
+        new_vec.push_back(ids[i + 2] + offset);
+    }
+
+    // Add the sum but ignore the carries
+    for (int i = inputs_n + (3 * carries_n); i < ids.size(); i += 3) {
+        new_vec.push_back(ids[i] + offset);
+        new_vec.push_back(ids[i + 1] + offset);
+        new_vec.push_back(ids[i + 2] + offset);
+    }
+
+    return new_vec;
 }
 
 int r_rotate_id(int id, int amount, int offset)
@@ -713,6 +737,38 @@ void add_addition_clauses(Solver& s, vec<vec<Lit>>& out_refined, int& k, int i, 
     infer_carries(s, out_refined, k, ids_g, carries_n, function_id);
 }
 
+void add_addition_2_bit_clauses(Solver& s, vec<vec<Lit>>& out_refined, int& k, int i, int j, std::vector<int>& ids, int carries_n, int function_id)
+{
+    std::vector<int> new_vec;
+    if (j > 1)
+        new_vec = prepare_add_2_bit_vec(ids, carries_n, j, 0);
+    else if (j == 1)
+        new_vec = prepare_add_2_bit_vec(ids, carries_n, j, 1);
+    else
+        new_vec = prepare_add_2_bit_vec(ids, carries_n, j, 2);
+
+    int operation_id = 0;
+    if ((j > 1 && function_id == 1) || (j == 0 && function_id == 3) || (j == 1 && function_id == 2))
+        operation_id = TWO_BIT_CONSTRAINT_ADD5_ID;
+    else if ((j == 1 && function_id == 1) || (j == 0 && function_id == 2))
+        operation_id = TWO_BIT_CONSTRAINT_ADD4_ID;
+    else if ((j == 0 && function_id == 1) || (j > 1 && function_id == 0))
+        operation_id = TWO_BIT_CONSTRAINT_ADD3_ID;
+    else if ((j == 1 && function_id == 3) || (j > 1 && function_id == 2))
+        operation_id = TWO_BIT_CONSTRAINT_ADD6_ID;
+    else if (j > 1 && function_id == 3)
+        operation_id = TWO_BIT_CONSTRAINT_ADD7_ID;
+
+    // TODO: Add two-bit conditions for ADD2
+    // printf("Debug imp: ");
+    // for (auto& x: ids_f) {
+    //     printf("%d ", x);
+    // }
+    // printf("\n");
+
+    add_2_bit_clauses(s, out_refined, k, operation_id, function_id, new_vec);
+}
+
 void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
 {
     int k = 0;
@@ -772,20 +828,24 @@ void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
             auto start2 = std::chrono::high_resolution_clock::now();
             // Add E
             add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_e[i], 1, 0);
+            add_addition_2_bit_clauses(s, out_refined, k, i, j, s.var_ids_.add_e[i], 1, 0);
             // if (k > 0) return;
 
             // Add A
             add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_a[i], 2, 1);
+            add_addition_2_bit_clauses(s, out_refined, k, i, j, s.var_ids_.add_a[i], 2, 1);
             // if (k > 0) return;
 
             // Add W
             if (i >= 16) {
                 add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_w[i - 16], 2, 2);
+                add_addition_2_bit_clauses(s, out_refined, k, i, j, s.var_ids_.add_w[i - 16], 2, 2);
                 // if (k > 0) return;
             }
 
             // Add T
             add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_t[i], 2, 3);
+            add_addition_2_bit_clauses(s, out_refined, k, i, j, s.var_ids_.add_t[i], 2, 3);
             // if (k > 0) return;
             auto end2 = std::chrono::high_resolution_clock::now();
             s.stats.carry_inference_time_sum += std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2).count();
