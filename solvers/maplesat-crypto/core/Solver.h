@@ -171,11 +171,22 @@ public:
     vec<long double> total_actual_rewards;
     vec<int> total_actual_count;
 
-    // CDCL(Crypto)
-    std::unordered_map<std::string, int> var_map;
     std::unordered_map<std::string, std::string> rules;
+    std::unordered_map<std::string, int> var_map;
     int steps = 0;
-    struct var_ids {
+
+    struct Stats {
+        int two_bit_clauses_n[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+        int carry_infer_high_clauses_n[4] = {0, 0, 0, 0};
+        int carry_infer_low_clauses_n[4] = {0, 0, 0, 0};
+        int callback_count = 0;
+        int clauses_added = 0;
+        int64_t total_time_sum = 0;
+        int64_t two_bit_time_sum = 0;
+        int64_t carry_inference_time_sum = 0;
+    } stats;
+
+    struct VarIds {
         std::vector<int> if_[64];
         std::vector<int> maj[64];
         
@@ -189,18 +200,7 @@ public:
         std::vector<int> add_t[64];
         std::vector<int> add_e[64];
         std::vector<int> add_a[64];
-    } var_ids_;
-    struct stats {
-        int two_bit_clauses_n[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-        int carry_infer_high_clauses_n[4] = {0, 0, 0, 0};
-        int carry_infer_low_clauses_n[4] = {0, 0, 0, 0};
-        int callback_count = 0;
-        int clauses_added = 0;
-        int64_t total_time_sum = 0;
-        int64_t two_bit_time_sum = 0;
-        int64_t carry_inference_time_sum = 0;
-    } stats;
-
+    } var_ids;
 protected:
 
     // Helper structures:

@@ -436,6 +436,13 @@ void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
     }
     stats.callback_count++;
     wait = 0;
+
+    // Initialize the state of the new programmatic iteration
+    auto state = Crypto::State{
+        out_refined: out_refined,
+        solver: *this,
+    };
+    
     // TODO: Find out why the time duration is affected by other time duration calculations
     // auto start = std::chrono::high_resolution_clock::now();
 
@@ -448,8 +455,8 @@ void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
     //     printf("\n");
     //     watchlist.clear();
     // }
-
-    add_clauses(*this, out_refined);
+    
+    Crypto::add_clauses(state);
 
     // Add the newly added clause variables to the watch list
     // for (int i = 0; i < out_refined.size(); i++) {

@@ -1,8 +1,6 @@
 import os
-from itertools import permutations, combinations, product
-from rules_gen import gen_weight_dists, if_, maj, xor3, bin_add, uniq, gc, to_bytearray
-from termcolor import colored
-from math import floor
+from itertools import product
+from rules_gen import if_, maj, xor3, bin_add, to_bytearray
 
 TWO_BIT_CONSTRAINT_IF_ID = 17
 TWO_BIT_CONSTRAINT_MAJ_ID = 18

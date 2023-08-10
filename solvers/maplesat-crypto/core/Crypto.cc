@@ -31,7 +31,8 @@
 #define TWO_BIT_CONSTRAINT_ADD6_ID 23
 #define TWO_BIT_CONSTRAINT_ADD7_ID 24
 
-void loadRule(Minisat::Solver& solver, FILE*& db, int& id)
+namespace Crypto {
+void load_rule(Solver& solver, FILE*& db, int& id)
 {
     int key_size = 0, val_size = 0;
     // Note: Put one extra char for the ID
@@ -96,13 +97,9 @@ void loadRule(Minisat::Solver& solver, FILE*& db, int& id)
     value[val_size] = 0;
 
     solver.rules.insert({ key, value });
-
-    // DEBUG
-    // printf("Rule: %d %s: %s\n", id, key, value);
-    // fflush(stdout);
 }
 
-void loadRules(Minisat::Solver& solver, const char* filename)
+void load_rules(Solver& solver, const char* filename)
 {
     FILE* db = fopen(filename, "r");
     char buffer[1];
@@ -113,7 +110,7 @@ void loadRules(Minisat::Solver& solver, const char* filename)
             break;
 
         int id = buffer[0];
-        loadRule(solver, db, id);
+        load_rule(solver, db, id);
         count++;
     }
 
@@ -152,36 +149,36 @@ void process_var_map(Solver& solver)
     printf("Var. map entries: %d\n", solver.var_map.size());
     for (int i = 0; i < solver.steps; i++) {
         // if
-        add_to_var_ids(solver, "if_" + std::to_string(i) + "_", solver.var_ids_.if_[i], 3, 1);
+        add_to_var_ids(solver, "if_" + std::to_string(i) + "_", solver.var_ids.if_[i], 3, 1);
 
         // maj
-        add_to_var_ids(solver, "maj_" + std::to_string(i) + "_", solver.var_ids_.maj[i], 3, 1);
+        add_to_var_ids(solver, "maj_" + std::to_string(i) + "_", solver.var_ids.maj[i], 3, 1);
 
         // sigma0
-        add_to_var_ids(solver, "sigma0_" + std::to_string(i) + "_", solver.var_ids_.sigma0[i], 3, 1);
+        add_to_var_ids(solver, "sigma0_" + std::to_string(i) + "_", solver.var_ids.sigma0[i], 3, 1);
 
         // sigma1
-        add_to_var_ids(solver, "sigma1_" + std::to_string(i) + "_", solver.var_ids_.sigma1[i], 3, 1);
+        add_to_var_ids(solver, "sigma1_" + std::to_string(i) + "_", solver.var_ids.sigma1[i], 3, 1);
 
         if (i >= 16) {
             // s0
-            add_to_var_ids(solver, "s0_" + std::to_string(i) + "_", solver.var_ids_.s0[i - 16], 3, 1);
+            add_to_var_ids(solver, "s0_" + std::to_string(i) + "_", solver.var_ids.s0[i - 16], 3, 1);
 
             // s1
-            add_to_var_ids(solver, "s1_" + std::to_string(i) + "_", solver.var_ids_.s1[i - 16], 3, 1);
+            add_to_var_ids(solver, "s1_" + std::to_string(i) + "_", solver.var_ids.s1[i - 16], 3, 1);
 
             // add_w
-            add_to_var_ids(solver, "add_w" + std::to_string(i) + "_", solver.var_ids_.add_w[i - 16], 6, 3);
+            add_to_var_ids(solver, "add_w" + std::to_string(i) + "_", solver.var_ids.add_w[i - 16], 6, 3);
         }
 
         // add_t
-        add_to_var_ids(solver, "add_T" + std::to_string(i) + "_", solver.var_ids_.add_t[i], 7, 3);
+        add_to_var_ids(solver, "add_T" + std::to_string(i) + "_", solver.var_ids.add_t[i], 7, 3);
 
         // add_e
-        add_to_var_ids(solver, "add_E" + std::to_string(i + 4) + "_", solver.var_ids_.add_e[i], 3, 2);
+        add_to_var_ids(solver, "add_E" + std::to_string(i + 4) + "_", solver.var_ids.add_e[i], 3, 2);
 
         // add_a
-        add_to_var_ids(solver, "add_A" + std::to_string(i + 4) + "_", solver.var_ids_.add_a[i], 5, 3);
+        add_to_var_ids(solver, "add_A" + std::to_string(i + 4) + "_", solver.var_ids.add_a[i], 5, 3);
     }
 }
 
@@ -231,11 +228,27 @@ void print_clause(vec<Lit>& clause)
     printf("\n");
 }
 
-bool check_consistency(std::vector<std::pair<int32_t, int32_t>>& equations)
+void add_shortest_clause(State& state)
+{
+    int shortest_index = 0, shortest_length = INT_MAX;
+    for (int i = 0; i < state.conflict_clauses.size(); i++) {
+        int size = state.conflict_clauses[i].size();
+        if (size < shortest_length) {
+            shortest_length = size;
+            shortest_index = i;
+        }
+    }
+}
+
+bool check_consistency(equations_t& equations)
 {
     std::map<uint32_t, std::set<int32_t>*> rels;
+    bool is_consistent = true;
 
-    for (auto equation : equations) {
+    for (auto& equation : equations) {
+        equation.first += equation.first < 0 ? -1 : 1;
+        equation.second += equation.second < 0 ? -1 : 1;
+
         auto var1 = equation.first;
         auto var2 = equation.second;
         auto var1_abs = abs(var1);
@@ -271,11 +284,11 @@ bool check_consistency(std::vector<std::pair<int32_t, int32_t>>& equations)
                 if ((var1_inv_exists && var1_exists) || (var2_inv_exists && var2_exists)) {
 #if DEBUG
                     for (auto equation : equations) {
-                        printf("Equation: %d %s %d\n", abs(equation.first) + 1, (equation.first > 0 && equation.second > 0) ? "=" : "/=", abs(equation.second) + 1);
+                        printf("Equation: %d %s %d\n", abs(equation.first), (equation.first > 0 && equation.second > 0) ? "=" : "/=", abs(equation.second));
                     }
-                    printf("Contradiction detected (%d equations): %d %d\n", equations.size(), abs(var1) + 1, abs(var2) + 1);
+                    printf("Contradiction detected (%d equations, %d-long cycle): %d %d\n", equations.size(), updated_set->size() / 2, abs(var1), abs(var2));
 #endif
-                    return false;
+                    is_consistent = false;
                 }
             }
 
@@ -334,21 +347,21 @@ bool check_consistency(std::vector<std::pair<int32_t, int32_t>>& equations)
     }
 
     // #if DEBUG
-    //     for (auto rel : rels) {
-    //         printf("%d: ", rel.first);
-    //         auto& set = *rel.second;
-    //         for (auto& item : set) {
-    //             printf("%d ", item);
+    //         for (auto rel : rels) {
+    //             printf("%d: ", rel.first + 1);
+    //             auto& set = *rel.second;
+    //             for (auto& item : set) {
+    //                 printf("%d ", item);
+    //             }
+    //             printf("\n");
     //         }
-    //         printf("\n");
-    //     }
     // #endif
 
-    return true;
+    return is_consistent;
 }
 
 // The variable IDs provided should include the operands and the output
-void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, int operation_id, int function_id, std::vector<int> var_ids)
+void add_2_bit_clauses(State& state, int operation_id, int function_id, std::vector<int> var_ids)
 {
     // Number of variables
     int vars_n = var_ids.size();
@@ -367,13 +380,13 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
     for (int i = 0, j = 1; i < vars_n; i += 3, j++) {
         // There are 3 possible ways to derive the GC of the chunk: from x and x_, from dx and x or x_, or from dx alone, else we can't
         int& x_id = var_ids[i];
-        lbool x_value = s.value(var_ids[i]);
+        lbool x_value = state.solver.value(var_ids[i]);
 
         int& x_prime_id = var_ids[i + 1];
-        lbool x_prime_value = s.value(var_ids[i + 1]);
+        lbool x_prime_value = state.solver.value(var_ids[i + 1]);
 
         int& dx_id = var_ids[i + 2];
-        lbool dx_value = s.value(var_ids[i + 2]);
+        lbool dx_value = state.solver.value(var_ids[i + 2]);
 
         // TODO: Consider enforcing the relationship instead of just helping the solver propagate
         if (x_value != l_Undef && x_prime_value != l_Undef) {
@@ -415,8 +428,8 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
         return;
 
     // Find the value of the rule (if it exists)
-    auto rule_it = s.rules.find(rule_key);
-    if (rule_it == s.rules.end())
+    auto rule_it = state.solver.rules.find(rule_key);
+    if (rule_it == state.solver.rules.end())
         return;
     auto rule_value = rule_it->second;
 
@@ -435,111 +448,8 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
             bool are_equal = rule_value[rule_i] == '1';
 
             // Inferred variables should be undefined
-            lbool var1_value = s.value(var1_id);
-            lbool var2_value = s.value(var2_id);
-
-            // // Skip if both vars are defined and equal when they are supposed to be
-            // if (are_equal && var1_value != l_Undef && var2_value != l_Undef && var1_value == var2_value)
-            //     continue;
-
-            // // Skip if both vars are defined and inequal when they are supposed to be
-            // if (!are_equal && var1_value != l_Undef && var2_value != l_Undef && var1_value != var2_value)
-            //     continue;
-
-            // DEBUG
-            // if (var1_value != l_Undef && var2_value != l_Undef) {
-            //     if (are_equal && var1_value != var2_value)
-            //         printf("Candidate: %d %d %d\n", var1_value, var2_value, are_equal);
-            //     else if (!are_equal && var1_value == var2_value)
-            //         printf("Candidate: %d %d %d\n", var1_value, var2_value, are_equal);
-            // }
-
-            // if (var1_value == l_Undef || var2_value == l_Undef) {
-            //     printf("Candidate 2: %d %d %d (%d)\n", var1_value, var2_value, are_equal, operation_id);
-            // }
-
-            // Skip if both the values are undefined
-            if (var1_value == l_Undef && var2_value == l_Undef)
-                continue;
-
-            // Skip if both the values are defined
-            bool both_undefined = false;
-            if (var1_value != l_Undef && var2_value != l_Undef)
-                continue;
-
-            // DEBUG
-            printf("2-bit conditions met (%d, %d): %s %s (%d, %d) ", operation_id, function_id, rule_it->first.c_str(), rule_it->second.c_str(), var1_id + 1, var2_id + 1);
-
-            int add_count = 0;
-            // Construct the clauses
-            int vars[] = { var1_id, var2_id };
-            std::vector<Lit> clauses[2];
-            for (int count = 0; count < 2; count++) {
-                for (auto& var : vars)
-                    clauses[count].push_back(mkLit(var));
-                for (auto& lit : base_clause)
-                    clauses[count].push_back(lit);
-            }
-
-            // Set the signs of the head variables
-            for (int count = 0; count < 2; count++) {
-                if (are_equal) {
-                    if (count == 1)
-                        clauses[count][0] = ~clauses[count][0];
-                    else
-                        clauses[count][1] = ~clauses[count][1];
-                } else {
-                    if (count == 1) {
-                        clauses[count][0] = ~clauses[count][0];
-                        clauses[count][1] = ~clauses[count][1];
-                    }
-                }
-            }
-
-            // Resolve conflicts of the head variables with the pre-requisites
-            for (auto& clause : clauses) {
-                bool add = true;
-                for (int count = 0; count < 2; count++)
-                    for (int count2 = 2; count2 < clause.size(); count2++)
-                        if (clause[count] == clause[count2])
-                            clause.erase(clause.begin() + count);
-                        else if (~clause[count] == clause[count2])
-                            add = false;
-
-                if (add) {
-                    if (s.value(clause[1]) == l_Undef) {
-                        Lit temp = clause[0];
-                        clause[0] = clause[1];
-                        clause[1] = temp;
-                    }
-
-                    out_refined.push();
-                    for (auto& lit : clause)
-                        out_refined[k].push(lit);
-                    k++;
-                    add_count++;
-                }
-            }
-
-            // DEBUG
-            for (int count = 0; add_count > 0 && count < out_refined[k - 1].size(); count++)
-                printf(count == 0 ? "%d " : "%d", int_value(s, var(out_refined[k - 1][count])));
-            printf("\n");
-
-            // if (both_undefined)
-            //     printf("Both undefined\n");
-
-            printf("Base clause: ");
-            for (auto& item : base_clause) {
-                printf("%s%d ", sign(item) ? "-" : "", var(item) + 1);
-            }
-            printf("\n");
-
-            for (int count = 1; count <= add_count; count++) {
-                print_clause(out_refined[k - count]);
-            }
-
-            s.stats.two_bit_clauses_n[operation_id - TWO_BIT_CONSTRAINT_IF_ID] += add_count;
+            lbool var1_value = state.solver.value(var1_id);
+            lbool var2_value = state.solver.value(var2_id);
         }
 
         visited.insert(var1_id);
@@ -623,16 +533,16 @@ std::vector<int> prepare_func_vec(std::vector<int>& ids, int offset, int functio
     return new_vec;
 }
 
-void infer_carries(Solver& s, vec<vec<Lit>>& out_refined, int& k, std::vector<int>& var_ids, int carries_n, int function_id)
+void infer_carries(State& state, std::vector<int>& var_ids, int carries_n, int function_id)
 {
     int inputs_n = var_ids.size() - carries_n;
     int input_1s_n = 0, input_1s_ids[inputs_n];
     int input_0s_n = 0, input_0s_ids[inputs_n];
     int input_us_n = 0, input_us_ids[inputs_n];
     for (int i = 0; i < inputs_n; i++) {
-        if (s.value(var_ids[i]) == l_True)
+        if (state.solver.value(var_ids[i]) == l_True)
             input_1s_ids[input_1s_n++] = var_ids[i];
-        else if (s.value(var_ids[i]) == l_False)
+        else if (state.solver.value(var_ids[i]) == l_False)
             input_0s_ids[input_0s_n++] = var_ids[i];
         else
             input_us_ids[input_us_n++] = var_ids[i];
@@ -640,70 +550,76 @@ void infer_carries(Solver& s, vec<vec<Lit>>& out_refined, int& k, std::vector<in
 
     if (carries_n == 2) {
         int high_carry_id = var_ids[inputs_n];
-        lbool high_carry_value = s.value(high_carry_id);
+        lbool high_carry_value = state.solver.value(high_carry_id);
         bool inferred = false;
 
         // High carry must be 1 if no. of 1s >= 4
         if (input_1s_n >= 4 && high_carry_value != l_True) {
-            out_refined.push();
-            out_refined[k].push(mkLit(high_carry_id));
+            state.out_refined.push();
+            state.out_refined[state.k].push(mkLit(high_carry_id));
             for (int i = 0; i < input_1s_n; i++)
-                out_refined[k].push(~mkLit(input_1s_ids[i]));
-            k++;
+                state.out_refined[state.k].push(~mkLit(input_1s_ids[i]));
+            state.k++;
             inferred = true;
             // High carry must be 0 if no. of 0s >= 4
         } else if (input_0s_n >= 4 && high_carry_value != l_False) {
-            out_refined.push();
-            out_refined[k].push(~mkLit(high_carry_id));
+            state.out_refined.push();
+            state.out_refined[state.k].push(~mkLit(high_carry_id));
             for (int i = 0; i < input_0s_n; i++)
-                out_refined[k].push(mkLit(input_0s_ids[i]));
-            k++;
+                state.out_refined[state.k].push(mkLit(input_0s_ids[i]));
+            state.k++;
             inferred = true;
         }
 
         if (inferred) {
             printf("Inferred high carry (function: %d, inputs %d, carry_id %d)\n", function_id, inputs_n, high_carry_id + 1);
-            print_clause(out_refined[k - 1]);
-            s.stats.carry_infer_high_clauses_n[function_id]++;
+            print_clause(state.out_refined[state.k - 1]);
+            state.solver.stats.carry_infer_high_clauses_n[function_id]++;
+
+            if (high_carry_value != l_Undef)
+                state.has_conflict = true;
         }
     }
 
     // Low carry must be 1 if no. of 1s >= 6
     int low_carry_id = var_ids[var_ids.size() - 1];
-    lbool low_carry_value = s.value(low_carry_id);
+    lbool low_carry_value = state.solver.value(low_carry_id);
     bool inferred = false;
     // TODO: Check if the logic is correct
     if (low_carry_value != l_True && ((input_1s_n >= 6) || (input_1s_n >= 2 && input_1s_n + input_us_n < 4))) {
-        out_refined.push();
-        out_refined[k].push(mkLit(low_carry_id));
+        state.out_refined.push();
+        state.out_refined[state.k].push(mkLit(low_carry_id));
         for (int i = 0; i < input_1s_n; i++)
-            out_refined[k].push(~mkLit(input_1s_ids[i]));
+            state.out_refined[state.k].push(~mkLit(input_1s_ids[i]));
         for (int i = 0; i < input_0s_n; i++)
-            out_refined[k].push(mkLit(input_0s_ids[i]));
-        k++;
+            state.out_refined[state.k].push(mkLit(input_0s_ids[i]));
+        state.k++;
         inferred = true;
     } else if (low_carry_value != l_False && ((input_0s_n >= 6) || (input_1s_n >= 4 && input_1s_n + input_us_n < 6))) {
-        out_refined.push();
-        out_refined[k].push(~mkLit(low_carry_id));
+        state.out_refined.push();
+        state.out_refined[state.k].push(~mkLit(low_carry_id));
         for (int i = 0; i < input_1s_n; i++)
-            out_refined[k].push(~mkLit(input_1s_ids[i]));
+            state.out_refined[state.k].push(~mkLit(input_1s_ids[i]));
         for (int i = 0; i < input_0s_n; i++)
-            out_refined[k].push(mkLit(input_0s_ids[i]));
-        k++;
+            state.out_refined[state.k].push(mkLit(input_0s_ids[i]));
+        state.k++;
         inferred = true;
     }
 
     if (inferred) {
         printf("Inferred low carry (function: %d, inputs %d, carry_id %d)\n", function_id, inputs_n, low_carry_id + 1);
-        print_clause(out_refined[k - 1]);
-        s.stats.carry_infer_low_clauses_n[function_id]++;
+        print_clause(state.out_refined[state.k - 1]);
+        state.solver.stats.carry_infer_low_clauses_n[function_id]++;
+
+        if (low_carry_value != l_Undef)
+            state.has_conflict = true;
     }
 
     // TODO: Implement r1 == 0 ==> sum(inp[]) <= 3
     // TODO: Implement r1 == 1 ==> sum(inp[]) >= 4
 }
 
-void add_addition_clauses(Solver& s, vec<vec<Lit>>& out_refined, int& k, int i, int j, std::vector<int>& ids, int carries_n, int function_id)
+void add_addition_clauses(State& state, int i, int j, std::vector<int>& ids, int carries_n, int function_id)
 {
     std::vector<int> ids_f, ids_g;
     if (j > 1)
@@ -713,11 +629,11 @@ void add_addition_clauses(Solver& s, vec<vec<Lit>>& out_refined, int& k, int i, 
     else
         prepare_add_vec(ids, ids_f, ids_g, carries_n, j, 2);
 
-    infer_carries(s, out_refined, k, ids_f, carries_n, function_id);
-    infer_carries(s, out_refined, k, ids_g, carries_n, function_id);
+    infer_carries(state, ids_f, carries_n, function_id);
+    infer_carries(state, ids_g, carries_n, function_id);
 }
 
-void add_addition_2_bit_clauses(Solver& s, vec<vec<Lit>>& out_refined, int& k, int i, int j, std::vector<int>& ids, int carries_n, int function_id)
+void add_addition_2_bit_clauses(State& state, int i, int j, std::vector<int>& ids, int carries_n, int function_id)
 {
     std::vector<int> new_vec;
     if (j > 1)
@@ -746,98 +662,101 @@ void add_addition_2_bit_clauses(Solver& s, vec<vec<Lit>>& out_refined, int& k, i
     // }
     // printf("\n");
 
-    add_2_bit_clauses(s, out_refined, k, operation_id, function_id, new_vec);
+    add_2_bit_clauses(state, operation_id, function_id, new_vec);
 }
 
-void add_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined)
+void add_clauses(State& state)
 {
-    int k = 0;
-    for (int i = 0; i < s.steps; i++) {
+    for (int i = 0; i < state.solver.steps; i++) {
         for (int j = 0; j < 32; j++) {
-            auto start = std::chrono::high_resolution_clock::now();
-            // If
-            {
-                std::vector<int> ids = prepare_func_vec(s.var_ids_.if_[i], j);
-                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_IF_ID, 0, ids);
-                // if (k > 0) return;
-            }
+            // auto start = std::chrono::high_resolution_clock::now();
+            // // If
+            // {
+            //     std::vector<int> ids = prepare_func_vec(state.solver.var_ids.if_[i], j);
+            //     add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_IF_ID, 0, ids);
+            //     // if (k > 0) return;
+            // }
 
-            // Maj
-            {
-                std::vector<int> ids = prepare_func_vec(s.var_ids_.maj[i], j);
-                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_MAJ_ID, 1, ids);
-                // if (k > 0) return;
-            }
+            // // Maj
+            // {
+            //     std::vector<int> ids = prepare_func_vec(state.solver.var_ids.maj[i], j);
+            //     add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_MAJ_ID, 1, ids);
+            //     // if (k > 0) return;
+            // }
 
-            // Sigma0
-            {
-                std::vector<int> ids = prepare_func_vec(s.var_ids_.sigma0[i], j, 0);
-                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, 2, ids);
-                // if (k > 0) return;
-            }
+            // // Sigma0
+            // {
+            //     std::vector<int> ids = prepare_func_vec(state.solver.var_ids.sigma0[i], j, 0);
+            //     add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_XOR3_ID, 2, ids);
+            //     // if (k > 0) return;
+            // }
 
-            // Sigma1
-            {
-                std::vector<int> ids = prepare_func_vec(s.var_ids_.sigma1[i], j, 1);
-                add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, 3, ids);
-                // if (k > 0) return;
-            }
+            // // Sigma1
+            // {
+            //     std::vector<int> ids = prepare_func_vec(state.solver.var_ids.sigma1[i], j, 1);
+            //     add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_XOR3_ID, 3, ids);
+            //     // if (k > 0) return;
+            // }
 
-            if (i >= 16) {
-                // S0
-                if (j <= 28) {
-                    std::vector<int> ids = prepare_func_vec(s.var_ids_.s0[i - 16], j, 2);
-                    add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, 4, ids);
-                    // if (k > 0) return;
-                } else {
-                    // TODO: Implement XOR2 2-bit conditions
-                }
+            // if (i >= 16) {
+            //     // S0
+            //     if (j <= 28) {
+            //         std::vector<int> ids = prepare_func_vec(state.solver.var_ids.s0[i - 16], j, 2);
+            //         add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_XOR3_ID, 4, ids);
+            //         // if (k > 0) return;
+            //     } else {
+            //         // TODO: Implement XOR2 2-bit conditions
+            //     }
 
-                // S1
-                if (j <= 21) {
-                    std::vector<int> ids = prepare_func_vec(s.var_ids_.s1[i - 16], j, 3);
-                    add_2_bit_clauses(s, out_refined, k, TWO_BIT_CONSTRAINT_XOR3_ID, 5, ids);
-                    // if (k > 0) return;
-                } else {
-                    // TODO: Implement XOR2 2-bit conditions
-                }
+            //     // S1
+            //     if (j <= 21) {
+            //         std::vector<int> ids = prepare_func_vec(state.solver.var_ids.s1[i - 16], j, 3);
+            //         add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_XOR3_ID, 5, ids);
+            //         // if (k > 0) return;
+            //     } else {
+            //         // TODO: Implement XOR2 2-bit conditions
+            //     }
 
-                // Add W
-                add_addition_2_bit_clauses(s, out_refined, k, i, j, s.var_ids_.add_w[i - 16], 2, 2);
-            }
+            //     // Add W
+            //     add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_w[i - 16], 2, 2);
+            // }
 
-            // Add E
-            add_addition_2_bit_clauses(s, out_refined, k, i, j, s.var_ids_.add_e[i], 1, 0);
+            // // Add E
+            // add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_e[i], 1, 0);
 
-            // Add A
-            add_addition_2_bit_clauses(s, out_refined, k, i, j, s.var_ids_.add_a[i], 2, 1);
+            // // Add A
+            // add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_a[i], 2, 1);
 
-            // Add T
-            add_addition_2_bit_clauses(s, out_refined, k, i, j, s.var_ids_.add_t[i], 2, 3);
+            // // Add T
+            // add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_t[i], 2, 3);
 
-            auto end = std::chrono::high_resolution_clock::now();
-            s.stats.two_bit_time_sum += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+            // auto end = std::chrono::high_resolution_clock::now();
+            // state.solver.stats.two_bit_time_sum += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
             auto start2 = std::chrono::high_resolution_clock::now();
             // Add E
-            add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_e[i], 1, 0);
+            add_addition_clauses(state, i, j, state.solver.var_ids.add_e[i], 1, 0);
             // if (k > 0) return;
 
             // Add A
-            add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_a[i], 2, 1);
+            add_addition_clauses(state, i, j, state.solver.var_ids.add_a[i], 2, 1);
             // if (k > 0) return;
 
             // Add W
             if (i >= 16) {
-                add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_w[i - 16], 2, 2);
+                add_addition_clauses(state, i, j, state.solver.var_ids.add_w[i - 16], 2, 2);
                 // if (k > 0) return;
             }
 
             // Add T
-            add_addition_clauses(s, out_refined, k, i, j, s.var_ids_.add_t[i], 2, 3);
+            add_addition_clauses(state, i, j, state.solver.var_ids.add_t[i], 2, 3);
             // if (k > 0) return;
             auto end2 = std::chrono::high_resolution_clock::now();
-            s.stats.carry_inference_time_sum += std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2).count();
+            state.solver.stats.carry_inference_time_sum += std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2).count();
         }
     }
+
+    // TODO: Don't add propagation clauses when a conflict clause is detected
+    // Post processing
+}
 }

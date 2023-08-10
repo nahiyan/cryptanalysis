@@ -85,7 +85,7 @@ static void parse_DIMACS_main(B& in, Solver& S) {
                     // Insert the variable map entries
                     char var[30];
                     int val;
-                    sscanf(buffer, "%s %d", &var, &val);
+                    sscanf(buffer, "%s %d", (char*) &var, &val);
                     S.var_map.insert({var, val - 1});
 
                     // Detect the number of steps from the variable names
@@ -96,7 +96,7 @@ static void parse_DIMACS_main(B& in, Solver& S) {
                     if (var[1] == 'W') {
                         int step = 0;
                         sscanf(var, " W %d", &step);
-                        if (step + 1 > S.steps) {
+                        if (S.steps + 1 > S.steps) {
                             S.steps = step + 1; 
                         }
                     }
