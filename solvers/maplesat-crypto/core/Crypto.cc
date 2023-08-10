@@ -203,7 +203,7 @@ char to_gc(lbool x, lbool x_prime)
     else if (x == l_True && x_prime == l_True)
         return '1';
     else
-        return NULL;
+        return 0;
 }
 
 char to_gc(int x, int x_prime)
@@ -217,27 +217,7 @@ char to_gc(int x, int x_prime)
     else if (x == 1 && x_prime == 1)
         return '1';
     else
-        return NULL;
-}
-
-char to_gc(Minisat::Solver& s, int& id)
-{
-    int d = int_value(s, id);
-    if (d == 0) {
-        return '-';
-    } else if (d == 1) {
-        return 'x';
-    }
-    return NULL;
-}
-
-void from_gc(char& gc, uint8_t* vals)
-{
-    if (gc == '-') {
-        vals[0] = 0;
-    } else if (gc == 'x') {
-        vals[0] = 1;
-    }
+        return 0;
 }
 
 void print_clause(vec<Lit>& clause)
@@ -379,7 +359,7 @@ void add_2_bit_clauses(Minisat::Solver& s, vec<vec<Lit>>& out_refined, int& k, i
     int key_size = chunks_n + 2;
     char rule_key[key_size];
     rule_key[0] = operation_id;
-    rule_key[key_size - 1] = NULL;
+    rule_key[key_size - 1] = 0;
 
     // Process chunk-wise (each chunk has 3 bits)
     std::vector<Lit> base_clause;
