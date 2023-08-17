@@ -96,9 +96,8 @@ static void parse_DIMACS_main(B& in, Solver& S) {
                     if (var[1] == 'W') {
                         int step = 0;
                         sscanf(var, " W %d", &step);
-                        if (S.steps + 1 > S.steps) {
-                            S.steps = step + 1; 
-                        }
+                        if (step + 1 > S.steps)
+                            S.steps = step + 1;
                     }
 
                     // Clear the buffer

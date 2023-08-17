@@ -5,40 +5,39 @@
 #include "SolverTypes.h"
 #include "mtl/Vec.h"
 #include <map>
+#include <memory>
 
 using namespace Minisat;
 
 namespace Crypto {
-typedef std::pair<int32_t, int32_t> equation_t;
+typedef std::tuple<int, int, int> equation_t;
 typedef std::vector<equation_t> equations_t;
 typedef vec<Lit> minisat_clause_t;
 typedef vec<vec<Lit>> minisat_clauses_t;
-
-struct Triple {
-    int x, x_, dx;
-};
+typedef std::tuple<int, int, int> triple_t;
 
 struct FunctionResult {
     int operation_id;
     int functon_id;
-    std::vector<Triple> inputs;
-    std::vector<Triple> outputs;
+    std::vector<int> variables;
 };
 
 struct State {
     minisat_clauses_t& out_refined;
     Solver& solver;
     int k = 0;
-    bool has_conflict = false;
-    minisat_clauses_t conflict_clauses;
-    equations_t equations;
-    std::unordered_map<int32_t, std::vector<FunctionResult>> var_func_relations;
+
+    std::shared_ptr<equations_t> equations;
+    std::map<int, int> equations_var_map;
+    // TODO: Use pointers to equations instead
+    std::map<equation_t, std::vector<FunctionResult>> eq_func_rels;
 };
 
 void add_clauses(State& state);
 void load_rules(Solver& solver, const char* filename);
 void load_rule(Solver& solver, FILE*& db, int& id);
 void process_var_map(Solver& solver);
-bool check_consistency(equations_t& equations);
+std::shared_ptr<equations_t> check_consistency(std::shared_ptr<equations_t>& equations);
+bool block_inconsistency(State& state);
 };
 #endif

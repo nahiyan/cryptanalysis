@@ -23,9 +23,9 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "Crypto.h"
 #include "Solver.h"
 #include "mtl/Sort.h"
+#include <algorithm>
 #include <chrono>
 #include <set>
-#include <algorithm>
 
 using namespace Minisat;
 
@@ -388,18 +388,16 @@ Lit Solver::pickBranchLit()
     return next == var_Undef ? lit_Undef : mkLit(next, rnd_pol ? drand(random_seed) < 0.5 : polarity[next]);
 }
 
-std::string random_string( size_t length )
+std::string random_string(size_t length)
 {
-    auto randchar = []() -> char
-    {
-        const char charset[] =
-        "0123456789"
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";
+    auto randchar = []() -> char {
+        const char charset[] = "0123456789"
+                               "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                               "abcdefghijklmnopqrstuvwxyz";
         const size_t max_index = (sizeof(charset) - 1);
-        return charset[ rand() % max_index ];
+        return charset[rand() % max_index];
     };
-    std::string str(length,0);
+    std::string str(length, 0);
     std::generate_n(str.begin(), length, randchar);
     return str;
 }
@@ -431,20 +429,23 @@ std::set<int> watchlist;
 
 void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
 {
-    if (++wait != 300 && !complete) {
+    if (++wait != 300 && !complete)
         return;
-    }
+
+    // TODO: Find out why the time duration is affected by other time duration calculations
+    // auto start = std::chrono::high_resolution_clock::now();
+
+    clock_t c_start = std::clock();
+
     stats.callback_count++;
     wait = 0;
 
     // Initialize the state of the new programmatic iteration
-    auto state = Crypto::State{
-        out_refined: out_refined,
-        solver: *this,
+    Crypto::State state = {
+        out_refined : out_refined,
+        solver : *this,
+        equations : std::make_shared<Crypto::equations_t>(),
     };
-    
-    // TODO: Find out why the time duration is affected by other time duration calculations
-    // auto start = std::chrono::high_resolution_clock::now();
 
     // Watch the variables from the previously added clauses
     // if (watchlist.size() > 0) {
@@ -455,7 +456,7 @@ void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
     //     printf("\n");
     //     watchlist.clear();
     // }
-    
+
     Crypto::add_clauses(state);
 
     // Add the newly added clause variables to the watch list
@@ -464,16 +465,18 @@ void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
     //         watchlist.insert(var(out_refined[i][j]));
     //     }
     // }
-    
+
     if (out_refined.size() > 1)
         printf("Warning! Clause count: %d\n", out_refined.size());
     else if (out_refined.size() > 0)
         printf("Clause count: %d\n", out_refined.size());
+    printf("Callback end\n");
     fflush(stdout);
     stats.clauses_added += out_refined.size();
 
     // auto end = std::chrono::high_resolution_clock::now();
     // stats.total_time_sum += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    stats.total_cpu_time += std::clock() - c_start;
 }
 
 bool Solver::falsifiedClause(vec<Lit>& confl)
@@ -1478,10 +1481,18 @@ lbool Solver::solve_()
     if (verbosity >= 1)
         printf("===============================================================================\n");
 
+    // CDCL(Crypto)
     printf("Clauses added: %d (%d in average)\n", stats.clauses_added, stats.clauses_added / stats.callback_count);
-    // printf("Time spent in callback: %.02fs\n", (float_t)stats.total_time_sum / 1e6);
-    
-    printf("Two-bit clauses (%.02fs):\n", (float_t)stats.two_bit_time_sum / 1e6);
+    printf("Callback invokes: %d\n", stats.callback_count);
+    printf("Time spent in callback: %.02fs\n", static_cast<double>(stats.total_cpu_time) / CLOCKS_PER_SEC);
+
+    // printf("Kernel total time: %.02fs\n", static_cast<double>(stats.kernel_cpu_time) / CLOCKS_PER_SEC);
+    {
+        double breakdown[5];
+        for (int x = 0; x < 5; x++)
+            breakdown[x] = static_cast<double>(stats.two_bit_cpu_time_segments[x]) / CLOCKS_PER_SEC;
+        printf("Two-bit clauses (%.02fs = %0.2fs + %0.2fs + %0.2fs + %0.2fs + %0.2fs):\n", static_cast<double>(stats.two_bit_cpu_time) / CLOCKS_PER_SEC, breakdown[0], breakdown[1], breakdown[2], breakdown[3], breakdown[4]);
+    }
     printf("If: %d\n", stats.two_bit_clauses_n[0]);
     printf("Maj: %d\n", stats.two_bit_clauses_n[1]);
     printf("XOR3: %d\n", stats.two_bit_clauses_n[2]);
@@ -1490,7 +1501,7 @@ lbool Solver::solve_()
     printf("ADD5: %d\n", stats.two_bit_clauses_n[5]);
     printf("ADD6: %d\n", stats.two_bit_clauses_n[6]);
     printf("ADD7: %d\n", stats.two_bit_clauses_n[7]);
-    printf("Carry inference clauses (%.02fs):\n", (float_t)stats.carry_inference_time_sum / 1e6);
+    printf("Carry inference clauses (%.02fs):\n", static_cast<double>(stats.carry_inference_cpu_time) / CLOCKS_PER_SEC);
     printf("ADD(E): %d %d\n", stats.carry_infer_high_clauses_n[0], stats.carry_infer_low_clauses_n[0]);
     printf("ADD(A): %d %d\n", stats.carry_infer_high_clauses_n[1], stats.carry_infer_low_clauses_n[1]);
     printf("ADD(W): %d %d\n", stats.carry_infer_high_clauses_n[2], stats.carry_infer_low_clauses_n[2]);

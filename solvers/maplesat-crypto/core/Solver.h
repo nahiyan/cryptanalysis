@@ -181,9 +181,11 @@ public:
         int carry_infer_low_clauses_n[4] = {0, 0, 0, 0};
         int callback_count = 0;
         int clauses_added = 0;
-        int64_t total_time_sum = 0;
-        int64_t two_bit_time_sum = 0;
-        int64_t carry_inference_time_sum = 0;
+        clock_t total_cpu_time = 0;
+        clock_t two_bit_cpu_time = 0;
+        clock_t carry_inference_cpu_time = 0;
+        clock_t kernel_cpu_time = 0;
+        clock_t two_bit_cpu_time_segments[5] = {0, 0, 0, 0, 0};
     } stats;
 
     struct VarIds {

@@ -20,12 +20,12 @@ RCOBJS     = $(addsuffix r,  $(COBJS))
 
 CXX       ?= g++
 CFLAGS    ?= -Wall -Wno-parentheses $(CMD_CFLAGS)
-LFLAGS    ?= -Wall
+LFLAGS    ?= -Wall -L${MROOT}/lib
 
 COPTIMIZE ?= -O3
 
 CFLAGS    += -I$(MROOT) -D __STDC_LIMIT_MACROS -D __STDC_FORMAT_MACROS
-LFLAGS    += -lz
+LFLAGS    += -lz -lntl -lgmp
 
 .PHONY : s p d r rs clean 
 
@@ -74,7 +74,7 @@ lib$(LIB)_release.a:	$(filter-out */Main.or, $(RCOBJS))
 ## Linking rules (standard/profile/debug/release)
 $(EXEC) $(EXEC)_profile $(EXEC)_debug $(EXEC)_release $(EXEC)_static:
 	@echo Linking: "$@ ( $(foreach f,$^,$(subst $(MROOT)/,,$f)) )"
-	@$(CXX) $^ $(LFLAGS) -o $@
+	@$(CXX) -rdynamic $^ $(LFLAGS) -o $@
 
 ## Library rules (standard/profile/debug/release)
 lib$(LIB)_standard.a lib$(LIB)_profile.a lib$(LIB)_release.a lib$(LIB)_debug.a:

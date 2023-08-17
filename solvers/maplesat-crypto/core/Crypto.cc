@@ -1,9 +1,14 @@
 #include "Crypto.h"
+#include "NTL/GF2.h"
+#include "NTL/mat_GF2.h"
+#include "NTL/vec_GF2.h"
 #include <algorithm>
 #include <chrono>
 #include <map>
+#include <memory>
 #include <set>
 #include <vector>
+
 #define DEBUG true
 #define IO_CONSTRAINT_ADD2_ID 0
 #define IO_CONSTRAINT_IF_ID 1
@@ -115,11 +120,6 @@ void load_rules(Solver& solver, const char* filename)
     }
 
     printf("Loaded %d rules into %d buckets\n", count, solver.rules.bucket_count());
-
-    // DEBUG
-    // char key[] = {19, 'n', '1', '1', 'n'};
-    // printf("Found: %s\n", solver.rules.find(key)->second.c_str());
-    // exit(0);
 }
 
 void add_to_var_ids(Solver& solver, std::string prefix, std::vector<int>& var_ids, int inputs_n, int outputs_n)
@@ -146,6 +146,7 @@ void add_to_var_ids(Solver& solver, std::string prefix, std::vector<int>& var_id
 
 void process_var_map(Solver& solver)
 {
+    printf("Steps: %d\n", solver.steps);
     printf("Var. map entries: %d\n", solver.var_map.size());
     for (int i = 0; i < solver.steps; i++) {
         // if
@@ -217,6 +218,42 @@ char to_gc(int x, int x_prime)
         return 0;
 }
 
+int sum(std::vector<int>& v)
+{
+    int s = 0;
+    for (int& v_ : v)
+        s += v_;
+    return s;
+}
+
+int sum(int* v, int n)
+{
+    int s = 0;
+    for (int i = 0; i < n; i++)
+        s += v[i];
+    return s;
+}
+
+NTL::GF2 sum(NTL::vec_GF2 v)
+{
+    NTL::GF2 sum = NTL::to_GF2(0);
+    for (int i = 0; i < v.length(); i++)
+        sum += v[i];
+
+    return sum;
+}
+
+void print(std::vector<int>& vector, int offset = 0)
+{
+    printf("Vector: ");
+    for (int i = 0; i < vector.size(); i++) {
+        printf("%d", vector[i] + offset);
+        if (i != vector.size() - 1)
+            printf(" ");
+    }
+    printf("\n");
+}
+
 void print_clause(vec<Lit>& clause)
 {
     printf("Clause: ");
@@ -228,138 +265,147 @@ void print_clause(vec<Lit>& clause)
     printf("\n");
 }
 
-void add_shortest_clause(State& state)
+// Get index of the shortest conflict clause, -1 if no conflict clause is found
+int get_shortest_conflict_clause(State& state)
 {
-    int shortest_index = 0, shortest_length = INT_MAX;
-    for (int i = 0; i < state.conflict_clauses.size(); i++) {
-        int size = state.conflict_clauses[i].size();
-        if (size < shortest_length) {
-            shortest_length = size;
-            shortest_index = i;
-        }
-    }
-}
+    int shortest_index = -1, shortest_length = INT_MAX;
+    for (int i = 0; i < state.out_refined.size(); i++) {
+        // Skip propagation clauses
+        if (state.solver.value(state.out_refined[i][0]) == l_Undef)
+            continue;
 
-bool check_consistency(equations_t& equations)
-{
-    std::map<uint32_t, std::set<int32_t>*> rels;
-    bool is_consistent = true;
+        int size = state.out_refined[i].size();
+        if (size >= shortest_length)
+            continue;
 
-    for (auto& equation : equations) {
-        equation.first += equation.first < 0 ? -1 : 1;
-        equation.second += equation.second < 0 ? -1 : 1;
-
-        auto var1 = equation.first;
-        auto var2 = equation.second;
-        auto var1_abs = abs(var1);
-        auto var2_abs = abs(var2);
-        auto var1_exists = rels.find(var1_abs) == rels.end() ? false : true;
-        auto var2_exists = rels.find(var2_abs) == rels.end() ? false : true;
-
-        if (var1_exists && var2_exists) {
-            auto var1_inv_exists = rels[var1_abs]->find(-var1) == rels[var1_abs]->end() ? false : true;
-            auto var2_inv_exists = rels[var2_abs]->find(-var2) == rels[var2_abs]->end() ? false : true;
-
-            // Ignore if both inverses are found (would be a redudant operation)
-            if (var1_inv_exists && var2_inv_exists)
-                continue;
-
-            // Try to prevent conflict by inverting one set
-            bool invert = false;
-            if (var2_inv_exists || var1_inv_exists)
-                invert = true;
-
-            // Union the sets
-            for (auto item : *rels[var2_abs])
-                rels[var1_abs]->insert((invert ? -1 : 1) * item);
-
-            auto& updated_set = rels[var1_abs];
-            // If both a var and its inverse is present in the newly updated set, we detected a contradiction
-            {
-                auto var1_inv_exists = updated_set->find(-var1_abs) == updated_set->end() ? false : true;
-                auto var2_inv_exists = updated_set->find(-var2_abs) == updated_set->end() ? false : true;
-                auto var1_exists = updated_set->find(var1_abs) == updated_set->end() ? false : true;
-                auto var2_exists = updated_set->find(var2_abs) == updated_set->end() ? false : true;
-
-                if ((var1_inv_exists && var1_exists) || (var2_inv_exists && var2_exists)) {
-#if DEBUG
-                    for (auto equation : equations) {
-                        printf("Equation: %d %s %d\n", abs(equation.first), (equation.first > 0 && equation.second > 0) ? "=" : "/=", abs(equation.second));
-                    }
-                    printf("Contradiction detected (%d equations, %d-long cycle): %d %d\n", equations.size(), updated_set->size() / 2, abs(var1), abs(var2));
-#endif
-                    is_consistent = false;
-                }
-            }
-
-            // Update existing references
-            for (auto& item : *updated_set) {
-                auto& set = rels[abs(item)];
-                if (set == updated_set)
-                    continue;
-
-                // Delete last reference
-                int counter = 0;
-                for (auto& rel : rels) {
-                    if (rel.second == rels[abs(item)])
-                        counter++;
-                }
-                if (counter == 1)
-                    delete rels[abs(item)];
-
-                rels[abs(item)] = updated_set;
-            }
-        } else if (var1_exists || var2_exists) {
-            // Find an existing set related to any of the variables
-            auto& existing_set = var1_exists ? rels[var1_abs] : rels[var2_abs];
-            auto var1_inv_in_existing_set = existing_set->find(-var1) == existing_set->end() ? false : true;
-            auto var2_inv_in_existing_set = existing_set->find(-var2) == existing_set->end() ? false : true;
-
-            // Add the var to an existing set
-            if (var1_exists)
-                rels[var1_abs]->insert(var2);
-            else
-                rels[var2_abs]->insert(var1);
-
-            // Update existing references
-            for (auto& item : *existing_set) {
-                auto& set = rels[abs(item)];
-                if (set == existing_set)
-                    continue;
-
-                // Delete last reference
-                int counter = 0;
-                for (auto& rel : rels) {
-                    if (rel.second == rels[abs(item)])
-                        counter++;
-                }
-                if (counter == 1)
-                    delete rels[abs(item)];
-
-                rels[abs(item)] = existing_set;
-            }
-        } else {
-            // Adding novel variables
-            auto new_set = new std::set<int32_t> { var1, var2 };
-            rels[var1_abs] = new_set;
-            rels[var2_abs] = new_set;
-        }
+        shortest_length = size;
+        shortest_index = i;
     }
 
-    // #if DEBUG
-    //         for (auto rel : rels) {
-    //             printf("%d: ", rel.first + 1);
-    //             auto& set = *rel.second;
-    //             for (auto& item : set) {
-    //                 printf("%d ", item);
-    //             }
-    //             printf("\n");
-    //         }
-    // #endif
-
-    return is_consistent;
+    return shortest_index;
 }
 
+// // Checks GF(2) equations and returns conflicting equations (equations that conflicts with previously added ones)
+// std::shared_ptr<equations_t> check_consistency(std::shared_ptr<equations_t>& equations)
+// {
+//     auto conflicting_equations = std::make_shared<equations_t>();
+//     std::map<uint32_t, std::shared_ptr<std::set<int32_t>>> rels;
+
+//     for (auto& equation : *equations) {
+//         equation.first += equation.first < 0 ? -1 : 1;
+//         equation.second += equation.second < 0 ? -1 : 1;
+
+//         auto var1 = equation.first;
+//         auto var2 = equation.second;
+//         auto var1_abs = abs(var1);
+//         auto var2_abs = abs(var2);
+//         auto var1_exists = rels.find(var1_abs) == rels.end() ? false : true;
+//         auto var2_exists = rels.find(var2_abs) == rels.end() ? false : true;
+
+//         if (var1_exists && var2_exists) {
+//             auto var1_inv_exists = rels[var1_abs]->find(-var1) == rels[var1_abs]->end() ? false : true;
+//             auto var2_inv_exists = rels[var2_abs]->find(-var2) == rels[var2_abs]->end() ? false : true;
+
+//             // Ignore if both inverses are found (would be a redudant operation)
+//             if (var1_inv_exists && var2_inv_exists)
+//                 continue;
+
+//             // Try to prevent conflict by inverting one set
+//             bool invert = false;
+//             if (var2_inv_exists || var1_inv_exists)
+//                 invert = true;
+
+//             // Union the sets
+//             for (auto item : *rels[var2_abs])
+//                 rels[var1_abs]->insert((invert ? -1 : 1) * item);
+
+//             auto& updated_set = rels[var1_abs];
+//             // If both a var and its inverse is present in the newly updated set, we detected a contradiction
+//             {
+//                 auto var1_inv_exists = updated_set->find(-var1_abs) == updated_set->end() ? false : true;
+//                 auto var2_inv_exists = updated_set->find(-var2_abs) == updated_set->end() ? false : true;
+//                 auto var1_exists = updated_set->find(var1_abs) == updated_set->end() ? false : true;
+//                 auto var2_exists = updated_set->find(var2_abs) == updated_set->end() ? false : true;
+
+//                 if ((var1_inv_exists && var1_exists) || (var2_inv_exists && var2_exists)) {
+//                     // #if DEBUG
+//                     //                     for (auto equation : equations)
+//                     //                         printf("Equation: %d %s %d\n", abs(equation.first), (equation.first > 0 && equation.second > 0) ? "=" : "/=", abs(equation.second));
+
+//                     // printf("Contradiction detected (%d equations, %d connections): %d %d\n", equations.size(), updated_set->size() / 2, var1, var2);
+//                     // #endif
+//                     int signs[2] = { var1 < 0 ? -1 : 1, var2 < 0 ? -1 : 1 };
+//                     conflicting_equations->push_back(equation_t { signs[0] * (var1_abs - 1), signs[1] * (var2_abs - 1) });
+//                     conflicting_equations->push_back(equation_t { signs[0] * (var1_abs - 1), -signs[1] * (var2_abs - 1) });
+//                 }
+//             }
+
+//             // Update existing references
+//             for (auto& item : *updated_set) {
+//                 auto& set = rels[abs(item)];
+//                 if (set == updated_set)
+//                     continue;
+//                 rels[abs(item)] = updated_set;
+//             }
+//         } else if (var1_exists || var2_exists) {
+//             // Find an existing set related to any of the variables
+//             auto& existing_set = var1_exists ? rels[var1_abs] : rels[var2_abs];
+//             auto var1_inv_in_existing_set = existing_set->find(-var1) == existing_set->end() ? false : true;
+//             auto var2_inv_in_existing_set = existing_set->find(-var2) == existing_set->end() ? false : true;
+
+//             // Add the var to an existing set
+//             if (var1_exists)
+//                 rels[var1_abs]->insert(var2);
+//             else
+//                 rels[var2_abs]->insert(var1);
+
+//             // Update existing references
+//             for (auto& item : *existing_set) {
+//                 auto& set = rels[abs(item)];
+//                 if (set == existing_set)
+//                     continue;
+//                 rels[abs(item)] = existing_set;
+//             }
+//         } else {
+//             // Adding novel variables
+//             auto new_set = std::make_shared<std::set<int32_t>>(std::set<int32_t> { var1, var2 });
+//             rels[var1_abs] = new_set;
+//             rels[var2_abs] = new_set;
+//         }
+//     }
+
+//     // #if DEBUG
+//     //         for (auto rel : rels) {
+//     //             printf("%d: ", rel.first + 1);
+//     //             auto& set = *rel.second;
+//     //             for (auto& item : set) {
+//     //                 printf("%d ", item);
+//     //             }
+//     //             printf("\n");
+//     //         }
+//     // #endif
+
+//     return conflicting_equations;
+// }
+
+// TODO: Fix error in to_tuples
+// std::vector<triple_t> to_triples(std::vector<int> var_ids)
+// {
+//     std::vector<triple_t> triples;
+//     for (int i = 0, j = 1; i < var_ids.size(); i += 3, j++) {
+//         triple_t triple {
+//             var_ids[i],
+//             var_ids[i + 1],
+//             var_ids[i + 2],
+//         };
+
+//         triples.push_back(triple);
+//     }
+
+//     return triples;
+// }
+
+// TODO: Give proper name such as "add_2_bit_equations"
 // The variable IDs provided should include the operands and the output
 void add_2_bit_clauses(State& state, int operation_id, int function_id, std::vector<int> var_ids)
 {
@@ -447,9 +493,36 @@ void add_2_bit_clauses(State& state, int operation_id, int function_id, std::vec
                 continue;
             bool are_equal = rule_value[rule_i] == '1';
 
-            // Inferred variables should be undefined
             lbool var1_value = state.solver.value(var1_id);
             lbool var2_value = state.solver.value(var2_id);
+
+            // Add the equation
+            auto equation = equation_t { var1_id, var2_id, are_equal ? 0 : 1 };
+            state.equations->push_back(equation);
+
+            // Map the equation variables (if they don't exist)
+            if (state.equations_var_map.find(var1_id) == state.equations_var_map.end())
+                state.equations_var_map[var1_id] = state.equations_var_map.size();
+            if (state.equations_var_map.find(var2_id) == state.equations_var_map.end())
+                state.equations_var_map[var2_id] = state.equations_var_map.size();
+
+            // Connect the equation with this function result
+            std::vector<int> variables;
+            for (Lit& lit : base_clause)
+                variables.push_back(var(lit));
+            auto func_result = FunctionResult {
+                operation_id,
+                function_id,
+                variables,
+            };
+            auto eq_func_relation = state.eq_func_rels.find(equation);
+            auto it = state.eq_func_rels.find(equation);
+            if (it == state.eq_func_rels.end())
+                state.eq_func_rels.insert({ equation, { func_result } });
+            else
+                state.eq_func_rels[equation].push_back(func_result);
+
+            // printf("2-bit: %d %d\n", equation.first, equation.second);
         }
 
         visited.insert(var1_id);
@@ -533,6 +606,126 @@ std::vector<int> prepare_func_vec(std::vector<int>& ids, int offset, int functio
     return new_vec;
 }
 
+bool block_inconsistency(State& state)
+{
+    // Use NTL to find cycles of inconsistent equations
+    NTL::mat_GF2 coeff_matrix;
+    auto variables_n = state.equations_var_map.size();
+    auto equations_n = state.equations->size();
+    coeff_matrix.SetDims(equations_n, variables_n);
+    NTL::vec_GF2 rhs;
+    rhs.SetLength(equations_n);
+
+    // Construct the coefficient matrix
+    for (int eq_index = 0; eq_index < equations_n; eq_index++) {
+        auto& eq = (*state.equations)[eq_index];
+        int x = state.equations_var_map[std::get<0>(eq)];
+        int y = state.equations_var_map[std::get<1>(eq)];
+        for (int col_index = 0; col_index < variables_n; col_index++)
+            coeff_matrix[eq_index][col_index] = NTL::to_GF2(col_index == x || col_index == y ? 1 : 0);
+
+        rhs.put(eq_index, std::get<2>(eq));
+    }
+
+    // Find the basis of the left kernel
+    NTL::mat_GF2 left_kernel_basis;
+    clock_t kernel_start_time = std::clock();
+    NTL::kernel(left_kernel_basis, coeff_matrix);
+    state.solver.stats.kernel_cpu_time += std::clock() - kernel_start_time;
+
+    printf("Basis elements: %d,%d\n", left_kernel_basis.NumRows(), left_kernel_basis.NumCols());
+
+    // Sort the basis vectors by Hamming weight (ascending)
+    std::vector<std::pair<int, std::vector<int>>> basis_hamming_weight;
+    equations_n = left_kernel_basis.NumRows();
+    variables_n = left_kernel_basis.NumCols();
+    for (int count = 0; count < equations_n; count++) {
+        std::vector<int> v;
+        int weight = 0;
+        for (int count2 = 0; count2 < variables_n; count2++) {
+            int x = NTL::conv<int, NTL::GF2>(left_kernel_basis[count][count2]);
+            v.push_back(x);
+            if (x == 1)
+                weight++;
+        }
+        basis_hamming_weight.push_back(std::pair<int, std::vector<int>> { weight, v });
+    }
+    std::sort(basis_hamming_weight.begin(), basis_hamming_weight.end(), [](std::pair<int, std::vector<int>> x, std::pair<int, std::vector<int>> y) {
+        return x.first < y.first;
+    });
+
+    // Check for inconsistencies
+    std::vector<int>* inconsistency = NULL;
+    int coeff_n = coeff_matrix.NumCols();
+    for (auto& item : basis_hamming_weight) {
+        auto& nullspace_vector = item.second;
+
+        // Initialize the values to 0
+        NTL::GF2 rhs_sum = NTL::to_GF2(0);
+        NTL::vec_GF2 coeff_sums;
+        coeff_sums.SetLength(coeff_n);
+        for (int x = 0; x < coeff_n; x++)
+            coeff_sums[x] = 0;
+
+        // Go through the nullspace vector and add the equations and RHS
+        for (int eq_index = 0; eq_index < nullspace_vector.size(); eq_index++) {
+            if (nullspace_vector[eq_index] == 0)
+                continue;
+
+            // Add the coefficients of the equations
+            coeff_sums += coeff_matrix[eq_index];
+
+            // Add the RHS
+            rhs_sum += rhs[eq_index];
+        }
+
+        // Mismatching RHS sum and coefficients sum is a contradiction
+        if (rhs_sum != sum(coeff_sums)) {
+            inconsistency = &nullspace_vector;
+            break;
+        }
+    }
+
+    // Blocking inconsistencies
+    if (inconsistency != NULL) {
+        printf("Found inconsistency: %d\n", sum(*inconsistency));
+        print(*inconsistency);
+
+        state.out_refined.push();
+        for (int eq_index = 0; eq_index < (*inconsistency).size(); eq_index++) {
+            if ((*inconsistency)[eq_index] == 0)
+                continue;
+
+            auto& equation = (*state.equations)[eq_index];
+            auto results_it = state.eq_func_rels.find(equation);
+            if (results_it == state.eq_func_rels.end()) {
+                printf("Unexpected\n");
+                fflush(stdout);
+                exit(0);
+                continue;
+            }
+            auto& results = results_it->second;
+            printf("Equation: %d %d %d\n", std::get<0>(equation), std::get<1>(equation), std::get<2>(equation));
+
+            printf("Number of functions for the equation (%d): %d\n", eq_index, results.size());
+            for (auto& result : results) {
+                printf("Adding to confl. clause %d %d\n", result.operation_id, result.functon_id);
+                print(result.variables, 1);
+                for (auto& var : result.variables)
+                    state.out_refined[state.k].push(mkLit(var, state.solver.value(var) == l_True));
+            }
+        }
+        state.k++;
+
+        print_clause(state.out_refined[state.k - 1]);
+
+        // Terminate since we already already a few conflict clauses
+        return true;
+    }
+
+    return false;
+}
+
 void infer_carries(State& state, std::vector<int>& var_ids, int carries_n, int function_id)
 {
     int inputs_n = var_ids.size() - carries_n;
@@ -575,9 +768,6 @@ void infer_carries(State& state, std::vector<int>& var_ids, int carries_n, int f
             printf("Inferred high carry (function: %d, inputs %d, carry_id %d)\n", function_id, inputs_n, high_carry_id + 1);
             print_clause(state.out_refined[state.k - 1]);
             state.solver.stats.carry_infer_high_clauses_n[function_id]++;
-
-            if (high_carry_value != l_Undef)
-                state.has_conflict = true;
         }
     }
 
@@ -610,9 +800,6 @@ void infer_carries(State& state, std::vector<int>& var_ids, int carries_n, int f
         printf("Inferred low carry (function: %d, inputs %d, carry_id %d)\n", function_id, inputs_n, low_carry_id + 1);
         print_clause(state.out_refined[state.k - 1]);
         state.solver.stats.carry_infer_low_clauses_n[function_id]++;
-
-        if (low_carry_value != l_Undef)
-            state.has_conflict = true;
     }
 
     // TODO: Implement r1 == 0 ==> sum(inp[]) <= 3
@@ -667,96 +854,106 @@ void add_addition_2_bit_clauses(State& state, int i, int j, std::vector<int>& id
 
 void add_clauses(State& state)
 {
+    clock_t two_bit_start_time = std::clock();
+    // Handle 2-bit conditions
     for (int i = 0; i < state.solver.steps; i++) {
         for (int j = 0; j < 32; j++) {
-            // auto start = std::chrono::high_resolution_clock::now();
-            // // If
-            // {
-            //     std::vector<int> ids = prepare_func_vec(state.solver.var_ids.if_[i], j);
-            //     add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_IF_ID, 0, ids);
-            //     // if (k > 0) return;
-            // }
-
-            // // Maj
-            // {
-            //     std::vector<int> ids = prepare_func_vec(state.solver.var_ids.maj[i], j);
-            //     add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_MAJ_ID, 1, ids);
-            //     // if (k > 0) return;
-            // }
-
-            // // Sigma0
-            // {
-            //     std::vector<int> ids = prepare_func_vec(state.solver.var_ids.sigma0[i], j, 0);
-            //     add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_XOR3_ID, 2, ids);
-            //     // if (k > 0) return;
-            // }
-
-            // // Sigma1
-            // {
-            //     std::vector<int> ids = prepare_func_vec(state.solver.var_ids.sigma1[i], j, 1);
-            //     add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_XOR3_ID, 3, ids);
-            //     // if (k > 0) return;
-            // }
-
-            // if (i >= 16) {
-            //     // S0
-            //     if (j <= 28) {
-            //         std::vector<int> ids = prepare_func_vec(state.solver.var_ids.s0[i - 16], j, 2);
-            //         add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_XOR3_ID, 4, ids);
-            //         // if (k > 0) return;
-            //     } else {
-            //         // TODO: Implement XOR2 2-bit conditions
-            //     }
-
-            //     // S1
-            //     if (j <= 21) {
-            //         std::vector<int> ids = prepare_func_vec(state.solver.var_ids.s1[i - 16], j, 3);
-            //         add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_XOR3_ID, 5, ids);
-            //         // if (k > 0) return;
-            //     } else {
-            //         // TODO: Implement XOR2 2-bit conditions
-            //     }
-
-            //     // Add W
-            //     add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_w[i - 16], 2, 2);
-            // }
-
-            // // Add E
-            // add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_e[i], 1, 0);
-
-            // // Add A
-            // add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_a[i], 2, 1);
-
-            // // Add T
-            // add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_t[i], 2, 3);
-
-            // auto end = std::chrono::high_resolution_clock::now();
-            // state.solver.stats.two_bit_time_sum += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-
-            auto start2 = std::chrono::high_resolution_clock::now();
-            // Add E
-            add_addition_clauses(state, i, j, state.solver.var_ids.add_e[i], 1, 0);
-            // if (k > 0) return;
-
-            // Add A
-            add_addition_clauses(state, i, j, state.solver.var_ids.add_a[i], 2, 1);
-            // if (k > 0) return;
-
-            // Add W
-            if (i >= 16) {
-                add_addition_clauses(state, i, j, state.solver.var_ids.add_w[i - 16], 2, 2);
-                // if (k > 0) return;
+            // If
+            {
+                std::vector<int> ids = prepare_func_vec(state.solver.var_ids.if_[i], j);
+                add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_IF_ID, 0, ids);
             }
 
+            // Maj
+            {
+                std::vector<int> ids = prepare_func_vec(state.solver.var_ids.maj[i], j);
+                add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_MAJ_ID, 1, ids);
+            }
+
+            // Sigma0
+            {
+                std::vector<int> ids = prepare_func_vec(state.solver.var_ids.sigma0[i], j, 0);
+                add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_XOR3_ID, 2, ids);
+            }
+
+            // Sigma1
+            {
+                std::vector<int> ids = prepare_func_vec(state.solver.var_ids.sigma1[i], j, 1);
+                add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_XOR3_ID, 3, ids);
+            }
+
+            if (i >= 16) {
+                // S0
+                if (j <= 28) {
+                    std::vector<int> ids = prepare_func_vec(state.solver.var_ids.s0[i - 16], j, 2);
+                    add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_XOR3_ID, 4, ids);
+                } else {
+                    // TODO: Implement XOR2 2-bit conditions
+                }
+
+                // S1
+                if (j <= 21) {
+                    std::vector<int> ids = prepare_func_vec(state.solver.var_ids.s1[i - 16], j, 3);
+                    add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_XOR3_ID, 5, ids);
+                } else {
+                    // TODO: Implement XOR2 2-bit conditions
+                }
+
+                // Add W
+                add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_w[i - 16], 2, 2);
+            }
+
+            // Add E
+            add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_e[i], 1, 0);
+
+            // Add A
+            add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_a[i], 2, 1);
+
             // Add T
-            add_addition_clauses(state, i, j, state.solver.var_ids.add_t[i], 2, 3);
-            // if (k > 0) return;
-            auto end2 = std::chrono::high_resolution_clock::now();
-            state.solver.stats.carry_inference_time_sum += std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2).count();
+            add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_t[i], 2, 3);
         }
     }
 
+    bool blocked = block_inconsistency(state);
+    state.solver.stats.two_bit_cpu_time += std::clock() - two_bit_start_time;
+    if (blocked)
+        return;
+
+    // Handle carry inference
+    clock_t carry_inference_start_time = std::clock();
+    for (int i = 0; i < state.solver.steps; i++) {
+        for (int j = 0; j < 32; j++) {
+            // Add E
+            add_addition_clauses(state, i, j, state.solver.var_ids.add_e[i], 1, 0);
+
+            // Add A
+            add_addition_clauses(state, i, j, state.solver.var_ids.add_a[i], 2, 1);
+
+            // Add W
+            if (i >= 16)
+                add_addition_clauses(state, i, j, state.solver.var_ids.add_w[i - 16], 2, 2);
+
+            // Add T
+            add_addition_clauses(state, i, j, state.solver.var_ids.add_t[i], 2, 3);
+        }
+    }
+    state.solver.stats.carry_inference_cpu_time += std::clock() - carry_inference_start_time;
+
     // TODO: Don't add propagation clauses when a conflict clause is detected
     // Post processing
+    int index = get_shortest_conflict_clause(state);
+    if (index != -1) {
+        minisat_clause_t conflict_clause;
+        state.out_refined[index].copyTo(conflict_clause);
+        state.out_refined.clear();
+
+        printf("Note: Adding only the shortest conflict clause of size %d\n", conflict_clause.size());
+        state.out_refined.push();
+        for (int count = 0; count < conflict_clause.size(); count++) {
+            state.out_refined[0].push(mkLit(var(conflict_clause[count]), state.solver.value((conflict_clause[count])) == l_False));
+        }
+
+        print_clause(conflict_clause);
+    }
 }
 }
