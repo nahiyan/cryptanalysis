@@ -434,7 +434,6 @@ void add_2_bit_clauses(State& state, int operation_id, int function_id, std::vec
         int& dx_id = var_ids[i + 2];
         lbool dx_value = state.solver.value(var_ids[i + 2]);
 
-        // TODO: Consider enforcing the relationship instead of just helping the solver propagate
         if (x_value != l_Undef && x_prime_value != l_Undef) {
             rule_key[j] = to_gc(x_value, x_prime_value);
             base_clause.push_back(mkLit(x_id, x_value == l_True));
@@ -470,9 +469,6 @@ void add_2_bit_clauses(State& state, int operation_id, int function_id, std::vec
         }
     }
 
-    if (!hasXOrDash)
-        return;
-
     // Find the value of the rule (if it exists)
     auto rule_it = state.solver.rules.find(rule_key);
     if (rule_it == state.solver.rules.end())
@@ -492,9 +488,6 @@ void add_2_bit_clauses(State& state, int operation_id, int function_id, std::vec
             if (rule_value[rule_i] == '2')
                 continue;
             bool are_equal = rule_value[rule_i] == '1';
-
-            lbool var1_value = state.solver.value(var1_id);
-            lbool var2_value = state.solver.value(var2_id);
 
             // Add the equation
             auto equation = equation_t { var1_id, var2_id, are_equal ? 0 : 1 };
@@ -521,8 +514,6 @@ void add_2_bit_clauses(State& state, int operation_id, int function_id, std::vec
                 state.eq_func_rels.insert({ equation, { func_result } });
             else
                 state.eq_func_rels[equation].push_back(func_result);
-
-            // printf("2-bit: %d %d\n", equation.first, equation.second);
         }
 
         visited.insert(var1_id);
@@ -609,6 +600,7 @@ std::vector<int> prepare_func_vec(std::vector<int>& ids, int offset, int functio
 bool block_inconsistency(State& state)
 {
     // Use NTL to find cycles of inconsistent equations
+    clock_t start_time = std::clock();
     NTL::mat_GF2 coeff_matrix;
     auto variables_n = state.equations_var_map.size();
     auto equations_n = state.equations->size();
@@ -626,16 +618,20 @@ bool block_inconsistency(State& state)
 
         rhs.put(eq_index, std::get<2>(eq));
     }
+    state.solver.stats.two_bit_cpu_time_segments[0] += std::clock() - start_time;
 
     // Find the basis of the left kernel
+    start_time = std::clock();
     NTL::mat_GF2 left_kernel_basis;
     clock_t kernel_start_time = std::clock();
     NTL::kernel(left_kernel_basis, coeff_matrix);
     state.solver.stats.kernel_cpu_time += std::clock() - kernel_start_time;
 
     printf("Basis elements: %d,%d\n", left_kernel_basis.NumRows(), left_kernel_basis.NumCols());
+    state.solver.stats.two_bit_cpu_time_segments[1] += std::clock() - start_time;
 
     // Sort the basis vectors by Hamming weight (ascending)
+    start_time = std::clock();
     std::vector<std::pair<int, std::vector<int>>> basis_hamming_weight;
     equations_n = left_kernel_basis.NumRows();
     variables_n = left_kernel_basis.NumCols();
@@ -653,10 +649,13 @@ bool block_inconsistency(State& state)
     std::sort(basis_hamming_weight.begin(), basis_hamming_weight.end(), [](std::pair<int, std::vector<int>> x, std::pair<int, std::vector<int>> y) {
         return x.first < y.first;
     });
+    state.solver.stats.two_bit_cpu_time_segments[2] += std::clock() - start_time;
 
     // Check for inconsistencies
+    start_time = std::clock();
     std::vector<int>* inconsistency = NULL;
     int coeff_n = coeff_matrix.NumCols();
+    int inconsistency_n = 0;
     for (auto& item : basis_hamming_weight) {
         auto& nullspace_vector = item.second;
 
@@ -681,14 +680,19 @@ bool block_inconsistency(State& state)
 
         // Mismatching RHS sum and coefficients sum is a contradiction
         if (rhs_sum != sum(coeff_sums)) {
-            inconsistency = &nullspace_vector;
-            break;
+            if (inconsistency == NULL)
+                inconsistency = &nullspace_vector;
+            // TODO: Uncomment it
+            // break;
+            inconsistency_n++;
         }
     }
+    state.solver.stats.two_bit_cpu_time_segments[3] += std::clock() - start_time;
 
     // Blocking inconsistencies
     if (inconsistency != NULL) {
-        printf("Found inconsistency: %d\n", sum(*inconsistency));
+        start_time = std::clock();
+        printf("Found inconsistencies (%d): %d equations\n", inconsistency_n, sum(*inconsistency));
         print(*inconsistency);
 
         state.out_refined.push();
@@ -699,25 +703,35 @@ bool block_inconsistency(State& state)
             auto& equation = (*state.equations)[eq_index];
             auto results_it = state.eq_func_rels.find(equation);
             if (results_it == state.eq_func_rels.end()) {
-                printf("Unexpected\n");
+                printf("Unexpected: failed to find the function results of an equation\n");
                 fflush(stdout);
-                exit(0);
+                exit(1);
                 continue;
             }
-            auto& results = results_it->second;
-            printf("Equation: %d %d %d\n", std::get<0>(equation), std::get<1>(equation), std::get<2>(equation));
+            // Instances refer to function instances
+            auto& instances = results_it->second;
+            printf("\nEquation: %d %d %d\n", std::get<0>(equation) + 1, std::get<1>(equation) + 1, std::get<2>(equation));
 
-            printf("Number of functions for the equation (%d): %d\n", eq_index, results.size());
-            for (auto& result : results) {
-                printf("Adding to confl. clause %d %d\n", result.operation_id, result.functon_id);
-                print(result.variables, 1);
-                for (auto& var : result.variables)
-                    state.out_refined[state.k].push(mkLit(var, state.solver.value(var) == l_True));
+            printf("Number of functions for the equation (ID %d): %d\n", eq_index, instances.size());
+            for (auto& instance : instances) {
+                printf("Adding to confl. clause: op. %d func. %d\n", instance.operation_id, instance.functon_id);
+                print(instance.variables, 1);
+                for (auto& var : instance.variables) {
+                    auto value = state.solver.value(var);
+                    // TODO: Replace with asserts
+                    if (value == l_Undef) {
+                        printf("Unexpected: Conflict clause variable undefined\n");
+                        fflush(stdout);
+                        exit(1);
+                    }
+                    state.out_refined[state.k].push(mkLit(var, value == l_True));
+                }
             }
         }
         state.k++;
 
         print_clause(state.out_refined[state.k - 1]);
+        state.solver.stats.two_bit_cpu_time_segments[4] += std::clock() - start_time;
 
         // Terminate since we already already a few conflict clauses
         return true;
@@ -913,6 +927,7 @@ void add_clauses(State& state)
             add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_t[i], 2, 3);
         }
     }
+    state.solver.stats.two_bit_cpu_time_segments[5] += std::clock() - two_bit_start_time;
 
     bool blocked = block_inconsistency(state);
     state.solver.stats.two_bit_cpu_time += std::clock() - two_bit_start_time;

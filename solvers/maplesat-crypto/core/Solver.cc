@@ -1488,10 +1488,10 @@ lbool Solver::solve_()
 
     // printf("Kernel total time: %.02fs\n", static_cast<double>(stats.kernel_cpu_time) / CLOCKS_PER_SEC);
     {
-        double breakdown[5];
-        for (int x = 0; x < 5; x++)
+        double breakdown[6];
+        for (int x = 0; x < 6; x++)
             breakdown[x] = static_cast<double>(stats.two_bit_cpu_time_segments[x]) / CLOCKS_PER_SEC;
-        printf("Two-bit clauses (%.02fs = %0.2fs + %0.2fs + %0.2fs + %0.2fs + %0.2fs):\n", static_cast<double>(stats.two_bit_cpu_time) / CLOCKS_PER_SEC, breakdown[0], breakdown[1], breakdown[2], breakdown[3], breakdown[4]);
+        printf("Two-bit clauses (%.02fs = %0.2fs + %0.2fs + %0.2fs + %0.2fs + %0.2fs + %0.2fs):\n", static_cast<double>(stats.two_bit_cpu_time) / CLOCKS_PER_SEC, breakdown[0], breakdown[1], breakdown[2], breakdown[3], breakdown[4], breakdown[5]);
     }
     printf("If: %d\n", stats.two_bit_clauses_n[0]);
     printf("Maj: %d\n", stats.two_bit_clauses_n[1]);

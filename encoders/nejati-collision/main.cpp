@@ -78,9 +78,16 @@ void collision(int rounds)
                 for (int j = 0; j < 32; j++)
                     if (W[i][31 - j] == '-') {
                         g.cnf.fixedValue(&DW[i][j], 0, 1);
-
                     } else if (W[i][31 - j] == 'x') {
                         g.cnf.fixedValue(&DW[i][j], 1, 1);
+                    } else if (W[i][31 - j] == 'u') {
+                        g.cnf.fixedValue(&DW[i][j], 1, 1);
+                        g.cnf.fixedValue(&f.w[i][j], 1, 1);
+                        g.cnf.fixedValue(&g.w[i][j], 0, 1);
+                    } else if (W[i][31 - j] == 'n') {
+                        g.cnf.fixedValue(&DW[i][j], 1, 1);
+                        g.cnf.fixedValue(&f.w[i][j], 0, 1);
+                        g.cnf.fixedValue(&g.w[i][j], 1, 1);
                     }
             }
             for (int j = 0; j < 32; j++) {
@@ -89,12 +96,29 @@ void collision(int rounds)
 
                 } else if (A[i + 4][31 - j] == 'x') {
                     g.cnf.fixedValue(&DA[i + 4][j], 1, 1);
+                } else if (A[i + 4][31 - j] == 'u') {
+                    g.cnf.fixedValue(&DA[i + 4][j], 1, 1);
+                    g.cnf.fixedValue(&f.A[i + 4][j], 1, 1);
+                    g.cnf.fixedValue(&g.A[i + 4][j], 0, 1);
+                } else if (A[i + 4][31 - j] == 'n') {
+                    g.cnf.fixedValue(&DA[i + 4][j], 1, 1);
+                    g.cnf.fixedValue(&f.A[i + 4][j], 0, 1);
+                    g.cnf.fixedValue(&g.A[i + 4][j], 1, 1);
+                    // printf("i, j = %d, %d; %d %d %d\n", i + 4, j, f.A[i + 4][j], g.A[i + 4][j], DA[i+4][j]);
                 }
 
                 if (E[i + 4][31 - j] == '-') {
                     g.cnf.fixedValue(&DE[i + 4][j], 0, 1);
                 } else if (E[i + 4][31 - j] == 'x') {
                     g.cnf.fixedValue(&DE[i + 4][j], 1, 1);
+                } else if (E[i + 4][31 - j] == 'u') {
+                    g.cnf.fixedValue(&DE[i + 4][j], 1, 1);
+                    g.cnf.fixedValue(&f.E[i + 4][j], 1, 1);
+                    g.cnf.fixedValue(&g.E[i + 4][j], 0, 1);
+                } else if (E[i + 4][31 - j] == 'n') {
+                    g.cnf.fixedValue(&DE[i + 4][j], 1, 1);
+                    g.cnf.fixedValue(&f.E[i + 4][j], 0, 1);
+                    g.cnf.fixedValue(&g.E[i + 4][j], 1, 1);
                 }
             }
         }
