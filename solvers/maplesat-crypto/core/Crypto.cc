@@ -476,10 +476,10 @@ void add_2_bit_clauses(State& state, int operation_id, int function_id, std::vec
             state.equations->push_back(equation);
 
             // Map the equation variables (if they don't exist)
-            if (state.equations_var_map.find(var1_id) == state.equations_var_map.end())
-                state.equations_var_map[var1_id] = state.equations_var_map.size();
-            if (state.equations_var_map.find(var2_id) == state.equations_var_map.end())
-                state.equations_var_map[var2_id] = state.equations_var_map.size();
+            if (state.eq_var_map.find(var1_id) == state.eq_var_map.end())
+                state.eq_var_map[var1_id] = state.eq_var_map.size();
+            if (state.eq_var_map.find(var2_id) == state.eq_var_map.end())
+                state.eq_var_map[var2_id] = state.eq_var_map.size();
 
             // Connect the equation with this function result
             std::vector<int> variables;
@@ -584,7 +584,7 @@ bool block_inconsistency(State& state)
     // Use NTL to find cycles of inconsistent equations
     clock_t start_time = std::clock();
     NTL::mat_GF2 coeff_matrix;
-    auto variables_n = state.equations_var_map.size();
+    auto variables_n = state.eq_var_map.size();
     auto equations_n = state.equations->size();
     coeff_matrix.SetDims(equations_n, variables_n);
     NTL::vec_GF2 rhs;
@@ -593,8 +593,8 @@ bool block_inconsistency(State& state)
     // Construct the coefficient matrix
     for (int eq_index = 0; eq_index < equations_n; eq_index++) {
         auto& eq = (*state.equations)[eq_index];
-        int x = state.equations_var_map[std::get<0>(eq)];
-        int y = state.equations_var_map[std::get<1>(eq)];
+        int x = state.eq_var_map[std::get<0>(eq)];
+        int y = state.eq_var_map[std::get<1>(eq)];
         for (int col_index = 0; col_index < variables_n; col_index++)
             coeff_matrix[eq_index][col_index] = NTL::to_GF2(col_index == x || col_index == y ? 1 : 0);
 
