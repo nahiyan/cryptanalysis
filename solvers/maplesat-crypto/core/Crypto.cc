@@ -254,7 +254,7 @@ void print(std::vector<int>& vector, int offset = 0)
     printf("\n");
 }
 
-void print_clause(vec<Lit>& clause)
+void print(vec<Lit>& clause)
 {
     printf("Clause: ");
     for (int i = 0; i < clause.size(); i++) {
@@ -263,6 +263,20 @@ void print_clause(vec<Lit>& clause)
             printf(" ");
     }
     printf("\n");
+}
+
+void print(equation_t equation)
+{
+    int x = std::get<0>(equation);
+    int y = std::get<1>(equation);
+    int z = std::get<2>(equation);
+    printf("Equation: %d %s %d\n", x, z == 1 ? "=/=" : "=", y);
+}
+
+void print(equations_t equations)
+{
+    for (auto& equation : equations)
+        print(equation);
 }
 
 // Get index of the shortest conflict clause, -1 if no conflict clause is found
@@ -285,125 +299,93 @@ int get_shortest_conflict_clause(State& state)
     return shortest_index;
 }
 
-// // Checks GF(2) equations and returns conflicting equations (equations that conflicts with previously added ones)
-// std::shared_ptr<equations_t> check_consistency(std::shared_ptr<equations_t>& equations)
-// {
-//     auto conflicting_equations = std::make_shared<equations_t>();
-//     std::map<uint32_t, std::shared_ptr<std::set<int32_t>>> rels;
+// Checks GF(2) equations and returns conflicting equations (equations that conflicts with previously added ones)
+std::shared_ptr<equations_t> check_consistency(std::shared_ptr<equations_t>& equations)
+{
+    auto conflicting_equations = std::make_shared<equations_t>();
+    std::map<uint32_t, std::shared_ptr<std::set<int32_t>>> rels;
 
-//     for (auto& equation : *equations) {
-//         equation.first += equation.first < 0 ? -1 : 1;
-//         equation.second += equation.second < 0 ? -1 : 1;
+    for (auto& equation : *equations) {
+        auto var1 = std::get<0>(equation) + 1;
+        auto var2 = (std::get<2>(equation) == 1 ? -1 : 1) * (std::get<1>(equation) + 1);
+        auto var1_abs = abs(var1);
+        auto var2_abs = abs(var2);
+        auto var1_exists = rels.find(var1_abs) == rels.end() ? false : true;
+        auto var2_exists = rels.find(var2_abs) == rels.end() ? false : true;
 
-//         auto var1 = equation.first;
-//         auto var2 = equation.second;
-//         auto var1_abs = abs(var1);
-//         auto var2_abs = abs(var2);
-//         auto var1_exists = rels.find(var1_abs) == rels.end() ? false : true;
-//         auto var2_exists = rels.find(var2_abs) == rels.end() ? false : true;
+        if (var1_exists && var2_exists) {
+            auto var1_inv_exists = rels[var1_abs]->find(-var1) == rels[var1_abs]->end() ? false : true;
+            auto var2_inv_exists = rels[var2_abs]->find(-var2) == rels[var2_abs]->end() ? false : true;
 
-//         if (var1_exists && var2_exists) {
-//             auto var1_inv_exists = rels[var1_abs]->find(-var1) == rels[var1_abs]->end() ? false : true;
-//             auto var2_inv_exists = rels[var2_abs]->find(-var2) == rels[var2_abs]->end() ? false : true;
+            // Ignore if both inverses are found (would be a redudant operation)
+            if (var1_inv_exists && var2_inv_exists)
+                continue;
 
-//             // Ignore if both inverses are found (would be a redudant operation)
-//             if (var1_inv_exists && var2_inv_exists)
-//                 continue;
+            // Try to prevent conflict by inverting one set
+            bool invert = false;
+            if (var2_inv_exists || var1_inv_exists)
+                invert = true;
 
-//             // Try to prevent conflict by inverting one set
-//             bool invert = false;
-//             if (var2_inv_exists || var1_inv_exists)
-//                 invert = true;
+            // Union the sets
+            for (auto item : *rels[var2_abs])
+                rels[var1_abs]->insert((invert ? -1 : 1) * item);
 
-//             // Union the sets
-//             for (auto item : *rels[var2_abs])
-//                 rels[var1_abs]->insert((invert ? -1 : 1) * item);
+            auto& updated_set = rels[var1_abs];
+            // If both a var and its inverse is present in the newly updated set, we detected a contradiction
+            {
+                auto var1_inv_exists = updated_set->find(-var1_abs) == updated_set->end() ? false : true;
+                auto var2_inv_exists = updated_set->find(-var2_abs) == updated_set->end() ? false : true;
+                auto var1_exists = updated_set->find(var1_abs) == updated_set->end() ? false : true;
+                auto var2_exists = updated_set->find(var2_abs) == updated_set->end() ? false : true;
 
-//             auto& updated_set = rels[var1_abs];
-//             // If both a var and its inverse is present in the newly updated set, we detected a contradiction
-//             {
-//                 auto var1_inv_exists = updated_set->find(-var1_abs) == updated_set->end() ? false : true;
-//                 auto var2_inv_exists = updated_set->find(-var2_abs) == updated_set->end() ? false : true;
-//                 auto var1_exists = updated_set->find(var1_abs) == updated_set->end() ? false : true;
-//                 auto var2_exists = updated_set->find(var2_abs) == updated_set->end() ? false : true;
+                if ((var1_inv_exists && var1_exists) || (var2_inv_exists && var2_exists)) {
+                    auto confl_eq = std::make_tuple(var1_abs - 1, var2_abs - 1, var2 < 0 ? 1 : 0);
+                    conflicting_equations->push_back(confl_eq);
+                }
+            }
 
-//                 if ((var1_inv_exists && var1_exists) || (var2_inv_exists && var2_exists)) {
-//                     // #if DEBUG
-//                     //                     for (auto equation : equations)
-//                     //                         printf("Equation: %d %s %d\n", abs(equation.first), (equation.first > 0 && equation.second > 0) ? "=" : "/=", abs(equation.second));
+            // Update existing references
+            for (auto& item : *updated_set) {
+                auto& set = rels[abs(item)];
+                if (set == updated_set)
+                    continue;
+                rels[abs(item)] = updated_set;
+            }
+        } else if (var1_exists || var2_exists) {
+            // Find an existing set related to any of the variables
+            auto& existing_set = var1_exists ? rels[var1_abs] : rels[var2_abs];
+            auto var1_inv_in_existing_set = existing_set->find(-var1) == existing_set->end() ? false : true;
+            auto var2_inv_in_existing_set = existing_set->find(-var2) == existing_set->end() ? false : true;
 
-//                     // printf("Contradiction detected (%d equations, %d connections): %d %d\n", equations.size(), updated_set->size() / 2, var1, var2);
-//                     // #endif
-//                     int signs[2] = { var1 < 0 ? -1 : 1, var2 < 0 ? -1 : 1 };
-//                     conflicting_equations->push_back(equation_t { signs[0] * (var1_abs - 1), signs[1] * (var2_abs - 1) });
-//                     conflicting_equations->push_back(equation_t { signs[0] * (var1_abs - 1), -signs[1] * (var2_abs - 1) });
-//                 }
-//             }
+            // Invert the lone variable to try to prevent a conflict
+            if (var1_inv_in_existing_set)
+                var2 *= -1;
+            else if (var2_inv_in_existing_set)
+                var1 *= -1;
 
-//             // Update existing references
-//             for (auto& item : *updated_set) {
-//                 auto& set = rels[abs(item)];
-//                 if (set == updated_set)
-//                     continue;
-//                 rels[abs(item)] = updated_set;
-//             }
-//         } else if (var1_exists || var2_exists) {
-//             // Find an existing set related to any of the variables
-//             auto& existing_set = var1_exists ? rels[var1_abs] : rels[var2_abs];
-//             auto var1_inv_in_existing_set = existing_set->find(-var1) == existing_set->end() ? false : true;
-//             auto var2_inv_in_existing_set = existing_set->find(-var2) == existing_set->end() ? false : true;
+            // Add the var to an existing set
+            if (var1_exists)
+                rels[var1_abs]->insert(var2);
+            else
+                rels[var2_abs]->insert(var1);
 
-//             // Add the var to an existing set
-//             if (var1_exists)
-//                 rels[var1_abs]->insert(var2);
-//             else
-//                 rels[var2_abs]->insert(var1);
+            // Update existing references
+            for (auto& item : *existing_set) {
+                auto& set = rels[abs(item)];
+                if (set == existing_set)
+                    continue;
+                rels[abs(item)] = existing_set;
+            }
+        } else {
+            // Adding novel variables
+            auto new_set = std::make_shared<std::set<int32_t>>(std::set<int32_t> { var1, var2 });
+            rels[var1_abs] = new_set;
+            rels[var2_abs] = new_set;
+        }
+    }
 
-//             // Update existing references
-//             for (auto& item : *existing_set) {
-//                 auto& set = rels[abs(item)];
-//                 if (set == existing_set)
-//                     continue;
-//                 rels[abs(item)] = existing_set;
-//             }
-//         } else {
-//             // Adding novel variables
-//             auto new_set = std::make_shared<std::set<int32_t>>(std::set<int32_t> { var1, var2 });
-//             rels[var1_abs] = new_set;
-//             rels[var2_abs] = new_set;
-//         }
-//     }
-
-//     // #if DEBUG
-//     //         for (auto rel : rels) {
-//     //             printf("%d: ", rel.first + 1);
-//     //             auto& set = *rel.second;
-//     //             for (auto& item : set) {
-//     //                 printf("%d ", item);
-//     //             }
-//     //             printf("\n");
-//     //         }
-//     // #endif
-
-//     return conflicting_equations;
-// }
-
-// TODO: Fix error in to_tuples
-// std::vector<triple_t> to_triples(std::vector<int> var_ids)
-// {
-//     std::vector<triple_t> triples;
-//     for (int i = 0, j = 1; i < var_ids.size(); i += 3, j++) {
-//         triple_t triple {
-//             var_ids[i],
-//             var_ids[i + 1],
-//             var_ids[i + 2],
-//         };
-
-//         triples.push_back(triple);
-//     }
-
-//     return triples;
-// }
+    return conflicting_equations;
+}
 
 // TODO: Give proper name such as "add_2_bit_equations"
 // The variable IDs provided should include the operands and the output
@@ -730,7 +712,7 @@ bool block_inconsistency(State& state)
         }
         state.k++;
 
-        print_clause(state.out_refined[state.k - 1]);
+        print(state.out_refined[state.k - 1]);
         state.solver.stats.two_bit_cpu_time_segments[4] += std::clock() - start_time;
 
         // Terminate since we already already a few conflict clauses
@@ -780,7 +762,7 @@ void infer_carries(State& state, std::vector<int>& var_ids, int carries_n, int f
 
         if (inferred) {
             printf("Inferred high carry (function: %d, inputs %d, carry_id %d)\n", function_id, inputs_n, high_carry_id + 1);
-            print_clause(state.out_refined[state.k - 1]);
+            print(state.out_refined[state.k - 1]);
             state.solver.stats.carry_infer_high_clauses_n[function_id]++;
         }
     }
@@ -812,7 +794,7 @@ void infer_carries(State& state, std::vector<int>& var_ids, int carries_n, int f
 
     if (inferred) {
         printf("Inferred low carry (function: %d, inputs %d, carry_id %d)\n", function_id, inputs_n, low_carry_id + 1);
-        print_clause(state.out_refined[state.k - 1]);
+        print(state.out_refined[state.k - 1]);
         state.solver.stats.carry_infer_low_clauses_n[function_id]++;
     }
 
@@ -968,7 +950,7 @@ void add_clauses(State& state)
             state.out_refined[0].push(mkLit(var(conflict_clause[count]), state.solver.value((conflict_clause[count])) == l_False));
         }
 
-        print_clause(conflict_clause);
+        print(conflict_clause);
     }
 }
 }

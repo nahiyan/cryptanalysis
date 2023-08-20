@@ -39,5 +39,6 @@ void load_rule(Solver& solver, FILE*& db, int& id);
 void process_var_map(Solver& solver);
 std::shared_ptr<equations_t> check_consistency(std::shared_ptr<equations_t>& equations);
 bool block_inconsistency(State& state);
+void print(equations_t equations);
 };
 #endif
