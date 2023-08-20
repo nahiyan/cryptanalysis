@@ -184,7 +184,6 @@ public:
         clock_t total_cpu_time = 0;
         clock_t two_bit_cpu_time = 0;
         clock_t carry_inference_cpu_time = 0;
-        clock_t kernel_cpu_time = 0;
         clock_t two_bit_cpu_time_segments[6] = {0, 0, 0, 0, 0, 0};
     } stats;
 

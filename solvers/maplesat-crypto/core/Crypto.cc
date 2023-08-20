@@ -234,11 +234,20 @@ int sum(int* v, int n)
     return s;
 }
 
-NTL::GF2 sum(NTL::vec_GF2 v)
+NTL::GF2 sum(NTL::vec_GF2& v)
 {
     NTL::GF2 sum = NTL::to_GF2(0);
     for (int i = 0; i < v.length(); i++)
         sum += v[i];
+
+    return sum;
+}
+
+int sum_dec_from_bin(NTL::vec_GF2& v)
+{
+    int sum = 0;
+    for (int i = 0; i < v.length(); i++)
+        sum += NTL::conv<int>(v[i]);
 
     return sum;
 }
@@ -277,6 +286,14 @@ void print(equations_t equations)
 {
     for (auto& equation : equations)
         print(equation);
+}
+
+void print(NTL::vec_GF2& equation)
+{
+    printf("Vector [GF(2)]; size: %d: ", equation.length());
+    for (int i = 0; i < equation.length(); i++)
+        printf("%d ", NTL::conv<int>(equation[i]));
+    printf("\n");
 }
 
 // Get index of the shortest conflict clause, -1 if no conflict clause is found
@@ -579,67 +596,36 @@ std::vector<int> prepare_func_vec(std::vector<int>& ids, int offset, int functio
     return new_vec;
 }
 
-bool block_inconsistency(State& state)
+// Create the augmented matrix from equations
+void make_aug_matrix(State& state, NTL::mat_GF2& coeff_matrix, NTL::vec_GF2& rhs)
 {
-    // Use NTL to find cycles of inconsistent equations
-    clock_t start_time = std::clock();
-    NTL::mat_GF2 coeff_matrix;
     auto variables_n = state.eq_var_map.size();
     auto equations_n = state.equations->size();
     coeff_matrix.SetDims(equations_n, variables_n);
-    NTL::vec_GF2 rhs;
     rhs.SetLength(equations_n);
 
     // Construct the coefficient matrix
     for (int eq_index = 0; eq_index < equations_n; eq_index++) {
         auto& eq = (*state.equations)[eq_index];
-        int x = state.eq_var_map[std::get<0>(eq)];
-        int y = state.eq_var_map[std::get<1>(eq)];
+        int& x = state.eq_var_map[std::get<0>(eq)];
+        int& y = state.eq_var_map[std::get<1>(eq)];
         for (int col_index = 0; col_index < variables_n; col_index++)
             coeff_matrix[eq_index][col_index] = NTL::to_GF2(col_index == x || col_index == y ? 1 : 0);
 
         rhs.put(eq_index, std::get<2>(eq));
     }
-    state.solver.stats.two_bit_cpu_time_segments[0] += std::clock() - start_time;
+}
 
-    // Find the basis of the left kernel
-    start_time = std::clock();
-    NTL::mat_GF2 left_kernel_basis;
-    clock_t kernel_start_time = std::clock();
-    NTL::kernel(left_kernel_basis, coeff_matrix);
-    state.solver.stats.kernel_cpu_time += std::clock() - kernel_start_time;
-
-    printf("Basis elements: %d,%d\n", left_kernel_basis.NumRows(), left_kernel_basis.NumCols());
-    state.solver.stats.two_bit_cpu_time_segments[1] += std::clock() - start_time;
-
-    // Sort the basis vectors by Hamming weight (ascending)
-    start_time = std::clock();
-    std::vector<std::pair<int, std::vector<int>>> basis_hamming_weight;
-    equations_n = left_kernel_basis.NumRows();
-    variables_n = left_kernel_basis.NumCols();
-    for (int count = 0; count < equations_n; count++) {
-        std::vector<int> v;
-        int weight = 0;
-        for (int count2 = 0; count2 < variables_n; count2++) {
-            int x = NTL::conv<int, NTL::GF2>(left_kernel_basis[count][count2]);
-            v.push_back(x);
-            if (x == 1)
-                weight++;
-        }
-        basis_hamming_weight.push_back(std::pair<int, std::vector<int>> { weight, v });
-    }
-    std::sort(basis_hamming_weight.begin(), basis_hamming_weight.end(), [](std::pair<int, std::vector<int>> x, std::pair<int, std::vector<int>> y) {
-        return x.first < y.first;
-    });
-    state.solver.stats.two_bit_cpu_time_segments[2] += std::clock() - start_time;
-
-    // Check for inconsistencies
-    start_time = std::clock();
-    std::vector<int>* inconsistency = NULL;
+// Detect inconsistencies from nullspace vectors
+int find_inconsistency_from_vectors(State& state, NTL::mat_GF2& coeff_matrix, NTL::vec_GF2& rhs, NTL::mat_GF2& nullspace_vectors, NTL::vec_GF2*& inconsistency)
+{
     int coeff_n = coeff_matrix.NumCols();
-    int inconsistency_n = 0;
-    for (auto& item : basis_hamming_weight) {
-        auto& nullspace_vector = item.second;
+    int inconsistent_eq_n = 0;
+    int least_hamming_weight = INT_MAX;
+    int nullspace_vectors_n = nullspace_vectors.NumRows();
+    int equations_n = state.equations->size();
+    for (int index = 0; index < nullspace_vectors_n; index++) {
+        auto& nullspace_vector = nullspace_vectors[index];
 
         // Initialize the values to 0
         NTL::GF2 rhs_sum = NTL::to_GF2(0);
@@ -649,7 +635,7 @@ bool block_inconsistency(State& state)
             coeff_sums[x] = 0;
 
         // Go through the nullspace vector and add the equations and RHS
-        for (int eq_index = 0; eq_index < nullspace_vector.size(); eq_index++) {
+        for (int eq_index = 0; eq_index < equations_n; eq_index++) {
             if (nullspace_vector[eq_index] == 0)
                 continue;
 
@@ -662,58 +648,84 @@ bool block_inconsistency(State& state)
 
         // Mismatching RHS sum and coefficients sum is a contradiction
         if (rhs_sum != sum(coeff_sums)) {
-            if (inconsistency == NULL)
+            int hamming_weight = 0;
+            for (int x = 0; x < equations_n; x++)
+                hamming_weight += NTL::conv<int>(nullspace_vector[x]);
+
+            if (hamming_weight < least_hamming_weight) {
                 inconsistency = &nullspace_vector;
-            // TODO: Uncomment it
-            // break;
-            inconsistency_n++;
+            }
+            inconsistent_eq_n++;
         }
     }
+
+    return inconsistent_eq_n;
+}
+
+// Use NTL to find cycles of inconsistent equations
+bool block_inconsistency(State& state)
+{
+    // Make the augmented matrix
+    clock_t start_time = std::clock();
+    NTL::mat_GF2 coeff_matrix;
+    NTL::vec_GF2 rhs;
+    make_aug_matrix(state, coeff_matrix, rhs);
+    state.solver.stats.two_bit_cpu_time_segments[1] += std::clock() - start_time;
+
+    // Find the basis of the coefficient matrix's left kernel
+    start_time = std::clock();
+    NTL::mat_GF2 left_kernel_basis;
+    NTL::kernel(left_kernel_basis, coeff_matrix);
+    auto nullspace_vectors_n = left_kernel_basis.NumRows();
+    auto equations_n = left_kernel_basis.NumCols();
+
+    printf("Basis elements: %d,%d\n", nullspace_vectors_n, equations_n);
+    state.solver.stats.two_bit_cpu_time_segments[2] += std::clock() - start_time;
+
+    start_time = std::clock();
+    // TODO: Add combinations of the basis vectors
     state.solver.stats.two_bit_cpu_time_segments[3] += std::clock() - start_time;
+
+    // Check for inconsistencies
+    start_time = std::clock();
+    NTL::vec_GF2* inconsistency = NULL;
+    auto inconsistent_eq_n = find_inconsistency_from_vectors(state, coeff_matrix, rhs, left_kernel_basis, inconsistency);
+    state.solver.stats.two_bit_cpu_time_segments[4] += std::clock() - start_time;
 
     // Blocking inconsistencies
     if (inconsistency != NULL) {
         start_time = std::clock();
-        printf("Found inconsistencies (%d): %d equations\n", inconsistency_n, sum(*inconsistency));
-        print(*inconsistency);
+        auto& inconsistency_deref = *inconsistency;
+        printf("Found inconsistencies (%d): %d equations\n", inconsistent_eq_n, sum_dec_from_bin(inconsistency_deref));
+        print(inconsistency_deref);
 
         state.out_refined.push();
-        for (int eq_index = 0; eq_index < (*inconsistency).size(); eq_index++) {
-            if ((*inconsistency)[eq_index] == 0)
+        for (int eq_index = 0; eq_index < equations_n; eq_index++) {
+            if (inconsistency_deref[eq_index] == 0)
                 continue;
 
             auto& equation = (*state.equations)[eq_index];
             auto results_it = state.eq_func_rels.find(equation);
-            if (results_it == state.eq_func_rels.end()) {
-                printf("Unexpected: failed to find the function results of an equation\n");
-                fflush(stdout);
-                exit(1);
-                continue;
-            }
-            // Instances refer to function instances
+            assert(results_it != state.eq_func_rels.end());
+
+            // Instances refer to the function instances
             auto& instances = results_it->second;
             printf("\nEquation: %d %d %d\n", std::get<0>(equation) + 1, std::get<1>(equation) + 1, std::get<2>(equation));
 
-            printf("Number of functions for the equation (ID %d): %d\n", eq_index, instances.size());
+            printf("Number of functions for the equation (ID: %d): %d\n", eq_index, instances.size());
             for (auto& instance : instances) {
                 printf("Adding to confl. clause: op. %d func. %d\n", instance.operation_id, instance.functon_id);
                 print(instance.variables, 1);
                 for (auto& var : instance.variables) {
                     auto value = state.solver.value(var);
-                    // TODO: Replace with asserts
-                    if (value == l_Undef) {
-                        printf("Unexpected: Conflict clause variable undefined\n");
-                        fflush(stdout);
-                        exit(1);
-                    }
+                    assert(value != l_Undef);
                     state.out_refined[state.k].push(mkLit(var, value == l_True));
                 }
             }
         }
         state.k++;
-
         print(state.out_refined[state.k - 1]);
-        state.solver.stats.two_bit_cpu_time_segments[4] += std::clock() - start_time;
+        state.solver.stats.two_bit_cpu_time_segments[5] += std::clock() - start_time;
 
         // Terminate since we already already a few conflict clauses
         return true;
@@ -909,7 +921,7 @@ void add_clauses(State& state)
             add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_t[i], 2, 3);
         }
     }
-    state.solver.stats.two_bit_cpu_time_segments[5] += std::clock() - two_bit_start_time;
+    state.solver.stats.two_bit_cpu_time_segments[0] += std::clock() - two_bit_start_time;
 
     bool blocked = block_inconsistency(state);
     state.solver.stats.two_bit_cpu_time += std::clock() - two_bit_start_time;

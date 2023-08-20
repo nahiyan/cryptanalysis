@@ -1485,8 +1485,6 @@ lbool Solver::solve_()
     printf("Clauses added: %d (%d in average)\n", stats.clauses_added, stats.clauses_added / stats.callback_count);
     printf("Callback invokes: %d\n", stats.callback_count);
     printf("Time spent in callback: %.02fs\n", static_cast<double>(stats.total_cpu_time) / CLOCKS_PER_SEC);
-
-    // printf("Kernel total time: %.02fs\n", static_cast<double>(stats.kernel_cpu_time) / CLOCKS_PER_SEC);
     {
         double breakdown[6];
         for (int x = 0; x < 6; x++)
