@@ -37,7 +37,7 @@ void add_clauses(State& state);
 void load_rules(Solver& solver, const char* filename);
 void load_rule(Solver& solver, FILE*& db, int& id);
 void process_var_map(Solver& solver);
-std::shared_ptr<equations_t> check_consistency(std::shared_ptr<equations_t>& equations);
+std::shared_ptr<equations_t> check_consistency(std::shared_ptr<equations_t>& equations, bool exhaustive = true);
 bool block_inconsistency(State& state);
 void print(equations_t equations);
 };

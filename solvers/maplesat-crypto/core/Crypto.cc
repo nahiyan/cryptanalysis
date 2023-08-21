@@ -317,7 +317,7 @@ int get_shortest_conflict_clause(State& state)
 }
 
 // Checks GF(2) equations and returns conflicting equations (equations that conflicts with previously added ones)
-std::shared_ptr<equations_t> check_consistency(std::shared_ptr<equations_t>& equations)
+std::shared_ptr<equations_t> check_consistency(std::shared_ptr<equations_t>& equations, bool exhaustive)
 {
     auto conflicting_equations = std::make_shared<equations_t>();
     std::map<uint32_t, std::shared_ptr<std::set<int32_t>>> rels;
@@ -358,6 +358,8 @@ std::shared_ptr<equations_t> check_consistency(std::shared_ptr<equations_t>& equ
                 if ((var1_inv_exists && var1_exists) || (var2_inv_exists && var2_exists)) {
                     auto confl_eq = std::make_tuple(var1_abs - 1, var2_abs - 1, var2 < 0 ? 1 : 0);
                     conflicting_equations->push_back(confl_eq);
+                    if (!exhaustive)
+                        return conflicting_equations;
                 }
             }
 
@@ -605,14 +607,15 @@ void make_aug_matrix(State& state, NTL::mat_GF2& coeff_matrix, NTL::vec_GF2& rhs
     rhs.SetLength(equations_n);
 
     // Construct the coefficient matrix
+    auto& equations_deref = *state.equations;
     for (int eq_index = 0; eq_index < equations_n; eq_index++) {
-        auto& eq = (*state.equations)[eq_index];
-        int& x = state.eq_var_map[std::get<0>(eq)];
-        int& y = state.eq_var_map[std::get<1>(eq)];
+        auto& equation = equations_deref[eq_index];
+        int& x = state.eq_var_map[std::get<0>(equation)];
+        int& y = state.eq_var_map[std::get<1>(equation)];
         for (int col_index = 0; col_index < variables_n; col_index++)
             coeff_matrix[eq_index][col_index] = NTL::to_GF2(col_index == x || col_index == y ? 1 : 0);
 
-        rhs.put(eq_index, std::get<2>(eq));
+        rhs.put(eq_index, std::get<2>(equation));
     }
 }
 
@@ -679,7 +682,7 @@ bool block_inconsistency(State& state)
     auto nullspace_vectors_n = left_kernel_basis.NumRows();
     auto equations_n = left_kernel_basis.NumCols();
 
-    printf("Basis elements: %d,%d\n", nullspace_vectors_n, equations_n);
+    printf("Basis elements: %d, %d\n", nullspace_vectors_n, equations_n);
     state.solver.stats.two_bit_cpu_time_segments[2] += std::clock() - start_time;
 
     start_time = std::clock();
@@ -721,6 +724,7 @@ bool block_inconsistency(State& state)
                     assert(value != l_Undef);
                     state.out_refined[state.k].push(mkLit(var, value == l_True));
                 }
+                state.solver.stats.two_bit_clauses_n[instance.operation_id - TWO_BIT_CONSTRAINT_IF_ID]++;
             }
         }
         state.k++;
@@ -923,10 +927,23 @@ void add_clauses(State& state)
     }
     state.solver.stats.two_bit_cpu_time_segments[0] += std::clock() - two_bit_start_time;
 
-    bool blocked = block_inconsistency(state);
+    bool is_inconsistent = false;
+    {
+        auto start_time = std::clock();
+        auto confl_equations = check_consistency(state.equations, false);
+        is_inconsistent = confl_equations->size() > 0;
+        state.solver.stats.incons_set_approach += std::clock() - start_time;
+    }
     state.solver.stats.two_bit_cpu_time += std::clock() - two_bit_start_time;
-    if (blocked)
-        return;
+
+    // Block inconsistencies
+    if (is_inconsistent) {
+        auto start_time = std::clock();
+        bool blocked = block_inconsistency(state);
+        state.solver.stats.two_bit_cpu_time += std::clock() - two_bit_start_time;
+        if (blocked)
+            return;
+    }
 
     // Handle carry inference
     clock_t carry_inference_start_time = std::clock();

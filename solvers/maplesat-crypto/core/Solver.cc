@@ -1489,7 +1489,7 @@ lbool Solver::solve_()
         double breakdown[6];
         for (int x = 0; x < 6; x++)
             breakdown[x] = static_cast<double>(stats.two_bit_cpu_time_segments[x]) / CLOCKS_PER_SEC;
-        printf("Two-bit clauses (%.02fs = %0.2fs + %0.2fs + %0.2fs + %0.2fs + %0.2fs + %0.2fs):\n", static_cast<double>(stats.two_bit_cpu_time) / CLOCKS_PER_SEC, breakdown[0], breakdown[1], breakdown[2], breakdown[3], breakdown[4], breakdown[5]);
+        printf("Two-bit clauses (%.02fs = %0.2fs + %0.2fs + %0.2fs + %0.2fs + %0.2fs + %0.2fs + %0.2fs):\n", static_cast<double>(stats.two_bit_cpu_time) / CLOCKS_PER_SEC, breakdown[0], static_cast<double>(stats.incons_set_approach) / CLOCKS_PER_SEC, breakdown[1], breakdown[2], breakdown[3], breakdown[4], breakdown[5]);
     }
     printf("If: %d\n", stats.two_bit_clauses_n[0]);
     printf("Maj: %d\n", stats.two_bit_clauses_n[1]);
