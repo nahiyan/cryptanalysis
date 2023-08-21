@@ -722,10 +722,14 @@ bool block_inconsistency(State& state)
                 for (auto& var : instance.variables) {
                     auto value = state.solver.value(var);
                     assert(value != l_Undef);
-                    state.out_refined[state.k].push(mkLit(var, value == l_True));
+                    // state.out_refined[state.k].push(mkLit(var, value == l_True));
+                    confl_clause_lits.insert(mkLit(var, value == l_True));
                 }
                 state.solver.stats.two_bit_clauses_n[instance.operation_id - TWO_BIT_CONSTRAINT_IF_ID]++;
             }
+        }
+        for(auto& lit: confl_clause_lits) {
+            state.out_refined[state.k].push(lit);
         }
         state.k++;
         print(state.out_refined[state.k - 1]);
