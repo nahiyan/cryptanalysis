@@ -672,7 +672,7 @@ bool block_inconsistency(State& state)
     NTL::mat_GF2 coeff_matrix;
     NTL::vec_GF2 rhs;
     make_aug_matrix(state, coeff_matrix, rhs);
-    state.solver.stats.two_bit_cpu_time_segments[1] += std::clock() - start_time;
+    state.solver.stats.two_bit_augmented_matrix_cpu_time += std::clock() - start_time;
 
     // Find the basis of the coefficient matrix's left kernel
     start_time = std::clock();
@@ -682,17 +682,17 @@ bool block_inconsistency(State& state)
     auto equations_n = left_kernel_basis.NumCols();
 
     printf("Basis elements: %d, %d\n", nullspace_vectors_n, equations_n);
-    state.solver.stats.two_bit_cpu_time_segments[2] += std::clock() - start_time;
+    state.solver.stats.two_bit_left_kernel_basis_cpu_time += std::clock() - start_time;
 
     start_time = std::clock();
     // TODO: Add combinations of the basis vectors
-    state.solver.stats.two_bit_cpu_time_segments[3] += std::clock() - start_time;
+    state.solver.stats.two_bit_nullspace_vectors_combo_cpu_time += std::clock() - start_time;
 
     // Check for inconsistencies
     start_time = std::clock();
     NTL::vec_GF2* inconsistency = NULL;
     auto inconsistent_eq_n = find_inconsistency_from_vectors(state, coeff_matrix, rhs, left_kernel_basis, inconsistency);
-    state.solver.stats.two_bit_cpu_time_segments[4] += std::clock() - start_time;
+    state.solver.stats.two_bit_left_kernel_basis_cpu_time += std::clock() - start_time;
 
     // Blocking inconsistencies
     if (inconsistency != NULL) {
@@ -728,12 +728,12 @@ bool block_inconsistency(State& state)
                 state.solver.stats.two_bit_clauses_n[instance.operation_id - TWO_BIT_CONSTRAINT_IF_ID]++;
             }
         }
-        for(auto& lit: confl_clause_lits) {
+        for (auto& lit : confl_clause_lits) {
             state.out_refined[state.k].push(lit);
         }
         state.k++;
         print(state.out_refined[state.k - 1]);
-        state.solver.stats.two_bit_cpu_time_segments[5] += std::clock() - start_time;
+        state.solver.stats.two_bit_blocking_inconsistency_cpu_time += std::clock() - start_time;
 
         // Terminate since we already already a few conflict clauses
         return true;
@@ -929,22 +929,23 @@ void add_clauses(State& state)
             add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_t[i], 2, 3);
         }
     }
-    state.solver.stats.two_bit_cpu_time_segments[0] += std::clock() - two_bit_start_time;
+    state.solver.stats.two_bit_rules_cpu_time += std::clock() - two_bit_start_time;
 
     bool is_inconsistent = false;
     {
         auto start_time = std::clock();
         auto confl_equations = check_consistency(state.equations, false);
         is_inconsistent = confl_equations->size() > 0;
-        state.solver.stats.incons_set_based_cpu_time += std::clock() - start_time;
+        state.solver.stats.two_bit_set_based_cpu_time += std::clock() - start_time;
     }
+
     state.solver.stats.two_bit_cpu_time += std::clock() - two_bit_start_time;
 
     // Block inconsistencies
     if (is_inconsistent) {
         auto start_time = std::clock();
         bool blocked = block_inconsistency(state);
-        state.solver.stats.two_bit_cpu_time += std::clock() - two_bit_start_time;
+        state.solver.stats.two_bit_cpu_time += std::clock() - start_time;
         if (blocked)
             return;
     }

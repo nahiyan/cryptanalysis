@@ -433,9 +433,7 @@ void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
         return;
 
     // TODO: Find out why the time duration is affected by other time duration calculations
-    // auto start = std::chrono::high_resolution_clock::now();
-
-    clock_t c_start = std::clock();
+    clock_t start_time = std::clock();
 
     stats.callback_count++;
     wait = 0;
@@ -473,10 +471,7 @@ void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
     printf("Callback end\n");
     fflush(stdout);
     stats.clauses_added += out_refined.size();
-
-    // auto end = std::chrono::high_resolution_clock::now();
-    // stats.total_time_sum += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-    stats.total_cpu_time += std::clock() - c_start;
+    stats.total_cpu_time += std::clock() - start_time;
 }
 
 bool Solver::falsifiedClause(vec<Lit>& confl)
@@ -1484,13 +1479,17 @@ lbool Solver::solve_()
     // CDCL(Crypto)
     printf("Clauses added: %d (%d in average)\n", stats.clauses_added, stats.clauses_added / stats.callback_count);
     printf("Callback invokes: %d\n", stats.callback_count);
-    printf("Time spent in X: %.02fs\n", static_cast<double>(stats.debug_time) / CLOCKS_PER_SEC);
     printf("Time spent in callback: %.02fs\n", static_cast<double>(stats.total_cpu_time) / CLOCKS_PER_SEC);
+    printf("Time spent in X: %.02fs\n", static_cast<double>(stats.two_bit_x_cpu_time) / CLOCKS_PER_SEC);
     {
-        double breakdown[6];
-        for (int x = 0; x < 6; x++)
-            breakdown[x] = static_cast<double>(stats.two_bit_cpu_time_segments[x]) / CLOCKS_PER_SEC;
-        printf("Two-bit clauses (%.02fs = %0.2fs + %0.2fs + %0.2fs + %0.2fs + %0.2fs + %0.2fs + %0.2fs):\n", static_cast<double>(stats.two_bit_cpu_time) / CLOCKS_PER_SEC, breakdown[0], static_cast<double>(stats.incons_set_based_cpu_time) / CLOCKS_PER_SEC, breakdown[1], breakdown[2], breakdown[3], breakdown[4], breakdown[5]);
+        printf("Two-bit clauses (%.02fs ~= %0.2fs (R) + %0.2fs (SI) + %0.2fs (AM) + %0.2fs (NS) + %0.2fs (NSC) + %0.2fs (I)):\n",
+            static_cast<double>(stats.two_bit_cpu_time) / CLOCKS_PER_SEC,
+            static_cast<double>(stats.two_bit_rules_cpu_time) / CLOCKS_PER_SEC,
+            static_cast<double>(stats.two_bit_set_based_cpu_time) / CLOCKS_PER_SEC,
+            static_cast<double>(stats.two_bit_augmented_matrix_cpu_time) / CLOCKS_PER_SEC,
+            static_cast<double>(stats.two_bit_left_kernel_basis_cpu_time) / CLOCKS_PER_SEC,
+            static_cast<double>(stats.two_bit_nullspace_vectors_combo_cpu_time) / CLOCKS_PER_SEC,
+            static_cast<double>(stats.two_bit_blocking_inconsistency_cpu_time) / CLOCKS_PER_SEC);
     }
     printf("If: %d\n", stats.two_bit_clauses_n[0]);
     printf("Maj: %d\n", stats.two_bit_clauses_n[1]);

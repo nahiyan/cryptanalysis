@@ -182,11 +182,17 @@ public:
         int callback_count = 0;
         int clauses_added = 0;
         clock_t total_cpu_time = 0;
+
         clock_t two_bit_cpu_time = 0;
+        clock_t two_bit_rules_cpu_time = 0;
+        clock_t two_bit_set_based_cpu_time = 0;
+        clock_t two_bit_augmented_matrix_cpu_time = 0;
+        clock_t two_bit_left_kernel_basis_cpu_time = 0;
+        clock_t two_bit_nullspace_vectors_combo_cpu_time = 0;
+        clock_t two_bit_blocking_inconsistency_cpu_time = 0;
+        clock_t two_bit_x_cpu_time = 0;
+        
         clock_t carry_inference_cpu_time = 0;
-        clock_t two_bit_cpu_time_segments[6] = {0, 0, 0, 0, 0, 0};
-        clock_t incons_set_based_cpu_time = 0;
-        clock_t debug_time = 0;
     } stats;
 
     struct VarIds {
