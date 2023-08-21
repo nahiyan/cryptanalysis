@@ -263,7 +263,7 @@ void print(std::vector<int>& vector, int offset = 0)
     printf("\n");
 }
 
-void print(vec<Lit>& clause)
+void print(minisat_clause_t& clause)
 {
     printf("Clause: ");
     for (int i = 0; i < clause.size(); i++) {
@@ -406,9 +406,8 @@ std::shared_ptr<equations_t> check_consistency(std::shared_ptr<equations_t>& equ
     return conflicting_equations;
 }
 
-// TODO: Give proper name such as "add_2_bit_equations"
 // The variable IDs provided should include the operands and the output
-void add_2_bit_clauses(State& state, int operation_id, int function_id, std::vector<int> var_ids)
+void add_2_bit_equations(State& state, int operation_id, int function_id, std::vector<int> var_ids)
 {
     // Number of variables
     int vars_n = var_ids.size();
@@ -571,6 +570,9 @@ int r_rotate_id(int id, int amount, int offset)
 std::vector<int> prepare_func_vec(std::vector<int>& ids, int offset, int function_id = -1)
 {
     std::vector<int> new_vec;
+    if (function_id < 0 || function_id > 3)
+        for (int i = 0; i < ids.size(); i++)
+            new_vec.push_back(ids[i] + offset);
     if (function_id == 0 || function_id == 1)
         for (int i = 0; i < ids.size(); i++) {
             int r_rotate_amount = 0;
@@ -591,9 +593,6 @@ std::vector<int> prepare_func_vec(std::vector<int>& ids, int offset, int functio
                 r_rotate_amount = function_id == 2 ? 18 : 19;
             new_vec.push_back(r_rotate_id(ids[i], r_rotate_amount, offset));
         }
-    else
-        for (int i = 0; i < ids.size(); i++)
-            new_vec.push_back(ids[i] + offset);
 
     return new_vec;
 }
@@ -713,7 +712,7 @@ bool block_inconsistency(State& state)
 
             // Instances refer to the function instances
             auto& instances = results_it->second;
-            printf("\nEquation: %d %d %d\n", std::get<0>(equation) + 1, std::get<1>(equation) + 1, std::get<2>(equation));
+            print(equation);
 
             printf("Number of functions for the equation (ID: %d): %d\n", eq_index, instances.size());
             for (auto& instance : instances) {
@@ -861,7 +860,7 @@ void add_addition_2_bit_clauses(State& state, int i, int j, std::vector<int>& id
     // }
     // printf("\n");
 
-    add_2_bit_clauses(state, operation_id, function_id, new_vec);
+    add_2_bit_equations(state, operation_id, function_id, new_vec);
 }
 
 void add_clauses(State& state)
@@ -873,32 +872,32 @@ void add_clauses(State& state)
             // If
             {
                 std::vector<int> ids = prepare_func_vec(state.solver.var_ids.if_[i], j);
-                add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_IF_ID, 0, ids);
+                add_2_bit_equations(state, TWO_BIT_CONSTRAINT_IF_ID, 0, ids);
             }
 
             // Maj
             {
                 std::vector<int> ids = prepare_func_vec(state.solver.var_ids.maj[i], j);
-                add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_MAJ_ID, 1, ids);
+                add_2_bit_equations(state, TWO_BIT_CONSTRAINT_MAJ_ID, 1, ids);
             }
 
             // Sigma0
             {
                 std::vector<int> ids = prepare_func_vec(state.solver.var_ids.sigma0[i], j, 0);
-                add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_XOR3_ID, 2, ids);
+                add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR3_ID, 2, ids);
             }
 
             // Sigma1
             {
                 std::vector<int> ids = prepare_func_vec(state.solver.var_ids.sigma1[i], j, 1);
-                add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_XOR3_ID, 3, ids);
+                add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR3_ID, 3, ids);
             }
 
             if (i >= 16) {
                 // S0
                 if (j <= 28) {
                     std::vector<int> ids = prepare_func_vec(state.solver.var_ids.s0[i - 16], j, 2);
-                    add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_XOR3_ID, 4, ids);
+                    add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR3_ID, 4, ids);
                 } else {
                     // TODO: Implement XOR2 2-bit conditions
                 }
@@ -906,7 +905,7 @@ void add_clauses(State& state)
                 // S1
                 if (j <= 21) {
                     std::vector<int> ids = prepare_func_vec(state.solver.var_ids.s1[i - 16], j, 3);
-                    add_2_bit_clauses(state, TWO_BIT_CONSTRAINT_XOR3_ID, 5, ids);
+                    add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR3_ID, 5, ids);
                 } else {
                     // TODO: Implement XOR2 2-bit conditions
                 }
