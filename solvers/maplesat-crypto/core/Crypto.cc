@@ -702,6 +702,7 @@ bool block_inconsistency(State& state)
         print(inconsistency_deref);
 
         state.out_refined.push();
+        std::set<Lit> confl_clause_lits;
         for (int eq_index = 0; eq_index < equations_n; eq_index++) {
             if (inconsistency_deref[eq_index] == 0)
                 continue;
@@ -931,7 +932,7 @@ void add_clauses(State& state)
         auto start_time = std::clock();
         auto confl_equations = check_consistency(state.equations, false);
         is_inconsistent = confl_equations->size() > 0;
-        state.solver.stats.incons_set_approach += std::clock() - start_time;
+        state.solver.stats.incons_set_based_cpu_time += std::clock() - start_time;
     }
     state.solver.stats.two_bit_cpu_time += std::clock() - two_bit_start_time;
 

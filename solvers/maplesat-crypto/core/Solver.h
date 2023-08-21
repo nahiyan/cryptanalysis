@@ -185,7 +185,8 @@ public:
         clock_t two_bit_cpu_time = 0;
         clock_t carry_inference_cpu_time = 0;
         clock_t two_bit_cpu_time_segments[6] = {0, 0, 0, 0, 0, 0};
-        clock_t incons_set_approach = 0;
+        clock_t incons_set_based_cpu_time = 0;
+        clock_t debug_time = 0;
     } stats;
 
     struct VarIds {
