@@ -110,6 +110,7 @@ int main(int argc, char** argv)
         solver = &S;
         
         // CDCL(Crypto)
+        // TODO: Handle non-existing rules files
         Crypto::load_rules(*solver, "rules.db");
 
         // Use signal handlers that forcibly quit until the solver will be able to respond to

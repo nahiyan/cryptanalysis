@@ -19,4 +19,5 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 # Build executable
 add_executable(${EXEC} ${CSRCS})
-target_link_libraries(${EXEC} ntl z)
+target_link_directories(${EXEC} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/lib)
+target_link_libraries(${EXEC} ntl gmp z)
