@@ -3,3 +3,4 @@ maplesat_static
 .cache
 compile_commands.json
 simp/depend.mk
+build

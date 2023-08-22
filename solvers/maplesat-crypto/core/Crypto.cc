@@ -470,7 +470,9 @@ void add_2_bit_equations(State& state, int operation_id, int function_id, std::v
     }
 
     // Find the value of the rule (if it exists)
+    // auto x = std::clock();
     auto rule_it = state.solver.rules.find(rule_key);
+    // state.solver.stats.two_bit_x_cpu_time += std::clock() - x;
     if (rule_it == state.solver.rules.end())
         return;
     auto rule_value = rule_it->second;
