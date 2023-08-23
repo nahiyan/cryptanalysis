@@ -35,7 +35,7 @@ def bin_add_w(ops):
 
 def rels(values):
     rels = ""
-    visited = []
+    visited = set()
     i = 0
     for op in values:
         j = -1
@@ -44,7 +44,7 @@ def rels(values):
             if i == j or j in visited:
                 continue
             rels += "1" if op == op_ else "0"
-        visited.append(i)
+        visited.add(i)
         i += 1
     return rels
 
