@@ -464,11 +464,13 @@ void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
     //     }
     // }
 
+#if DEBUG
     if (out_refined.size() > 1)
         printf("Warning! Clause count: %d\n", out_refined.size());
     else if (out_refined.size() > 0)
         printf("Clause count: %d\n", out_refined.size());
     printf("Callback end\n");
+#endif
     fflush(stdout);
     stats.clauses_added += out_refined.size();
     stats.total_cpu_time += std::clock() - start_time;
