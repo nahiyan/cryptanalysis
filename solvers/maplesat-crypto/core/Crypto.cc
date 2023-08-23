@@ -107,6 +107,10 @@ void load_rule(Solver& solver, FILE*& db, int& id)
 void load_rules(Solver& solver, const char* filename)
 {
     FILE* db = fopen(filename, "r");
+    if (!db) {
+        printf("Rules database not found. Can you ensure that 'rules.db' exists in the current working directory?\n");
+        exit(1);
+    }
     char buffer[1];
     int count = 0;
     while (1) {
