@@ -1479,12 +1479,13 @@ lbool Solver::solve_()
         printf("===============================================================================\n");
 
     // CDCL(Crypto)
-    printf("Clauses added: %d (%d in average)\n", stats.clauses_added, stats.clauses_added / stats.callback_count);
-    printf("Callback invokes: %d\n", stats.callback_count);
-    printf("Time spent in callback: %.02fs\n", static_cast<double>(stats.total_cpu_time) / CLOCKS_PER_SEC);
-    printf("Time spent in X: %.02fs\n", static_cast<double>(stats.two_bit_x_cpu_time) / CLOCKS_PER_SEC);
+    printf("Clauses added: %d (avg. %d)\n", stats.clauses_added, stats.clauses_added / stats.callback_count);
+    printf("Callback triggers: %d\n", stats.callback_count);
+    printf("Callback time: %.02f s\n", static_cast<double>(stats.total_cpu_time) / CLOCKS_PER_SEC);
+    printf("X time: %.02fs\n", static_cast<double>(stats.two_bit_x_cpu_time) / CLOCKS_PER_SEC);
+    printf("Inconsistencies: %d\n", stats.inconsistency_count);
     {
-        printf("Two-bit clauses (%.02fs ~= %0.2fs (R) + %0.2fs (SI) + %0.2fs (AM) + %0.2fs (NS) + %0.2fs (NSC) + %0.2fs (I)):\n",
+        printf("Two-bit clauses (%.02f s ~= %0.2f s (R) + %0.2f s (SI) + %0.2f s (AM) + %0.2f s (NS) + %0.2f s (NSC) + %0.2f s (I)):\n",
             static_cast<double>(stats.two_bit_cpu_time) / CLOCKS_PER_SEC,
             static_cast<double>(stats.two_bit_rules_cpu_time) / CLOCKS_PER_SEC,
             static_cast<double>(stats.two_bit_set_based_cpu_time) / CLOCKS_PER_SEC,
@@ -1501,7 +1502,7 @@ lbool Solver::solve_()
     printf("ADD5: %d\n", stats.two_bit_clauses_n[5]);
     printf("ADD6: %d\n", stats.two_bit_clauses_n[6]);
     printf("ADD7: %d\n", stats.two_bit_clauses_n[7]);
-    printf("Carry inference clauses (%.02fs):\n", static_cast<double>(stats.carry_inference_cpu_time) / CLOCKS_PER_SEC);
+    printf("Carry inference clauses (%.02f s):\n", static_cast<double>(stats.carry_inference_cpu_time) / CLOCKS_PER_SEC);
     printf("ADD(E): %d %d\n", stats.carry_infer_high_clauses_n[0], stats.carry_infer_low_clauses_n[0]);
     printf("ADD(A): %d %d\n", stats.carry_infer_high_clauses_n[1], stats.carry_infer_low_clauses_n[1]);
     printf("ADD(W): %d %d\n", stats.carry_infer_high_clauses_n[2], stats.carry_infer_low_clauses_n[2]);

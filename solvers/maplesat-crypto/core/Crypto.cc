@@ -957,6 +957,7 @@ void add_clauses(State& state)
     if (is_inconsistent) {
         auto start_time = std::clock();
         bool blocked = block_inconsistency(state);
+        state.solver.stats.inconsistency_count++;
         state.solver.stats.two_bit_cpu_time += std::clock() - start_time;
         if (blocked)
             return;

@@ -180,6 +180,7 @@ public:
         int carry_infer_high_clauses_n[4] = {0, 0, 0, 0};
         int carry_infer_low_clauses_n[4] = {0, 0, 0, 0};
         int callback_count = 0;
+        int inconsistency_count = 0;
         int clauses_added = 0;
         clock_t total_cpu_time = 0;
 
