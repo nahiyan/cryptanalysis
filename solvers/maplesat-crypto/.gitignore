@@ -4,3 +4,8 @@ maplesat_static
 compile_commands.json
 simp/depend.mk
 build
+*.cnf
+*.log
+rules.db
+lib
+ntl
