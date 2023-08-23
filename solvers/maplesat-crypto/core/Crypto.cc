@@ -9,7 +9,7 @@
 #include <set>
 #include <vector>
 
-#define DEBUG true
+#define DEBUG false
 #define IO_CONSTRAINT_ADD2_ID 0
 #define IO_CONSTRAINT_IF_ID 1
 #define IO_CONSTRAINT_MAJ_ID 2
@@ -687,7 +687,9 @@ bool block_inconsistency(State& state)
     auto nullspace_vectors_n = left_kernel_basis.NumRows();
     auto equations_n = left_kernel_basis.NumCols();
 
+#if DEBUG
     printf("Basis elements: %d, %d\n", nullspace_vectors_n, equations_n);
+#endif
     state.solver.stats.two_bit_left_kernel_basis_cpu_time += std::clock() - start_time;
 
     start_time = std::clock();
@@ -704,7 +706,7 @@ bool block_inconsistency(State& state)
     if (inconsistency != NULL) {
         start_time = std::clock();
         auto& inconsistency_deref = *inconsistency;
-        printf("Found inconsistencies (%d): %d equations\n", inconsistent_eq_n, sum_dec_from_bin(inconsistency_deref));
+        printf("Found inconsistency (%d): %d equations\n", inconsistent_eq_n, sum_dec_from_bin(inconsistency_deref));
         print(inconsistency_deref);
 
         state.out_refined.push();
@@ -787,7 +789,9 @@ void infer_carries(State& state, std::vector<int>& var_ids, int carries_n, int f
         }
 
         if (inferred) {
+#if DEBUG
             printf("Inferred high carry (function: %d, inputs %d, carry_id %d)\n", function_id, inputs_n, high_carry_id + 1);
+#endif
             print(state.out_refined[state.k - 1]);
             state.solver.stats.carry_infer_high_clauses_n[function_id]++;
         }
@@ -819,7 +823,9 @@ void infer_carries(State& state, std::vector<int>& var_ids, int carries_n, int f
     }
 
     if (inferred) {
+#if DEBUG
         printf("Inferred low carry (function: %d, inputs %d, carry_id %d)\n", function_id, inputs_n, low_carry_id + 1);
+#endif
         print(state.out_refined[state.k - 1]);
         state.solver.stats.carry_infer_low_clauses_n[function_id]++;
     }
@@ -976,8 +982,7 @@ void add_clauses(State& state)
     }
     state.solver.stats.carry_inference_cpu_time += std::clock() - carry_inference_start_time;
 
-    // TODO: Don't add propagation clauses when a conflict clause is detected
-    // Post processing
+    // Don't add propagation clauses when a conflict clause is detected
     int index = get_shortest_conflict_clause(state);
     if (index != -1) {
         minisat_clause_t conflict_clause;
