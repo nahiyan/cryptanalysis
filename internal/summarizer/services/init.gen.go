@@ -12,7 +12,6 @@ import (
 	services5 "cryptanalysis/internal/simplifier/services"
 	services6 "cryptanalysis/internal/solution/services"
 	services4 "cryptanalysis/internal/solver/services"
-
 	do "github.com/samber/do"
 )
 

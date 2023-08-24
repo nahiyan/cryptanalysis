@@ -76,11 +76,10 @@ func (filesystemSvc *FilesystemService) WriteFromPipe(pipe io.Reader, filePath s
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(pipe)
-	scanner.Split(bufio.ScanBytes)
-	for scanner.Scan() {
-		token := scanner.Text()
-		file.WriteString(token)
+	// TODO: Test if it works for long lines
+	_, err = io.Copy(file, pipe)
+	if err != nil {
+		return err
 	}
 
 	return nil
