@@ -39,7 +39,7 @@ func (cubeSelectorSvc *CubeSelectorService) RandomCubes(cubesCount, selectionSiz
 	return cubes[:randomCubeSelectionCount]
 }
 
-// TODO: See if it should be in the cubesets or cuber module
+// TODO: Decide if it should be in the cubesets or cuber module
 func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(encodingFilePath string, cubesetPath string, cubeIndex int, output io.Writer) error {
 	// * 1. Read the instance
 	instanceReader, err := os.OpenFile(encodingFilePath, os.O_RDONLY, 0644)
@@ -62,7 +62,7 @@ func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(encodingFilePath st
 		if strings.HasPrefix(line, "p cnf") {
 			fmt.Sscanf(line, "p cnf %d %d\n", &numVars, &numClauses)
 
-			// * 6. Generate a new header with an increased number of clauses
+			// * 4. Generate a new header with an increased number of clauses
 			newHeader := fmt.Sprintf("p cnf %d %d", numVars, numClauses+len(cubeLiterals))
 			output.Write([]byte(newHeader + "\n"))
 
@@ -72,7 +72,7 @@ func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(encodingFilePath st
 		output.Write([]byte(line + "\n"))
 	}
 
-	// * 4. Assemble the new encoding by adding the cube literals as unit clauses
+	// * 5. Assemble the new encoding by adding the cube literals as unit clauses
 	for _, cubeLiteral := range cubeLiterals {
 		clause := fmt.Sprintf("%d 0\n", cubeLiteral)
 		output.Write([]byte(clause))
