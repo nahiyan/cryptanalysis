@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"os"
 	"os/exec"
 	"path"
 	"regexp"
@@ -112,9 +111,11 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 	}
 
 	maxCubesExceeded := parameters.MaxCubes > 0 && numCubes > parameters.MaxCubes
-	minCubesExceeded := numCubes < parameters.MinCubes
-	minRefutedLeavesViolated := parameters.MinRefutedLeaves > 0 && numRefutedLeaves < parameters.MinRefutedLeaves
-	hasViolated := maxCubesExceeded || minRefutedLeavesViolated || minCubesExceeded || numCubes <= 1
+	// TODO: Add it back based on a parameter (removeCubesets)
+	// minCubesExceeded := numCubes < parameters.MinCubes
+	// minRefutedLeavesViolated := parameters.MinRefutedLeaves > 0 && numRefutedLeaves < parameters.MinRefutedLeaves
+	// hasViolated := maxCubesExceeded || minRefutedLeavesViolated || minCubesExceeded || numCubes <= 1
+	hasViolated := false
 
 	cuberSvc.logSvc.CubeResult(cubesFilePath, processTime, numCubes, numRefutedLeaves, hasViolated)
 
@@ -123,10 +124,17 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 		cuberSvc.commandSvc.StopGroup(control.CommandGroup)
 	}
 
+	// Stop if there's no boundary and min. cubes has reached
+	if numCubes >= parameters.MinCubes && parameters.MaxCubes == 0 {
+		control.ShouldStop[parameters.Encoding] = true
+		cuberSvc.commandSvc.StopGroup(control.CommandGroup)
+	}
+
 	if hasViolated {
-		if err := os.Remove(cubesFilePath); err != nil {
-			return err
-		}
+		// TODO: Take the decision based on a parameter (removeCubesets)
+		// if err := os.Remove(cubesFilePath); err != nil {
+		// 	return err
+		// }
 		return cuber.ErrCubesetViolatedConstraints
 	}
 
