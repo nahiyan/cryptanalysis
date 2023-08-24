@@ -11,6 +11,8 @@
 #include <vector>
 
 #define DEBUG false
+#define TWO_BIT_CNDS true
+#define INFER_CARRIES true
 #define IO_CONSTRAINT_ADD2_ID 0
 #define IO_CONSTRAINT_IF_ID 1
 #define IO_CONSTRAINT_MAJ_ID 2
@@ -640,8 +642,10 @@ bool block_inconsistency(State& state, int block_index = 0)
     if (inconsistency != NULL) {
         start_time = std::clock();
         auto& inconsistency_deref = *inconsistency;
-        printf("Found inconsistency (%d): %d equations\n", inconsistent_eq_n, sum_dec_from_bin(inconsistency_deref));
+        printf("Found inconsistencies (%d): %d equations\n", inconsistent_eq_n, sum_dec_from_bin(inconsistency_deref));
+#if DEBUG
         print(inconsistency_deref);
+#endif
 
         state.out_refined.push();
         std::set<Lit> confl_clause_lits;
@@ -816,6 +820,7 @@ void add_addition_2_bit_clauses(State& state, int i, int j, std::vector<int>& id
 
 void add_clauses(State& state)
 {
+#if TWO_BIT_CNDS
     clock_t two_bit_start_time = std::clock();
     // Handle 2-bit conditions
     for (int i = 0; i < state.solver.steps; i++) {
@@ -897,7 +902,9 @@ void add_clauses(State& state)
                 return;
         }
     }
+#endif
 
+#if INFER_CARRIES
     // Handle carry inference
     clock_t carry_inference_start_time = std::clock();
     for (int i = 0; i < state.solver.steps; i++) {
@@ -933,5 +940,6 @@ void add_clauses(State& state)
 
         print(conflict_clause);
     }
+#endif
 }
 }
