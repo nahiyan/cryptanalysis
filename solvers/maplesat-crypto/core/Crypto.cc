@@ -791,8 +791,8 @@ void infer_carries(State& state, std::vector<int>& var_ids, int carries_n, int f
         if (inferred) {
 #if DEBUG
             printf("Inferred high carry (function: %d, inputs %d, carry_id %d)\n", function_id, inputs_n, high_carry_id + 1);
-#endif
             print(state.out_refined[state.k - 1]);
+#endif
             state.solver.stats.carry_infer_high_clauses_n[function_id]++;
         }
     }
@@ -825,8 +825,8 @@ void infer_carries(State& state, std::vector<int>& var_ids, int carries_n, int f
     if (inferred) {
 #if DEBUG
         printf("Inferred low carry (function: %d, inputs %d, carry_id %d)\n", function_id, inputs_n, low_carry_id + 1);
-#endif
         print(state.out_refined[state.k - 1]);
+#endif
         state.solver.stats.carry_infer_low_clauses_n[function_id]++;
     }
 
