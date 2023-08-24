@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bufio"
 	"context"
 	"cryptanalysis/internal/command"
 	"cryptanalysis/internal/cuber"
@@ -14,6 +15,7 @@ import (
 	"path"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/alitto/pond"
@@ -133,7 +135,7 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 	return nil
 }
 
-// TODO: March doesn't like comments, strip 'em!
+// TODO: March doesn't like leading comments, strip 'em!
 func (cuberSvc *CuberService) Invoke(parameters InvokeParameters, control InvokeControl) (string, string, error) {
 	config := cuberSvc.configSvc.Config
 
@@ -175,12 +177,36 @@ func (cuberSvc *CuberService) Invoke(parameters InvokeParameters, control Invoke
 }
 
 func (cuberSvc *CuberService) Loop(encodings []encoder.Encoding, parameters pipeline.CubeParams, handler func(encoding string, threshold int, timeout int)) {
+	config := cuberSvc.configSvc.Config
 	for _, encoding := range encodings {
 		thresholds := parameters.Thresholds
 		if len(thresholds) == 0 {
-			encodingInfo, err := cuberSvc.encodingSvc.GetInfo(encoding.BasePath)
-			freeVariables := encodingInfo.FreeVariables
-			cuberSvc.errorSvc.Fatal(err, "Cuber: failed to process the encoding")
+			// Command to call March
+			cmd := exec.Command(config.Paths.Bin.March, encoding.GetName()+".cnf")
+			stdoutPipe, err := cmd.StdoutPipe()
+			cuberSvc.errorSvc.Fatal(err, "failed to get the stdout pipe")
+
+			// Execute the command
+			cuberSvc.errorSvc.Fatal(cmd.Start(), "failed to start the program")
+
+			// Read March's output for free variables
+			freeVariables := -1
+			scanner := bufio.NewScanner(stdoutPipe)
+			for scanner.Scan() {
+				line := scanner.Text()
+
+				if strings.Contains(line, "c number of free variables") {
+					fields := strings.Fields(line)
+					freeVariables, err = strconv.Atoi(fields[len(fields)-1])
+					cuberSvc.errorSvc.Fatal(err, "failed to get the number of free variables from March")
+					cuberSvc.errorSvc.Fatal(cmd.Process.Kill(), "failed to kill the process")
+					break
+				}
+			}
+
+			if freeVariables == -1 {
+				log.Fatal("failed to get the free variables using March")
+			}
 
 			stepChange := parameters.StepChange
 			if stepChange == 0 {
