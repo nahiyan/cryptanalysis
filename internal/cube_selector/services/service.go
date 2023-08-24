@@ -23,8 +23,8 @@ import (
 )
 
 func (cubeSelectorSvc *CubeSelectorService) RandomCubes(cubesCount, selectionSize, offset int, seed int64) []int {
-	rand.Seed(seed)
-	indexPermutation := rand.Perm(cubesCount)[offset:]
+	rnd := rand.New(rand.NewSource(seed))
+	indexPermutation := rnd.Perm(cubesCount)[offset:]
 	cubes := lo.Map(indexPermutation, func(index, _ int) int {
 		return index + 1
 	})
