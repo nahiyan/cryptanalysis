@@ -22,11 +22,16 @@ func getInstanceName(info encoder.InstanceInfo) string {
 	adderType := info.AdderType
 	targetHash := info.TargetHash
 
-	instanceName := fmt.Sprintf("%s_%s_%d_%s",
+	instanceName := fmt.Sprintf("%s_%s_%d",
 		encoder_,
 		function,
-		steps,
-		targetHash)
+		steps)
+	if info.AttackType == encoder.Preimage {
+		instanceName += "_" + targetHash
+	} else if info.AttackType == encoder.Collision {
+		instanceName += "_collision"
+	}
+
 	if dobbertinInfo, enabled := info.Dobbertin.Get(); enabled {
 		instanceName += fmt.Sprintf("_dobbertin%d", dobbertinInfo.Bits)
 	}
