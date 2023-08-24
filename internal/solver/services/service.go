@@ -242,7 +242,7 @@ func (solverSvc *SolverService) RunSlurm(encodings []encoder.Encoding, parameter
 	// TODO: Show how many tasks are scheduled in total
 	jobId, err := solverSvc.slurmSvc.ScheduleJob(jobFilePath, nil)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to schedule the job")
-	log.Printf("Solver: scheduled job with ID %d with %d tasks per worker\n", jobId, tasksPerWorker)
+	log.Printf("Solver: scheduled job with ID %d with %d tasks (%d per worker)\n", jobId, len(tasks), tasksPerWorker)
 }
 
 func (solverSvc *SolverService) RunRegular(encodings []encoder.Encoding, parameters pipeline.SolveParams) {
