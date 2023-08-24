@@ -30,20 +30,22 @@ func solverToUint8(solver_ solver.Solver) uint8 {
 		return uint8(1)
 	case solver.MapleSat:
 		return uint8(2)
-	case solver.Glucose:
+	case solver.MapleSatCrypto:
 		return uint8(3)
-	case solver.CryptoMiniSat:
+	case solver.Glucose:
 		return uint8(4)
-	case solver.YalSat:
+	case solver.CryptoMiniSat:
 		return uint8(5)
-	case solver.PalSat:
+	case solver.YalSat:
 		return uint8(6)
-	case solver.LSTechMaple:
+	case solver.PalSat:
 		return uint8(7)
-	case solver.KissatCF:
+	case solver.LSTechMaple:
 		return uint8(8)
-	case solver.Lingeling:
+	case solver.KissatCF:
 		return uint8(9)
+	case solver.Lingeling:
+		return uint8(10)
 	}
 
 	log.Fatal("Solver: couldn't identify the SAT solver for the task")
@@ -60,18 +62,20 @@ func uint8ToSolver(solver_ uint8) solver.Solver {
 	case 2:
 		return solver.MapleSat
 	case 3:
-		return solver.Glucose
+		return solver.MapleSatCrypto
 	case 4:
-		return solver.CryptoMiniSat
+		return solver.Glucose
 	case 5:
-		return solver.YalSat
+		return solver.CryptoMiniSat
 	case 6:
-		return solver.PalSat
+		return solver.YalSat
 	case 7:
-		return solver.LSTechMaple
+		return solver.PalSat
 	case 8:
-		return solver.KissatCF
+		return solver.LSTechMaple
 	case 9:
+		return solver.KissatCF
+	case 10:
 		return solver.Lingeling
 	}
 
