@@ -31,6 +31,7 @@ func (configSvc *ConfigService) Process() {
 	viper.SetDefault("Paths.Bin.Cadical", "cadical")
 	viper.SetDefault("Paths.Bin.Glucose", "glucose")
 	viper.SetDefault("Paths.Bin.MapleSat", "maplesat")
+	viper.SetDefault("Paths.Bin.MapleSatCrypto", "maplesat_crypto")
 	viper.SetDefault("Paths.Bin.XnfSat", "xnfsat")
 	viper.SetDefault("Paths.Bin.YalSat", "yalsat")
 	viper.SetDefault("Paths.Bin.PalSat", "palsat")

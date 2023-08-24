@@ -111,6 +111,7 @@ func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver
 		// Handle regular files
 		reader, err := os.OpenFile(encoding.BasePath, os.O_RDONLY, 0644)
 		solverSvc.errorSvc.Fatal(err, "Solver: failed to read the instance file")
+
 		_, err = io.Copy(stdinPipe, reader)
 		solverSvc.errorSvc.Fatal(err, "Solver: failed to provide the instance to the solver")
 	}
