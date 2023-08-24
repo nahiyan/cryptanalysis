@@ -65,13 +65,13 @@ def conforms_to(x, x_, gc_):
 
 
 # Assumes that there is one output of the function
-def gen_2_bit_conds(id, func, ops_n):
+def gen_2_bit_conds(id, func, inputs_n, outputs_n = 1):
     print(id, func)
     rules = {}
     gc_set = ["1", "u", "n", "0", "x", "-"]
 
     # Generate all the possible rule candidates
-    rule_candidates = product(gc_set, repeat=ops_n + 1)
+    rule_candidates = product(gc_set, repeat=inputs_n + 1)
 
     # Try all the candidates
     for rule_candidate in rule_candidates:
@@ -112,28 +112,17 @@ def gen_2_bit_conds(id, func, ops_n):
                 elif rule_candidate[j] == "1":
                     ops += [1, 1]
 
-            xs, xs_ = [ops[j * 2] for j in range(ops_n)], [
-                ops[j * 2 + 1] for j in range(ops_n)
+            xs, xs_ = [ops[j * 2] for j in range(inputs_n)], [
+                ops[j * 2 + 1] for j in range(inputs_n)
             ]
-            # ops_gc = [gc(xs[j], xs_[j]) for j in range(n_ops)]
 
             # Ensure that the output matches the candidate
             w, w_ = func(xs), func(xs_)
-            if not conforms_to(w, w_, rule_candidate[ops_n]):
+            if not conforms_to(w, w_, rule_candidate[inputs_n]):
                 continue
 
             rels_ = rels(xs)
             rels_list.append(rels_)
-
-            # w_gc = gc(w, w_)
-            # if "".join(rule_candidate) == "--n-":
-            #     print(
-            #         "".join(rule_candidate),
-            #         "".join([str(ops[j * 2]) for j in range(ops_n)]),
-            #         "".join([str(ops[j * 2 + 1]) for j in range(ops_n)]),
-            #         w_gc,
-            #         rels_,
-            #     )
 
         if len(rels_list) == 0:
             continue
@@ -165,10 +154,6 @@ def gen_2_bit_conds(id, func, ops_n):
             print(key, rules[key])
             rules_db.write(to_bytearray(id, key + rules[key]))
     print(len(rules), "rule[s]")
-
-    # for key in rules:
-    #     print(key, rules[key])
-    #     rules_db.write(to_bytearray(id, key + rules[key]))
 
 
 gen_2_bit_conds(TWO_BIT_CONSTRAINT_IF_ID, if_w, 3)
