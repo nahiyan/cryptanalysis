@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"os"
 	"os/exec"
 	"path"
 	"regexp"
@@ -112,10 +113,9 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 
 	maxCubesExceeded := parameters.MaxCubes > 0 && numCubes > parameters.MaxCubes
 	// TODO: Add it back based on a parameter (removeCubesets)
-	// minCubesExceeded := numCubes < parameters.MinCubes
-	// minRefutedLeavesViolated := parameters.MinRefutedLeaves > 0 && numRefutedLeaves < parameters.MinRefutedLeaves
-	// hasViolated := maxCubesExceeded || minRefutedLeavesViolated || minCubesExceeded || numCubes <= 1
-	hasViolated := false
+	minCubesExceeded := numCubes < parameters.MinCubes
+	minRefutedLeavesViolated := parameters.MinRefutedLeaves > 0 && numRefutedLeaves < parameters.MinRefutedLeaves
+	hasViolated := maxCubesExceeded || minRefutedLeavesViolated || minCubesExceeded || numCubes <= 1
 
 	cuberSvc.logSvc.CubeResult(cubesFilePath, processTime, numCubes, numRefutedLeaves, hasViolated)
 
@@ -132,9 +132,9 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 
 	if hasViolated {
 		// TODO: Take the decision based on a parameter (removeCubesets)
-		// if err := os.Remove(cubesFilePath); err != nil {
-		// 	return err
-		// }
+		if err := os.Remove(cubesFilePath); err != nil {
+			return err
+		}
 		return cuber.ErrCubesetViolatedConstraints
 	}
 
