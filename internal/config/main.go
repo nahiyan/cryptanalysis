@@ -9,6 +9,7 @@ type Config struct {
 			Cadical                string
 			Glucose                string
 			MapleSat               string
+			MapleSatCrypto         string
 			XnfSat                 string
 			YalSat                 string
 			PalSat                 string

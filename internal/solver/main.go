@@ -20,17 +20,18 @@ type Solution struct {
 
 // Important: Register new SAT Solver here
 const (
-	CryptoMiniSat = "cryptominisat"
-	Cadical       = "cadical"
-	Kissat        = "kissat"
-	MapleSat      = "maplesat"
-	Glucose       = "glucose"
-	XnfSat        = "xnfsat"
-	YalSat        = "yalsat"
-	PalSat        = "palsat"
-	LSTechMaple   = "lstech_maple"
-	KissatCF      = "kissat_cf"
-	Lingeling     = "lingeling"
+	CryptoMiniSat  = "cryptominisat"
+	Cadical        = "cadical"
+	Kissat         = "kissat"
+	MapleSatCrypto = "maplesat_crypto"
+	MapleSat       = "maplesat"
+	Glucose        = "glucose"
+	XnfSat         = "xnfsat"
+	YalSat         = "yalsat"
+	PalSat         = "palsat"
+	LSTechMaple    = "lstech_maple"
+	KissatCF       = "kissat_cf"
+	Lingeling      = "lingeling"
 )
 
 const (
