@@ -49,19 +49,19 @@ def rels(values):
     return rels
 
 
-def conforms_to(x, x_, gc_):
+def conforms_to(x_f, x_g, gc_):
     if gc_ == "x":
-        return x != x_
+        return x_f != x_g
     elif gc_ == "-":
-        return x == x_
+        return x_f == x_g
     elif gc_ == "0":
-        return x == 0 and x_ == 0
+        return x_f == 0 and x_g == 0
     elif gc_ == "u":
-        return x == 1 and x_ == 0
+        return x_f == 1 and x_g == 0
     elif gc_ == "n":
-        return x == 0 and x_ == 1
+        return x_f == 0 and x_g == 1
     elif gc_ == "1":
-        return x == 1 and x_ == 1
+        return x_f == 1 and x_g == 1
 
 
 # Assumes that there is one output of the function
@@ -80,7 +80,7 @@ def gen_2_bit_conds(id, func, inputs_n, outputs_n = 1):
             # print("Skipped", "".join(rule_candidate))
             continue
 
-        rels_list = []
+        rels_f_list, rels_g_list = [], []
         # Try all possible operands
         mask = []
         for c in rule_candidate:
@@ -112,47 +112,67 @@ def gen_2_bit_conds(id, func, inputs_n, outputs_n = 1):
                 elif rule_candidate[j] == "1":
                     ops += [1, 1]
 
-            xs, xs_ = [ops[j * 2] for j in range(inputs_n)], [
+            # f and g are the 2 blocks of SHA-256
+            xs_f, xs_g = [ops[j * 2] for j in range(inputs_n)], [
                 ops[j * 2 + 1] for j in range(inputs_n)
             ]
 
             # Ensure that the output matches the candidate
-            w, w_ = func(xs), func(xs_)
-            if not conforms_to(w, w_, rule_candidate[inputs_n]):
+            w_f, w_g = func(xs_f), func(xs_g)
+            if not conforms_to(w_f, w_g, rule_candidate[inputs_n]):
                 continue
 
-            rels_ = rels(xs)
-            rels_list.append(rels_)
+            
+            rels_f = rels(xs_f)
+            rels_f_list.append(rels_f)
 
-        if len(rels_list) == 0:
+            rels_g = rels(xs_g)
+            rels_g_list.append(rels_g)
+
+        if len(rels_f_list) == 0 and len(rels_g_list) == 0:
             continue
 
         # Go through the rels list column-wise
-        rels_column_wise = {}
-        for rel_ in rels_list:
+        rels_f_column_wise = {}
+        for rel_ in rels_f_list:
             for i in range(len(rel_)):
-                if i not in rels_column_wise:
-                    rels_column_wise[i] = []
-                rels_column_wise[i].append(int(rel_[i]))
+                if i not in rels_f_column_wise:
+                    rels_f_column_wise[i] = []
+                rels_f_column_wise[i].append(int(rel_[i]))
+        rels_g_column_wise = {}
+        for rel_ in rels_g_list:
+            for i in range(len(rel_)):
+                if i not in rels_g_column_wise:
+                    rels_g_column_wise[i] = []
+                rels_g_column_wise[i].append(int(rel_[i]))
 
         # Check the consistency of the rels. column-wise
-        consistency = []
-        for i in range(len(rels_column_wise)):
-            if all(rels_column_wise[i]):
-                consistency.append(1)
-            elif not any(rels_column_wise[i]):
-                consistency.append(0)
+        consistency_f = []
+        for i in range(len(rels_f_column_wise)):
+            if all(rels_f_column_wise[i]):
+                consistency_f.append(1)
+            elif not any(rels_f_column_wise[i]):
+                consistency_f.append(0)
             else:
-                consistency.append(2)
+                consistency_f.append(2)
+        consistency_g = []
+        for i in range(len(rels_g_column_wise)):
+            if all(rels_g_column_wise[i]):
+                consistency_g.append(1)
+            elif not any(rels_g_column_wise[i]):
+                consistency_g.append(0)
+            else:
+                consistency_g.append(2)
 
         # Accept as rule if there's at least 1 consistent column
-        if any([x == 1 or x == 0 for x in consistency]):
-            key = "".join(rule_candidate)
-            rules[key] = "".join([str(x) for x in consistency])
+        if all([x == 2 for x in consistency_f + consistency_g]):
+            continue
+        key = "".join(rule_candidate)
+        rules[key] = "".join([str(x) for x in consistency_f + consistency_g])
 
-            # Save the rule to the database
-            print(key, rules[key])
-            rules_db.write(to_bytearray(id, key + rules[key]))
+        # Save the rule to the database
+        print(key, rules[key])
+        # rules_db.write(to_bytearray(id, key + rules[key]))
     print(len(rules), "rule[s]")
 
 
