@@ -4,11 +4,11 @@
 #include "NTL/vec_GF2.h"
 #include <algorithm>
 #include <chrono>
+#include <fstream>
 #include <map>
 #include <memory>
 #include <set>
 #include <vector>
-#include <fstream>
 
 #define DEBUG false
 #define IO_CONSTRAINT_ADD2_ID 0
@@ -414,47 +414,49 @@ void add_2_bit_equations(State& state, int operation_id, int function_id, std::v
     auto rule_value = rule_it->second;
 
     // Derive the relationships between the x and x_ of the chunks and enforce them through clauses
-    std::set<int> visited;
     int rule_i = -1;
-    for (int i = 0; i < vars_n - 3; i += 3) {
-        int var1_id = var_ids[i];
-        for (int j = 0; j < vars_n - 3; j += 3) {
-            int var2_id = var_ids[j];
-            if (var2_id == var1_id || visited.find(var2_id) != visited.end())
-                continue;
-            rule_i++;
-            if (rule_value[rule_i] == '2')
-                continue;
-            bool are_equal = rule_value[rule_i] == '1';
+    for (int block_index = 0; block_index < 2; block_index++) {
+        std::set<int> visited;
+        for (int i = 0; i < vars_n - 3; i += 3) {
+            int var1_id = var_ids[i + block_index];
+            for (int j = 0; j < vars_n - 3; j += 3) {
+                int var2_id = var_ids[j + block_index];
+                if (var2_id == var1_id || visited.find(var2_id) != visited.end())
+                    continue;
+                rule_i++;
+                if (rule_value[rule_i] == '2')
+                    continue;
+                bool are_equal = rule_value[rule_i] == '1';
 
-            // Add the equation
-            auto equation = equation_t { var1_id, var2_id, are_equal ? 0 : 1 };
-            state.equations->push_back(equation);
+                // Add the equation
+                auto equation = equation_t { var1_id, var2_id, are_equal ? 0 : 1 };
+                state.equations[block_index]->push_back(equation);
 
-            // Map the equation variables (if they don't exist)
-            if (state.eq_var_map.find(var1_id) == state.eq_var_map.end())
-                state.eq_var_map[var1_id] = state.eq_var_map.size();
-            if (state.eq_var_map.find(var2_id) == state.eq_var_map.end())
-                state.eq_var_map[var2_id] = state.eq_var_map.size();
+                // Map the equation variables (if they don't exist)
+                if (state.eq_var_map.find(var1_id) == state.eq_var_map.end())
+                    state.eq_var_map[var1_id] = state.eq_var_map.size();
+                if (state.eq_var_map.find(var2_id) == state.eq_var_map.end())
+                    state.eq_var_map[var2_id] = state.eq_var_map.size();
 
-            // Connect the equation with this function result
-            std::vector<int> variables;
-            for (Lit& lit : base_clause)
-                variables.push_back(var(lit));
-            auto func_result = FunctionResult {
-                operation_id,
-                function_id,
-                variables,
-            };
-            auto eq_func_relation = state.eq_func_rels.find(equation);
-            auto it = state.eq_func_rels.find(equation);
-            if (it == state.eq_func_rels.end())
-                state.eq_func_rels.insert({ equation, { func_result } });
-            else
-                state.eq_func_rels[equation].push_back(func_result);
+                // Connect the equation with this function result
+                std::vector<int> variables;
+                for (Lit& lit : base_clause)
+                    variables.push_back(var(lit));
+                auto func_result = FunctionResult {
+                    operation_id,
+                    function_id,
+                    variables,
+                };
+                auto eq_func_relation = state.eq_func_rels.find(equation);
+                auto it = state.eq_func_rels.find(equation);
+                if (it == state.eq_func_rels.end())
+                    state.eq_func_rels.insert({ equation, { func_result } });
+                else
+                    state.eq_func_rels[equation].push_back(func_result);
+            }
+
+            visited.insert(var1_id);
         }
-
-        visited.insert(var1_id);
     }
 }
 
@@ -536,15 +538,15 @@ std::vector<int> prepare_func_vec(std::vector<int>& ids, int offset, int functio
 }
 
 // Create the augmented matrix from equations
-void make_aug_matrix(State& state, NTL::mat_GF2& coeff_matrix, NTL::vec_GF2& rhs)
+void make_aug_matrix(State& state, NTL::mat_GF2& coeff_matrix, NTL::vec_GF2& rhs, int block_index)
 {
     auto variables_n = state.eq_var_map.size();
-    auto equations_n = state.equations->size();
+    auto equations_n = state.equations[block_index]->size();
     coeff_matrix.SetDims(equations_n, variables_n);
     rhs.SetLength(equations_n);
 
     // Construct the coefficient matrix
-    auto& equations_deref = *state.equations;
+    auto& equations_deref = *state.equations[block_index];
     for (int eq_index = 0; eq_index < equations_n; eq_index++) {
         auto& equation = equations_deref[eq_index];
         int& x = state.eq_var_map[std::get<0>(equation)];
@@ -557,13 +559,13 @@ void make_aug_matrix(State& state, NTL::mat_GF2& coeff_matrix, NTL::vec_GF2& rhs
 }
 
 // Detect inconsistencies from nullspace vectors
-int find_inconsistency_from_vectors(State& state, NTL::mat_GF2& coeff_matrix, NTL::vec_GF2& rhs, NTL::mat_GF2& nullspace_vectors, NTL::vec_GF2*& inconsistency)
+int find_inconsistency_from_vectors(State& state, NTL::mat_GF2& coeff_matrix, NTL::vec_GF2& rhs, NTL::mat_GF2& nullspace_vectors, NTL::vec_GF2*& inconsistency, int block_index)
 {
     int coeff_n = coeff_matrix.NumCols();
     int inconsistent_eq_n = 0;
     int least_hamming_weight = INT_MAX;
     int nullspace_vectors_n = nullspace_vectors.NumRows();
-    int equations_n = state.equations->size();
+    int equations_n = state.equations[block_index]->size();
     for (int index = 0; index < nullspace_vectors_n; index++) {
         auto& nullspace_vector = nullspace_vectors[index];
 
@@ -603,13 +605,13 @@ int find_inconsistency_from_vectors(State& state, NTL::mat_GF2& coeff_matrix, NT
 }
 
 // Use NTL to find cycles of inconsistent equations
-bool block_inconsistency(State& state)
+bool block_inconsistency(State& state, int block_index = 0)
 {
     // Make the augmented matrix
     clock_t start_time = std::clock();
     NTL::mat_GF2 coeff_matrix;
     NTL::vec_GF2 rhs;
-    make_aug_matrix(state, coeff_matrix, rhs);
+    make_aug_matrix(state, coeff_matrix, rhs, block_index);
     state.solver.stats.two_bit_augmented_matrix_cpu_time += std::clock() - start_time;
 
     // Find the basis of the coefficient matrix's left kernel
@@ -631,7 +633,7 @@ bool block_inconsistency(State& state)
     // Check for inconsistencies
     start_time = std::clock();
     NTL::vec_GF2* inconsistency = NULL;
-    auto inconsistent_eq_n = find_inconsistency_from_vectors(state, coeff_matrix, rhs, left_kernel_basis, inconsistency);
+    auto inconsistent_eq_n = find_inconsistency_from_vectors(state, coeff_matrix, rhs, left_kernel_basis, inconsistency, block_index);
     state.solver.stats.two_bit_left_kernel_basis_cpu_time += std::clock() - start_time;
 
     // Blocking inconsistencies
@@ -647,7 +649,7 @@ bool block_inconsistency(State& state)
             if (inconsistency_deref[eq_index] == 0)
                 continue;
 
-            auto& equation = (*state.equations)[eq_index];
+            auto& equation = (*state.equations[block_index])[eq_index];
             auto results_it = state.eq_func_rels.find(equation);
             assert(results_it != state.eq_func_rels.end());
 
@@ -875,23 +877,25 @@ void add_clauses(State& state)
     }
     state.solver.stats.two_bit_rules_cpu_time += std::clock() - two_bit_start_time;
 
-    bool is_inconsistent = false;
-    {
-        auto start_time = std::clock();
-        auto confl_equations = check_consistency(state.equations, false);
-        is_inconsistent = confl_equations->size() > 0;
-        state.solver.stats.two_bit_set_based_cpu_time += std::clock() - start_time;
-    }
-    state.solver.stats.two_bit_cpu_time += std::clock() - two_bit_start_time;
+    for (int block_index = 0; block_index < 2; block_index++) {
+        bool is_inconsistent = false;
+        {
+            auto start_time = std::clock();
+            auto confl_equations = check_consistency(state.equations[block_index], false);
+            is_inconsistent = confl_equations->size() > 0;
+            state.solver.stats.two_bit_set_based_cpu_time += std::clock() - start_time;
+        }
+        state.solver.stats.two_bit_cpu_time += std::clock() - two_bit_start_time;
 
-    // Block inconsistencies
-    if (is_inconsistent) {
-        auto start_time = std::clock();
-        bool blocked = block_inconsistency(state);
-        state.solver.stats.inconsistency_count++;
-        state.solver.stats.two_bit_cpu_time += std::clock() - start_time;
-        if (blocked)
-            return;
+        // Block inconsistencies
+        if (is_inconsistent) {
+            auto start_time = std::clock();
+            bool blocked = block_inconsistency(state, block_index);
+            state.solver.stats.inconsistency_count++;
+            state.solver.stats.two_bit_cpu_time += std::clock() - start_time;
+            if (blocked)
+                return;
+        }
     }
 
     // Handle carry inference

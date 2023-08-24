@@ -442,7 +442,7 @@ void Solver::callbackFunction(bool complete, vec<vec<Lit>>& out_refined)
     Crypto::State state = {
         out_refined : out_refined,
         solver : *this,
-        equations : std::make_shared<Crypto::equations_t>(),
+        equations : {std::make_shared<Crypto::equations_t>(), std::make_shared<Crypto::equations_t>()},
     };
 
     // Watch the variables from the previously added clauses

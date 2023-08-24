@@ -27,7 +27,7 @@ struct State {
     Solver& solver;
     int k = 0;
 
-    std::shared_ptr<equations_t> equations;
+    std::shared_ptr<equations_t> equations[2];
     std::map<int, int> eq_var_map;
     std::map<equation_t, std::vector<FunctionResult>> eq_func_rels;
 };
