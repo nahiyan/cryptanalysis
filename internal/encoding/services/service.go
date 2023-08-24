@@ -3,13 +3,18 @@ package services
 import (
 	"bufio"
 	"cryptanalysis/internal/encoding"
-	"math"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
-
-	"github.com/samber/lo"
 )
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
 
 func (encodingSvc *EncodingService) GetInfo(encodingPath string) (encoding.EncodingInfo, error) {
 	info := encoding.EncodingInfo{}
@@ -20,61 +25,35 @@ func (encodingSvc *EncodingService) GetInfo(encodingPath string) (encoding.Encod
 	}
 	defer instanceFile.Close()
 
-	variables := []uint{}
+	variables := map[int]bool{}
 	scanner := bufio.NewScanner(instanceFile)
 	for scanner.Scan() {
 		line := scanner.Text()
-		// Check if it's the header
-		if strings.HasPrefix(line, "p cnf ") {
+
+		// Skip comments and problem definition lines
+		if strings.HasPrefix(line, "c") || strings.HasPrefix(line, "p") {
 			continue
-		}
-
-		// Check if it's a comment
-		if strings.HasPrefix(line, "c ") {
-			continue
-		}
-
-		// Divide the line into segments
-		segments := strings.Fields(line)
-
-		// Ignore an empty clause
-		if len(segments) < 2 {
-			continue
-		}
-
-		// Check if the clause is zero-terminated
-		if lastSegment, err := lo.Last(segments); err != nil || strings.TrimSpace(lastSegment) != "0" {
-			continue
-		}
-
-		// Parse the literals
-		literals_ := lo.Map(segments, func(s string, i int) int {
-			v, err := strconv.Atoi(s)
-			if err != nil {
-				return 0
-			}
-
-			return v
-		})
-		literals := lo.Filter(literals_, func(i1, i2 int) bool {
-			return i1 != 0
-		})
-
-		for _, literal := range literals {
-			variable := uint(int(math.Abs(float64(literal))))
-			// New variable
-			if !lo.Contains(variables, variable) {
-				variables = append(variables, uint(variable))
-				info.FreeVariables += 1
-			}
 		}
 
 		info.Clauses += 1
+
+		matches := regexp.MustCompile(`[+-]?\d+`).FindAllString(line, -1)
+		for _, match := range matches {
+			variable, err := strconv.Atoi(match)
+			if err != nil {
+				return info, err
+			}
+			if variable != 0 {
+				variables[abs(variable)] = true
+			}
+		}
 	}
 
 	if err := scanner.Err(); err != nil {
 		return info, err
 	}
+
+	info.FreeVariables = len(variables)
 
 	return info, nil
 }
