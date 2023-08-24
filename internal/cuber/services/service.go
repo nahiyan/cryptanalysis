@@ -124,7 +124,7 @@ func (cuberSvc *CuberService) TrackedInvoke(parameters InvokeParameters, control
 		cuberSvc.commandSvc.StopGroup(control.CommandGroup)
 	}
 
-	// Stop if there's no boundary and min. cubes has reached
+	// Stop if there's no upper bound and min. cubes has reached
 	if numCubes >= parameters.MinCubes && parameters.MaxCubes == 0 {
 		control.ShouldStop[parameters.Encoding] = true
 		cuberSvc.commandSvc.StopGroup(control.CommandGroup)
