@@ -66,7 +66,6 @@ def conforms_to(x_f, x_g, gc_):
 
 # Assumes that there is one output of the function
 def gen_2_bit_conds(id, func, inputs_n, outputs_n = 1):
-    print(id, func)
     rules = {}
     gc_set = ["1", "u", "n", "0", "x", "-"]
 
@@ -77,7 +76,6 @@ def gen_2_bit_conds(id, func, inputs_n, outputs_n = 1):
     for rule_candidate in rule_candidates:
         # Check if the candidate doesn't involve all known bits
         if not any([x == "x" or x == "-" for x in rule_candidate]):
-            # print("Skipped", "".join(rule_candidate))
             continue
 
         rels_f_list, rels_g_list = [], []
@@ -171,9 +169,7 @@ def gen_2_bit_conds(id, func, inputs_n, outputs_n = 1):
         rules[key] = "".join([str(x) for x in consistency_f + consistency_g])
 
         # Save the rule to the database
-        print(key, rules[key])
-        # rules_db.write(to_bytearray(id, key + rules[key]))
-    print(len(rules), "rule[s]")
+        print(id, key, rules[key])
 
 
 gen_2_bit_conds(TWO_BIT_CONSTRAINT_IF_ID, if_w, 3)

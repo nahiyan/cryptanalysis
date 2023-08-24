@@ -8,6 +8,7 @@
 #include <memory>
 #include <set>
 #include <vector>
+#include <fstream>
 
 #define DEBUG false
 #define IO_CONSTRAINT_ADD2_ID 0
@@ -37,89 +38,20 @@
 #define TWO_BIT_CONSTRAINT_ADD7_ID 24
 
 namespace Crypto {
-void load_rule(Solver& solver, FILE*& db, int& id)
-{
-    int key_size = 0, val_size = 0;
-    // Note: Put one extra char for the ID
-    if (id >= IO_CONSTRAINT_IF_ID && id <= IO_CONSTRAINT_XOR3_ID) {
-        key_size = 3;
-        val_size = 1;
-    } else if (id == IO_CONSTRAINT_ADD3_ID) {
-        key_size = 3;
-        val_size = 2;
-    } else if (id >= TWO_BIT_CONSTRAINT_IF_ID && id <= TWO_BIT_CONSTRAINT_XOR3_ID) {
-        key_size = 4;
-        val_size = 3;
-    } else if (id == OI_CONSTRAINT_ADD7_ID) {
-        key_size = 3;
-        val_size = 7;
-    } else if (id == OI_CONSTRAINT_ADD6_ID) {
-        key_size = 3;
-        val_size = 6;
-    } else if (id == OI_CONSTRAINT_ADD5_ID) {
-        key_size = 3;
-        val_size = 5;
-    } else if (id == OI_CONSTRAINT_ADD4_ID) {
-        key_size = 3;
-        val_size = 4;
-    } else if (id == OI_CONSTRAINT_ADD3_ID) {
-        key_size = 2;
-        val_size = 3;
-    } else if (id >= TWO_BIT_CONSTRAINT_IF_ID && id <= TWO_BIT_CONSTRAINT_ADD3_ID) {
-        key_size = 4;
-        val_size = 3;
-    } else if (id == TWO_BIT_CONSTRAINT_ADD4_ID) {
-        key_size = 5;
-        val_size = 6;
-    } else if (id == TWO_BIT_CONSTRAINT_ADD5_ID) {
-        key_size = 6;
-        val_size = 10;
-    } else if (id == TWO_BIT_CONSTRAINT_ADD6_ID) {
-        key_size = 7;
-        val_size = 15;
-    } else if (id == TWO_BIT_CONSTRAINT_ADD7_ID) {
-        key_size = 8;
-        val_size = 21;
-    }
-
-    int size = key_size + val_size;
-    char buffer[size];
-    int n = fread(buffer, size, 1, db);
-    if (n == 0)
-        return;
-
-    char key[key_size + 1], value[val_size];
-    key[0] = id;
-    for (int i = 0; i < key_size; i++) {
-        key[i + 1] = buffer[i];
-    }
-    key[key_size + 1] = 0;
-    int j = 0;
-    for (int i = key_size; i < size; i++) {
-        value[j] = buffer[i];
-        j++;
-    }
-    value[val_size] = 0;
-
-    solver.rules.insert({ key, value });
-}
-
 void load_rules(Solver& solver, const char* filename)
 {
-    FILE* db = fopen(filename, "r");
+    std::ifstream db("rules.db");
     if (!db) {
         printf("Rules database not found. Can you ensure that 'rules.db' exists in the current working directory?\n");
         exit(1);
     }
-    char buffer[1];
     int count = 0;
-    while (1) {
-        int n = fread(buffer, 1, 1, db);
-        if (n == 0)
-            break;
+    std::string key, value;
+    int id;
+    while (db >> id >> key >> value) {
+        key = char(id) + key;
 
-        int id = buffer[0];
-        load_rule(solver, db, id);
+        solver.rules.insert({ key, value });
         count++;
     }
 
@@ -950,7 +882,6 @@ void add_clauses(State& state)
         is_inconsistent = confl_equations->size() > 0;
         state.solver.stats.two_bit_set_based_cpu_time += std::clock() - start_time;
     }
-
     state.solver.stats.two_bit_cpu_time += std::clock() - two_bit_start_time;
 
     // Block inconsistencies

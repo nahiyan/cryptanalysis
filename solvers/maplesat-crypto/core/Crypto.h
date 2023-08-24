@@ -29,7 +29,6 @@ struct State {
 
     std::shared_ptr<equations_t> equations;
     std::map<int, int> eq_var_map;
-    // TODO: Use pointers to equations instead
     std::map<equation_t, std::vector<FunctionResult>> eq_func_rels;
 };
 

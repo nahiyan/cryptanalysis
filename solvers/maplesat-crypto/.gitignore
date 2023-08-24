@@ -6,6 +6,6 @@ simp/depend.mk
 build
 *.cnf
 *.log
-rules.db
+*.db
 lib
 ntl
