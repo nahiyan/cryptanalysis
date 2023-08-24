@@ -21,6 +21,7 @@ import (
 	"github.com/alitto/pond"
 )
 
+// TODO: Go through the entire code of this service and rewrite if necessary (lots of race conditions)
 type InvokeParameters struct {
 	Encoding         string
 	ThresholdType    cuber.ThresholdType
