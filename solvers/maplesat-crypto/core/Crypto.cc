@@ -11,6 +11,7 @@
 #include <vector>
 
 #define DEBUG false
+#define TWO_BIT_CNDS_BLOCKS 2
 #define TWO_BIT_CNDS true
 #define INFER_CARRIES true
 #define IO_CONSTRAINT_ADD2_ID 0
@@ -417,7 +418,7 @@ void add_2_bit_equations(State& state, int operation_id, int function_id, std::v
 
     // Derive the relationships between the x and x_ of the chunks and enforce them through clauses
     int rule_i = -1;
-    for (int block_index = 0; block_index < 2; block_index++) {
+    for (int block_index = 0; block_index < TWO_BIT_CNDS_BLOCKS; block_index++) {
         std::set<int> visited;
         for (int i = 0; i < vars_n - 3; i += 3) {
             int var1_id = var_ids[i + block_index];
@@ -882,7 +883,7 @@ void add_clauses(State& state)
     }
     state.solver.stats.two_bit_rules_cpu_time += std::clock() - two_bit_start_time;
 
-    for (int block_index = 0; block_index < 2; block_index++) {
+    for (int block_index = 0; block_index < TWO_BIT_CNDS_BLOCKS; block_index++) {
         bool is_inconsistent = false;
         {
             auto start_time = std::clock();
