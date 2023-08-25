@@ -186,22 +186,35 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 				_, function, steps, targetHash, err := parseSolutionLogName(fileName)
 				summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to extract information from the log file name")
 
+				attackType := encoder.Preimage
+				if targetHash == "collision" {
+					attackType = encoder.Collision
+				}
+
 				// Verify the solution
 				var hash string
 				if function == encoder.Md4 {
 					hash, err = summarizerSvc.md4Svc.Run(message, steps, false)
-					summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the md4 hash")
+					summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the MD4 hash")
 				} else if function == encoder.Md5 {
 					hash, err = summarizerSvc.md5Svc.Run(message, steps, false)
-					summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the md5 hash")
+					summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the MD5 hash")
 				} else if function == encoder.Sha256 {
-					hash, err = summarizerSvc.sha256Svc.Run(message, steps, false)
-					summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the md5 hash")
+					if attackType == encoder.Preimage {
+						hash, err = summarizerSvc.sha256Svc.Run(message, steps, false)
+						summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the SHA256 hash")
+					} else if attackType == encoder.Collision {
+						// TODO: Calculate the collision
+					}
 				}
-				solution.verified = hash == targetHash
-				if solution.verified {
-					solution.message = hex.EncodeToString(message)
+
+				if attackType == encoder.Preimage {
+					solution.verified = hash == targetHash
+					if solution.verified {
+						solution.message = hex.EncodeToString(message)
+					}
 				}
+				// TODO: Implement verification for collision attacks
 
 				// Add the solution to the list
 				lock.Lock()
@@ -601,7 +614,7 @@ func (summarizerSvc *SummarizerService) Run(workers int) {
 
 	// Important: Register new SAT Solver here
 	for _, fileEntry := range fileEntries {
-		regexp_ := regexp.MustCompile(fmt.Sprintf("(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)", solver.Kissat, simplifier.Cadical, solver.CryptoMiniSat, solver.Glucose, solver.MapleSat, solver.YalSat, solver.PalSat, solver.LSTechMaple, solver.KissatCF, solver.Lingeling))
+		regexp_ := regexp.MustCompile(fmt.Sprintf("(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)|(%s.log)", solver.Kissat, simplifier.Cadical, solver.CryptoMiniSat, solver.Glucose, solver.MapleSat, solver.MapleSatCrypto, solver.YalSat, solver.PalSat, solver.LSTechMaple, solver.KissatCF, solver.Lingeling))
 		if regexp_.Match([]byte(fileEntry)) {
 			solutionLogFiles = append(solutionLogFiles, fileEntry)
 		} else if strings.Contains(fileEntry, "march") {
