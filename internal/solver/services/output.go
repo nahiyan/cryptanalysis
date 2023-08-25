@@ -46,6 +46,8 @@ func (solverSvc *SolverService) ParseLog(outputReader io.Reader, solver_ solver.
 		return parseOutputWith(outputReader, "s SATISFIABLE", "s UNSATISFIABLE", "c CPU time", 1, solutionLiterals)
 	case solver.MapleSat:
 		return parseOutputWith(outputReader, "SATISFIABLE", "UNSATISFIABLE", "CPU time", 1, solutionLiterals)
+	case solver.MapleSatCrypto:
+		return parseOutputWith(outputReader, "SATISFIABLE", "UNSATISFIABLE", "CPU time", 1, solutionLiterals)
 	case solver.YalSat:
 		return parseOutputWith(outputReader, "s SATISFIABLE", "s UNSATISFIABLE", "c total process time of", 1, solutionLiterals)
 	case solver.PalSat:
