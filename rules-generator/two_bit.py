@@ -15,6 +15,33 @@ if not os.path.exists("output"):
     os.mkdir("output")
 rules_db = open("output/rules-2-bit.db", "wb")
 
+def create_matrix(n):
+    matrix = []
+    for i in range(n):
+        matrix.append([])
+        for _ in range(n):
+            matrix[i].append('x')
+    return matrix
+
+def print_matrix(matrix):
+    r = len(matrix)
+    c = len(matrix[0])
+    for i in range(r):
+        for j in range(c):
+            print(matrix[i][j], end=" ")
+        print()
+
+def debug_rels(rels_string, n):
+    elements = list(range(0, n))
+    matrix = create_matrix(n)
+    k = 0
+    for i in elements:
+        selector = i + 1
+        for j in range(selector, n):
+            matrix[i][j] = rels_string[k]
+            k += 1
+    print_matrix(matrix)
+
 
 def if_w(ops):
     return if_(ops[0], ops[1], ops[2])
@@ -33,20 +60,18 @@ def bin_add_w(ops):
     return sum
 
 
-def rels(values):
-    rels = ""
-    visited = set()
-    i = 0
-    for op in values:
-        j = -1
-        for op_ in values:
-            j += 1
-            if i == j or j in visited:
-                continue
-            rels += "1" if op == op_ else "0"
-        visited.add(i)
-        i += 1
-    return rels
+def rels(rule_key, inputs):
+    rels_desc = ""  # relationships descriptor
+    n = len(inputs)
+    elements = list(range(0, n))
+    for i in elements:
+        selector = i + 1
+        for j in range(selector, n):
+            if rule_key[i] in ["-", "x"] and rule_key[j] in ["-", "x"]:
+                rels_desc += "1" if inputs[i] == inputs[j] else "0"
+            else:
+                rels_desc += "2"
+    return rels_desc
 
 
 def conforms_to(x_f, x_g, gc_):
@@ -64,8 +89,29 @@ def conforms_to(x_f, x_g, gc_):
         return x_f == 1 and x_g == 1
 
 
+def get_rels_colwise(rels):
+    rels_colwise = {}
+    for rel in rels:
+        for i in range(len(rel)):
+            if i not in rels_colwise:
+                rels_colwise[i] = []
+            rels_colwise[i].append(int(rel[i]))
+    return rels_colwise
+
+
+def get_rels_consistency(rels_colwise):
+    consistency = []
+    for i in range(len(rels_colwise)):
+        items = set(rels_colwise[i])
+        if len(items) == 1:
+            consistency.append(items.pop())
+        else:
+            consistency.append(2)
+    return consistency
+
+
 # Assumes that there is one output of the function
-def gen_2_bit_conds(id, func, inputs_n, outputs_n = 1):
+def gen_2_bit_conds(id, func, inputs_n, outputs_n=1):
     rules = {}
     gc_set = ["1", "u", "n", "0", "x", "-"]
 
@@ -74,10 +120,6 @@ def gen_2_bit_conds(id, func, inputs_n, outputs_n = 1):
 
     # Try all the candidates
     for rule_candidate in rule_candidates:
-        # Check if the candidate doesn't involve all known bits
-        if not any([x == "x" or x == "-" for x in rule_candidate]):
-            continue
-
         rels_f_list, rels_g_list = [], []
         # Try all possible operands
         mask = []
@@ -111,58 +153,34 @@ def gen_2_bit_conds(id, func, inputs_n, outputs_n = 1):
                     ops += [1, 1]
 
             # f and g are the 2 blocks of SHA-256
-            xs_f, xs_g = [ops[j * 2] for j in range(inputs_n)], [
+            inputs_f, inputs_g = [ops[j * 2] for j in range(inputs_n)], [
                 ops[j * 2 + 1] for j in range(inputs_n)
             ]
 
             # Ensure that the output matches the candidate
-            w_f, w_g = func(xs_f), func(xs_g)
-            if not conforms_to(w_f, w_g, rule_candidate[inputs_n]):
+            output_f, output_g = func(inputs_f), func(inputs_g)
+            if not conforms_to(output_f, output_g, rule_candidate[inputs_n]):
                 continue
 
-            
-            rels_f = rels(xs_f)
+            # Derive the relationships
+            rels_f = rels(rule_candidate, inputs_f)
             rels_f_list.append(rels_f)
 
-            rels_g = rels(xs_g)
+            rels_g = rels(rule_candidate, inputs_g)
             rels_g_list.append(rels_g)
 
         if len(rels_f_list) == 0 and len(rels_g_list) == 0:
             continue
 
         # Go through the rels list column-wise
-        rels_f_column_wise = {}
-        for rel_ in rels_f_list:
-            for i in range(len(rel_)):
-                if i not in rels_f_column_wise:
-                    rels_f_column_wise[i] = []
-                rels_f_column_wise[i].append(int(rel_[i]))
-        rels_g_column_wise = {}
-        for rel_ in rels_g_list:
-            for i in range(len(rel_)):
-                if i not in rels_g_column_wise:
-                    rels_g_column_wise[i] = []
-                rels_g_column_wise[i].append(int(rel_[i]))
+        rels_colwise_f = get_rels_colwise(rels_f_list)
+        rels_colwise_g = get_rels_colwise(rels_g_list)
 
         # Check the consistency of the rels. column-wise
-        consistency_f = []
-        for i in range(len(rels_f_column_wise)):
-            if all(rels_f_column_wise[i]):
-                consistency_f.append(1)
-            elif not any(rels_f_column_wise[i]):
-                consistency_f.append(0)
-            else:
-                consistency_f.append(2)
-        consistency_g = []
-        for i in range(len(rels_g_column_wise)):
-            if all(rels_g_column_wise[i]):
-                consistency_g.append(1)
-            elif not any(rels_g_column_wise[i]):
-                consistency_g.append(0)
-            else:
-                consistency_g.append(2)
+        consistency_f = get_rels_consistency(rels_colwise_f)
+        consistency_g = get_rels_consistency(rels_colwise_g)
 
-        # Accept as rule if there's at least 1 consistent column
+        # Skip this rule if there is no consistent column
         if all([x == 2 for x in consistency_f + consistency_g]):
             continue
         key = "".join(rule_candidate)
