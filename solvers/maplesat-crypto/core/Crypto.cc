@@ -432,29 +432,26 @@ void add_2_bit_equations(State& state, int operation_id, int function_id, std::v
         for (int i = 0; i < chunks_n; i++) {
             int selector = i + 1;
             for (int j = selector; j < chunks_n; j++) {
-                // printf("Debug: %d: %s -> %s (%d)\n", operation_id, rule_key, rule_value.c_str(), unknown_chunks_n);
+                rule_i++;
                 // Help the solver only with unknown bits, skip otherwise
-                if (!is_unknown(rule_key[i]) || !is_unknown(rule_key[j]))
+                if (!is_unknown(rule_key[i + 1]) || !is_unknown(rule_key[j + 1]))
                     continue;
 
-                rule_i++;
                 if (rule_value[rule_i] == '2')
                     continue;
-                printf("Debug: %c %c %c\n", rule_key[i], rule_key[j], rule_value[rule_i]);
-                bool are_equal = rule_value[rule_i] == '1';
 
-                // Select the variables in the relations matrix
-                int vars[2] = { var_ids[i * 3 + block_index], var_ids[j * 3 + block_index] };
+                // Select the variables from the relations matrix
+                int vars[2] = { var_ids[(i * 3) + block_index], var_ids[(j * 3) + block_index] };
 
                 // Add the equation
+                bool are_equal = rule_value[rule_i] == '1';
                 auto equation = equation_t { vars[0], vars[1], are_equal ? 0 : 1 };
                 state.equations[block_index]->push_back(equation);
 
                 // Map the equation variables (if they don't exist)
-                if (state.eq_var_map.find(vars[0]) == state.eq_var_map.end())
-                    state.eq_var_map[vars[0]] = state.eq_var_map.size();
-                if (state.eq_var_map.find(vars[1]) == state.eq_var_map.end())
-                    state.eq_var_map[vars[1]] = state.eq_var_map.size();
+                for (int x = 0; x < 2; x++)
+                    if (state.eq_var_map.find(vars[x]) == state.eq_var_map.end())
+                        state.eq_var_map[vars[x]] = state.eq_var_map.size();
 
                 // Connect the equation with this function result
                 std::vector<int> variables;
@@ -466,8 +463,7 @@ void add_2_bit_equations(State& state, int operation_id, int function_id, std::v
                     variables,
                 };
                 auto eq_func_relation = state.eq_func_rels.find(equation);
-                auto it = state.eq_func_rels.find(equation);
-                if (it == state.eq_func_rels.end())
+                if (state.eq_func_rels.find(equation) == state.eq_func_rels.end())
                     state.eq_func_rels.insert({ equation, { func_result } });
                 else
                     state.eq_func_rels[equation].push_back(func_result);
@@ -497,8 +493,11 @@ void prepare_add_vec(std::vector<int>& ids, std::vector<int>& f, std::vector<int
 
 std::vector<int> prepare_add_2_bit_vec(std::vector<int>& ids, int carries_n, int offset, int carry_removal_n = 0)
 {
+    int ids_n = ids.size();
     std::vector<int> new_vec;
-    int inputs_n = ids.size() - (carries_n + 1) * 3;
+
+    // Add the input triples
+    int inputs_n = ids_n - (carries_n + 1) * 3;
     for (int i = 0, j = 0; i < inputs_n; i += 3, j++) {
         if (carry_removal_n > 0 && j == 3 || carry_removal_n == 2 && j == 2)
             continue;
@@ -508,8 +507,8 @@ std::vector<int> prepare_add_2_bit_vec(std::vector<int>& ids, int carries_n, int
         new_vec.push_back(ids[i + 2] + offset);
     }
 
-    // Add the sum but ignore the carries
-    for (int i = inputs_n + (3 * carries_n); i < ids.size(); i += 3) {
+    // Add the output triples (sum and carries)
+    for (int i = ids_n - carries_n * 3; i < ids_n; i += 3) {
         new_vec.push_back(ids[i] + offset);
         new_vec.push_back(ids[i + 1] + offset);
         new_vec.push_back(ids[i + 2] + offset);
@@ -525,12 +524,13 @@ int r_rotate_id(int id, int amount, int offset)
 
 std::vector<int> prepare_func_vec(std::vector<int>& ids, int offset, int function_id = -1)
 {
+    int ids_n = ids.size();
     std::vector<int> new_vec;
     if (function_id < 0 || function_id > 3)
-        for (int i = 0; i < ids.size(); i++)
+        for (int i = 0; i < ids_n; i++)
             new_vec.push_back(ids[i] + offset);
     if (function_id == 0 || function_id == 1)
-        for (int i = 0; i < ids.size(); i++) {
+        for (int i = 0; i < ids_n; i++) {
             int r_rotate_amount = 0;
             if (i >= 0 && i <= 2)
                 r_rotate_amount = function_id == 0 ? 2 : 6;
@@ -541,7 +541,7 @@ std::vector<int> prepare_func_vec(std::vector<int>& ids, int offset, int functio
             new_vec.push_back(r_rotate_id(ids[i], r_rotate_amount, offset));
         }
     else if (function_id == 2 || function_id == 3)
-        for (int i = 0; i < ids.size(); i++) {
+        for (int i = 0; i < ids_n; i++) {
             int r_rotate_amount = 0;
             if (i >= 0 && i <= 2)
                 r_rotate_amount = function_id == 2 ? 7 : 17;
@@ -821,13 +821,9 @@ void add_addition_2_bit_clauses(State& state, int i, int j, std::vector<int>& id
         operation_id = TWO_BIT_CONSTRAINT_ADD6_ID;
     else if (j > 1 && function_id == 3)
         operation_id = TWO_BIT_CONSTRAINT_ADD7_ID;
-
-    // TODO: Add two-bit conditions for ADD2
-    // printf("Debug imp: ");
-    // for (auto& x: ids_f) {
-    //     printf("%d ", x);
-    // }
-    // printf("\n");
+    else
+        // TODO: Add two-bit conditions for ADD2
+        return;
 
     add_2_bit_equations(state, operation_id, function_id, new_vec);
 }
@@ -904,6 +900,7 @@ void add_clauses(State& state)
             is_inconsistent = confl_equations->size() > 0;
             state.solver.stats.two_bit_set_based_cpu_time += std::clock() - start_time;
         }
+        // TODO: Fix bug with this time calculation
         state.solver.stats.two_bit_cpu_time += std::clock() - two_bit_start_time;
 
         // Block inconsistencies
