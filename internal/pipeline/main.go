@@ -67,10 +67,12 @@ type CubeSelectParams struct {
 }
 
 type SimplifyParams struct {
-	Name      string
-	Conflicts []int
-	Timeout   int
-	Workers   int
+	Name             string
+	Conflicts        []int
+	Timeout          int
+	Workers          int
+	Reconstruct      bool
+	PreserveComments bool
 	// TODO: Add support for redundant simplification
 }
 

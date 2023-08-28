@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bufio"
 	"cryptanalysis/internal/encoder"
 	"cryptanalysis/internal/pipeline"
 	"cryptanalysis/internal/simplifier"
@@ -10,6 +11,7 @@ import (
 	"os/exec"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/alitto/pond"
@@ -23,10 +25,6 @@ func (promise EncodingPromise) GetPath() string {
 	return promise.Encoding
 }
 
-func (promise EncodingPromise) Get(dependencies map[string]interface{}) string {
-	return promise.Encoding
-}
-
 func (simplifierSvc *SimplifierService) getLogPath(instancePath string) string {
 	logFileName := path.Base(instancePath[:len(instancePath)-3] + "log")
 	logFilePath := path.Join(simplifierSvc.configSvc.Config.Paths.Logs, logFileName)
@@ -35,16 +33,14 @@ func (simplifierSvc *SimplifierService) getLogPath(instancePath string) string {
 }
 
 func (simplifierSvc *SimplifierService) TrackedInvoke(simplifier_ simplifier.Simplifier, encoding, outputFilePath string, conflicts int, parameters pipeline.SimplifyParams) error {
-	config := simplifierSvc.configSvc.Config
-
-	var simplifierBinPath string
-	args := []string{encoding}
-	if simplifier_ == simplifier.Cadical {
-		simplifierBinPath = config.Paths.Bin.Cadical
-		args = append(args, "-o", outputFilePath, "-e", outputFilePath+".rs.txt", "-c", strconv.Itoa(conflicts))
-	} else {
+	if simplifier_ != simplifier.Cadical {
 		log.Fatal("Simplifier not supported")
 	}
+	config := simplifierSvc.configSvc.Config
+
+	simplifierBinPath := config.Paths.Bin.Cadical
+	rsFilePath := outputFilePath + ".rs.txt"
+	args := []string{encoding, "-o", outputFilePath, "-e", rsFilePath, "-c", strconv.Itoa(conflicts)}
 
 	cmd := exec.Command(simplifierBinPath, args...)
 	stdoutPipe, err := cmd.StdoutPipe()
@@ -57,6 +53,33 @@ func (simplifierSvc *SimplifierService) TrackedInvoke(simplifier_ simplifier.Sim
 	logFilePath := simplifierSvc.getLogPath(outputFilePath)
 	simplifierSvc.filesystemSvc.WriteFromPipe(stdoutPipe, logFilePath)
 	cmd.Wait()
+
+	// Reconstruct the instance if required
+	if parameters.Reconstruct {
+		err := simplifierSvc.simplificationSvc.Reconstruct(outputFilePath, rsFilePath)
+		simplifierSvc.errorSvc.Fatal(err, "Simplifier: failed to reconstruct instance")
+	}
+
+	// Add back the removed comments
+	if parameters.PreserveComments {
+		log.Println("Preserving", encoding, outputFilePath)
+		originalEncoding, err := os.OpenFile(encoding, os.O_RDONLY, 0644)
+		simplifierSvc.errorSvc.Fatal(err, "Simplifier: failed to open encoding for reading")
+		defer originalEncoding.Close()
+
+		simplifiedEncoding, err := os.OpenFile(outputFilePath, os.O_WRONLY|os.O_APPEND, 0644)
+		simplifierSvc.errorSvc.Fatal(err, "Simplifier: failed to open encoding for appending")
+		defer simplifiedEncoding.Close()
+
+		scanner := bufio.NewScanner(originalEncoding)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.HasPrefix(line, "c ") {
+				// log.Println("Appending", line)
+				simplifiedEncoding.WriteString(line + "\n")
+			}
+		}
+	}
 
 	// TODO: Add more details
 	simplifierSvc.logSvc.Info("Simplifier: " + encoding)
