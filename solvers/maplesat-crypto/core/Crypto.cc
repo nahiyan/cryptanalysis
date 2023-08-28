@@ -402,6 +402,10 @@ void add_2_bit_equations(State& state, int operation_id, int function_id, std::v
             rule_key[j] = dx_value == l_True ? 'x' : '-';
             unknown_chunks_n++;
             base_clause.push_back(mkLit(dx_id, dx_value == l_True));
+        } else if (operation_id >= TWO_BIT_CONSTRAINT_ADD4_ID && j - 1 >= chunks_n - 3) {
+            rule_key[j] = '?';
+        } else if (operation_id == TWO_BIT_CONSTRAINT_ADD3_ID && j - 1 >= chunks_n - 2) {
+            rule_key[j] = '?';
         } else {
             // Terminate since we can't derive the rule if we don't know any of {1, u, n, 0, x, -}, and without the rule we can't derive the 2-bit conditions
             return;
@@ -411,17 +415,73 @@ void add_2_bit_equations(State& state, int operation_id, int function_id, std::v
     if (unknown_chunks_n < 2)
         return;
 
-    // printf("Debug: %d,%d: %s\n", operation_id, function_id, rule_key);
+    // Find rules for one output at a time
+    std::vector<std::string> addition_rules;
+    if (operation_id >= TWO_BIT_CONSTRAINT_ADD3_ID) {
+        int output_vars_n = operation_id >= TWO_BIT_CONSTRAINT_ADD4_ID ? 3 : 2;
+        std::vector<int> non_q_outputs; // Output indices that aren't '?'
+        for (int x = 0; x < output_vars_n; x++) {
+            if (rule_key[chunks_n - 1 - x] != '?')
+                non_q_outputs.push_back(chunks_n - 1 - x);
+        }
+        int non_q_outputs_n = non_q_outputs.size();
+        if (non_q_outputs_n >= 2) {
+            // Break down the rules
+            for (int x = 0; x < non_q_outputs_n; x++) {
+                std::string rule;
+                for (int y = 0; y < key_size - 1; y++)
+                    rule += rule_key[y];
 
-    // Find the value of the rule (if it exists)
-    auto rule_it = state.solver.rules.find(rule_key);
-    if (rule_it == state.solver.rules.end())
-        return;
-    auto rule_value = rule_it->second;
+                for (auto& index : non_q_outputs)
+                    if (non_q_outputs[x] != index)
+                        rule[index] = '?';
 
-    // printf("Debug: %d: %s -> %s (%d)\n", operation_id, rule_key, rule_value.c_str(), unknown_chunks_n);
+                addition_rules.push_back(rule);
+            }
+        } else if (non_q_outputs_n == 0) {
+            return;
+        }
+    }
 
-    // Check if the diff. var indicates that at least a variable in f and g is unknown
+    std::string rule_value;
+    if (addition_rules.size() > 0) {
+        std::vector<std::string> values;
+        for (auto& key : addition_rules) {
+            // Find the value of the rule (if it exists)
+            auto rule_it = state.solver.rules.find(key);
+            if (rule_it == state.solver.rules.end())
+                continue;
+            values.push_back(rule_it->second);
+        }
+
+        if (values.size() > 0) {
+            int width = values[0].size();
+            for (int i = 0; i < width; i++) {
+                char c = '2';
+                for (auto& value : values) {
+                    if (value[i] == '1') {
+                        c = '1';
+                        break;
+                    } else if (value[i] == '0') {
+                        c = '0';
+                        break;
+                    }
+                }
+                rule_value += c;
+            }
+        }
+
+        if (rule_value.size() == 0)
+            return;
+    } else {
+        // Find the value of the rule (if it exists)
+        auto rule_it = state.solver.rules.find(rule_key);
+        if (rule_it == state.solver.rules.end())
+            return;
+        rule_value = rule_it->second;
+    }
+
+    // Function to check if the diff. var indicates that at least a variable in f and g is unknown
     auto is_unknown = [](char x) {
         return x == '-' || x == 'x';
     };
@@ -507,8 +567,8 @@ std::vector<int> prepare_add_2_bit_vec(std::vector<int>& ids, int carries_n, int
         new_vec.push_back(ids[i + 2] + offset);
     }
 
-    // Add the output triples (sum and carries)
-    for (int i = ids_n - carries_n * 3; i < ids_n; i += 3) {
+    // Add the output (sum and carries) triples
+    for (int i = ids_n - (carries_n + 1) * 3; i < ids_n; i += 3) {
         new_vec.push_back(ids[i] + offset);
         new_vec.push_back(ids[i + 1] + offset);
         new_vec.push_back(ids[i + 2] + offset);
@@ -695,7 +755,7 @@ bool block_inconsistency(State& state, int block_index = 0)
         print(state.out_refined[state.k - 1]);
         state.solver.stats.two_bit_blocking_inconsistency_cpu_time += std::clock() - start_time;
 
-        // Terminate since we already already a few conflict clauses
+        // Terminate since we already detected a conflict clause
         return true;
     }
 
