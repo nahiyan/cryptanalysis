@@ -75,7 +75,6 @@ func (simplifierSvc *SimplifierService) TrackedInvoke(simplifier_ simplifier.Sim
 		for scanner.Scan() {
 			line := scanner.Text()
 			if strings.HasPrefix(line, "c ") {
-				// log.Println("Appending", line)
 				simplifiedEncoding.WriteString(line + "\n")
 			}
 		}
