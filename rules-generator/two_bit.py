@@ -1,6 +1,7 @@
 import os
 from itertools import product
-from rules_gen import if_, maj, xor3, bin_add, to_bytearray
+from rules_gen import if_, maj, xor3, bin_add
+from collections.abc import Iterable
 
 TWO_BIT_CONSTRAINT_IF_ID = 17
 TWO_BIT_CONSTRAINT_MAJ_ID = 18
@@ -81,10 +82,10 @@ def rels(rule_key, inputs):
 
 
 def conforms_to(vars_f, vars_g, vars_gc):
-    if type(vars_f) != list:
+    if not isinstance(vars_f, Iterable):
         vars_f = [vars_f]
         vars_g = [vars_g]
-        vars_gc = [vars_gc]
+        vars_gc = vars_gc
     for i in range(len(vars_f)):
         var_f = vars_f[i]
         var_g = vars_g[i]
@@ -102,7 +103,7 @@ def conforms_to(vars_f, vars_g, vars_gc):
             if var_f != 1 or var_g != 0:
                 return False
         elif var_gc == "n":
-            if vars_f != 0 or var_g != 1:
+            if var_f != 0 or var_g != 1:
                 return False
         elif var_gc == "1":
             if var_f != 1 or var_g != 1:
@@ -148,6 +149,7 @@ def gen_2_bit_conds(id, func, inputs_n, outputs_n=1):
                 candidates.append(list(rule_candidate) + entry)
         for candidate in candidates:
             rels_f_list, rels_g_list = [], []
+
             # Try all possible operands
             mask = []
             for c in candidate:

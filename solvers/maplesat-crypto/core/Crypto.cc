@@ -361,7 +361,7 @@ void add_2_bit_equations(State& state, int operation_id, int function_id, std::v
 
     // Process chunk-wise (each chunk has 3 bits)
     std::vector<Lit> base_clause;
-    bool hasXOrDash = false;
+    int unknown_chunks_n = 0;
     for (int i = 0, j = 1; i < vars_n; i += 3, j++) {
         // There are 3 possible ways to derive the GC of the chunk: from x and x_, from dx and x or x_, or from dx alone, else we can't
         int& x_id = var_ids[i];
@@ -400,7 +400,7 @@ void add_2_bit_equations(State& state, int operation_id, int function_id, std::v
             base_clause.push_back(mkLit(dx_id, dx_value == l_True));
         } else if (dx_value != l_Undef) {
             rule_key[j] = dx_value == l_True ? 'x' : '-';
-            hasXOrDash = true;
+            unknown_chunks_n++;
             base_clause.push_back(mkLit(dx_id, dx_value == l_True));
         } else {
             // Terminate since we can't derive the rule if we don't know any of {1, u, n, 0, x, -}, and without the rule we can't derive the 2-bit conditions
@@ -408,38 +408,53 @@ void add_2_bit_equations(State& state, int operation_id, int function_id, std::v
         }
     }
 
+    if (unknown_chunks_n < 2)
+        return;
+
+    // printf("Debug: %d,%d: %s\n", operation_id, function_id, rule_key);
+
     // Find the value of the rule (if it exists)
-    // auto x = std::clock();
     auto rule_it = state.solver.rules.find(rule_key);
-    // state.solver.stats.two_bit_x_cpu_time += std::clock() - x;
     if (rule_it == state.solver.rules.end())
         return;
     auto rule_value = rule_it->second;
 
-    // Derive the relationships between the x and x_ of the chunks and enforce them through clauses
+    // printf("Debug: %d: %s -> %s (%d)\n", operation_id, rule_key, rule_value.c_str(), unknown_chunks_n);
+
+    // Check if the diff. var indicates that at least a variable in f and g is unknown
+    auto is_unknown = [](char x) {
+        return x == '-' || x == 'x';
+    };
+
+    // Derive the relationships between the f and g variables
     int rule_i = -1;
     for (int block_index = 0; block_index < TWO_BIT_CNDS_BLOCKS; block_index++) {
-        std::set<int> visited;
-        for (int i = 0; i < vars_n - 3; i += 3) {
-            int var1_id = var_ids[i + block_index];
-            for (int j = 0; j < vars_n - 3; j += 3) {
-                int var2_id = var_ids[j + block_index];
-                if (var2_id == var1_id || visited.find(var2_id) != visited.end())
+        for (int i = 0; i < chunks_n; i++) {
+            int selector = i + 1;
+            for (int j = selector; j < chunks_n; j++) {
+                // printf("Debug: %d: %s -> %s (%d)\n", operation_id, rule_key, rule_value.c_str(), unknown_chunks_n);
+                // Help the solver only with unknown bits, skip otherwise
+                if (!is_unknown(rule_key[i]) || !is_unknown(rule_key[j]))
                     continue;
+
                 rule_i++;
                 if (rule_value[rule_i] == '2')
                     continue;
+                printf("Debug: %c %c %c\n", rule_key[i], rule_key[j], rule_value[rule_i]);
                 bool are_equal = rule_value[rule_i] == '1';
 
+                // Select the variables in the relations matrix
+                int vars[2] = { var_ids[i * 3 + block_index], var_ids[j * 3 + block_index] };
+
                 // Add the equation
-                auto equation = equation_t { var1_id, var2_id, are_equal ? 0 : 1 };
+                auto equation = equation_t { vars[0], vars[1], are_equal ? 0 : 1 };
                 state.equations[block_index]->push_back(equation);
 
                 // Map the equation variables (if they don't exist)
-                if (state.eq_var_map.find(var1_id) == state.eq_var_map.end())
-                    state.eq_var_map[var1_id] = state.eq_var_map.size();
-                if (state.eq_var_map.find(var2_id) == state.eq_var_map.end())
-                    state.eq_var_map[var2_id] = state.eq_var_map.size();
+                if (state.eq_var_map.find(vars[0]) == state.eq_var_map.end())
+                    state.eq_var_map[vars[0]] = state.eq_var_map.size();
+                if (state.eq_var_map.find(vars[1]) == state.eq_var_map.end())
+                    state.eq_var_map[vars[1]] = state.eq_var_map.size();
 
                 // Connect the equation with this function result
                 std::vector<int> variables;
@@ -457,8 +472,6 @@ void add_2_bit_equations(State& state, int operation_id, int function_id, std::v
                 else
                     state.eq_func_rels[equation].push_back(func_result);
             }
-
-            visited.insert(var1_id);
         }
     }
 }
