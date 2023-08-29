@@ -742,20 +742,19 @@ bool block_inconsistency(State& state, int block_index = 0)
                 for (auto& var : instance.variables) {
                     auto value = state.solver.value(var);
                     assert(value != l_Undef);
-                    // state.out_refined[state.k].push(mkLit(var, value == l_True));
                     confl_clause_lits.insert(mkLit(var, value == l_True));
                 }
                 state.solver.stats.two_bit_clauses_n[instance.operation_id - TWO_BIT_CONSTRAINT_IF_ID]++;
             }
         }
-        for (auto& lit : confl_clause_lits) {
+        for (auto& lit : confl_clause_lits)
             state.out_refined[state.k].push(lit);
-        }
+
         state.k++;
         print(state.out_refined[state.k - 1]);
         state.solver.stats.two_bit_blocking_inconsistency_cpu_time += std::clock() - start_time;
 
-        // Terminate since we already detected a conflict clause
+        // Terminate since we've already detected a conflict clause
         return true;
     }
 

@@ -54,6 +54,7 @@ void printStats(Solver& solver)
     printf("actual reward         : %Lf\n", total_actual_rewards / total_actual_count);
     if (mem_used != 0) printf("Memory used           : %.2f MB\n", mem_used);
     printf("CPU time              : %g s\n", cpu_time);
+    printf("Discounted time: %.2f s\n", cpu_time - (static_cast<double>(solver.stats.total_cpu_time) / CLOCKS_PER_SEC));
 }
 
 
