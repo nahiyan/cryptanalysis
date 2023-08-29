@@ -62,7 +62,7 @@ func getInstanceName(info encoder.InstanceInfo) string {
 	return instanceName
 }
 
-func processInstanceName(instanceName string) (encoder.InstanceInfo, error) {
+func (encoderSvc *EncoderService) ProcessInstanceName(instanceName string) (encoder.InstanceInfo, error) {
 	instanceName = path.Base(instanceName)
 	info := encoder.InstanceInfo{}
 	errInvalidFormat := errors.New("instance name processor: invalid format")

@@ -69,6 +69,7 @@ type CubeSelectParams struct {
 type SimplifyParams struct {
 	Name             string
 	Conflicts        []int
+	ConflictsMap     map[int][]int
 	Timeout          int
 	Workers          int
 	Reconstruct      bool

@@ -17,14 +17,6 @@ import (
 	"github.com/alitto/pond"
 )
 
-type EncodingPromise struct {
-	Encoding string
-}
-
-func (promise EncodingPromise) GetPath() string {
-	return promise.Encoding
-}
-
 func (simplifierSvc *SimplifierService) getLogPath(instancePath string) string {
 	logFileName := path.Base(instancePath[:len(instancePath)-3] + "log")
 	logFilePath := path.Join(simplifierSvc.configSvc.Config.Paths.Logs, logFileName)
@@ -108,7 +100,15 @@ func (simplifierSvc *SimplifierService) RunWith(simplifier_ simplifier.Simplifie
 	pool := pond.New(parameters.Workers, 1000, pond.IdleTimeout(100*time.Millisecond))
 
 	for _, encoding := range encodings {
-		conflictsList := parameters.Conflicts
+		// Get the conflicts list
+		info, err := simplifierSvc.encoderSvc.ProcessInstanceName(encoding.GetName())
+		simplifierSvc.errorSvc.Fatal(err, "Simplifier: failed to process instance name")
+		var conflictsList []int
+		conflictsList, exists := parameters.ConflictsMap[info.Steps]
+		if !exists {
+			conflictsList = parameters.Conflicts
+		}
+
 		for _, conflicts := range conflictsList {
 			var outputFilePath string
 			switch simplifier_ {

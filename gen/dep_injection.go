@@ -240,7 +240,7 @@ func main() {
 		// TODO: Rename to simplify
 		{
 			Name:         "simplifier",
-			Dependencies: []string{"error", "config", "filesystem", "simplification", "cube_selector", "log", "combined_logs"},
+			Dependencies: []string{"error", "config", "filesystem", "simplification", "cube_selector", "log", "combined_logs", "encoder"},
 			Type:         Service,
 		},
 		{
