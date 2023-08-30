@@ -57,6 +57,36 @@ type simplification struct {
 	simplifier           simplifier.Simplifier
 }
 
+func getBlock2MessageStartingIndex(encodingPath string) (int, error) {
+	content, err := os.ReadFile(encodingPath)
+	if err != nil {
+		fmt.Println("Error reading the file:", err)
+		return 0, err
+	}
+
+	// Define the regular expression pattern
+	pattern := `c w0_g (\d+)`
+
+	// Compile the regular expression
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		fmt.Println("Error compiling the regular expression:", err)
+		return 0, err
+	}
+
+	// Find all matches in the content
+	matches := re.FindAllStringSubmatch(string(content), -1)
+	if len(matches) > 0 {
+		index, err := strconv.Atoi(matches[0][1])
+		if err != nil {
+			return 0, nil
+		}
+		return index, nil
+	}
+
+	return 0, nil
+}
+
 func (summarizerSvc *SummarizerService) GetCubesets(logFiles []string) []cubeset {
 	config := summarizerSvc.configSvc.Config
 	cubesets := []cubeset{}
@@ -204,7 +234,27 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 						hash, err = summarizerSvc.sha256Svc.Run(message, steps, false)
 						summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the SHA256 hash")
 					} else if attackType == encoder.Collision {
-						// TODO: Calculate the collision
+						index := strings.Index(fileName, ".cnf")
+						baseEncodingFN := fileName[:index+len(".cnf")]
+
+						baseEncodingPath := path.Join(config.Paths.Encodings, baseEncodingFN)
+						message2Index, err := getBlock2MessageStartingIndex(baseEncodingPath)
+						summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to get block 2's message index")
+
+						message2, err := summarizerSvc.solutionSvc.ExtractFromLiterals(solutionLiterals[message2Index-1 : message2Index+512])
+						summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed extract the message from the solution literal")
+
+						hash, err = summarizerSvc.sha256Svc.Run(message, steps, false)
+						summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the SHA256 hash")
+						hash2, err := summarizerSvc.sha256Svc.Run(message2, steps, false)
+						summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the SHA256 hash")
+
+						// Collision verification
+						solution.verified = hash == hash2 && string(message2) != string(message)
+						// TODO: Support message pairs for collision attacks
+						if solution.verified {
+							solution.message = hex.EncodeToString(message)
+						}
 					}
 				}
 
@@ -214,7 +264,6 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 						solution.message = hex.EncodeToString(message)
 					}
 				}
-				// TODO: Implement verification for collision attacks
 
 				// Add the solution to the list
 				lock.Lock()
