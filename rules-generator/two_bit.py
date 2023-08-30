@@ -29,7 +29,12 @@ def create_matrix(n):
 def print_matrix(matrix):
     r = len(matrix)
     c = len(matrix[0])
+    print(end="  ")
+    for i in range(c):
+        print(f'{i}', end=" ")
+    print()
     for i in range(r):
+        print(f'{i}', end=" ")
         for j in range(c):
             print(matrix[i][j], end=" ")
         print()
