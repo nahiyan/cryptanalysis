@@ -21,7 +21,7 @@ import (
 	"github.com/alitto/pond"
 )
 
-// TODO: Go through the entire code of this service and rewrite if necessary (lots of race conditions)
+// TODO: Go through the entire code of this service and rewrite if necessary (since there are lots of race conditions)
 type InvokeParameters struct {
 	Encoding         string
 	ThresholdType    cuber.ThresholdType
@@ -188,7 +188,15 @@ func (cuberSvc *CuberService) Invoke(parameters InvokeParameters, control Invoke
 func (cuberSvc *CuberService) Loop(encodings []encoder.Encoding, parameters pipeline.CubeParams, handler func(encoding string, threshold int, timeout int)) {
 	config := cuberSvc.configSvc.Config
 	for _, encoding := range encodings {
-		thresholds := parameters.Thresholds
+		// Get the thresholds list
+		info, err := cuberSvc.encoderSvc.ProcessInstanceName(encoding.GetName())
+		cuberSvc.errorSvc.Fatal(err, "Cuber: failed to process instance name")
+		var thresholds []int
+		thresholds, exists := parameters.ThresholdsMap[info.Steps]
+		if !exists {
+			thresholds = parameters.Thresholds
+		}
+
 		if len(thresholds) == 0 {
 			// Command to call March
 			cmd := exec.Command(config.Paths.Bin.March, encoding.GetName()+".cnf")

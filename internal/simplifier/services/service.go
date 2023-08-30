@@ -6,6 +6,7 @@ import (
 	"cryptanalysis/internal/pipeline"
 	"cryptanalysis/internal/simplifier"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -24,7 +25,7 @@ func (simplifierSvc *SimplifierService) getLogPath(instancePath string) string {
 	return logFilePath
 }
 
-func (simplifierSvc *SimplifierService) TrackedInvoke(simplifier_ simplifier.Simplifier, encoding, outputFilePath string, conflicts int, parameters pipeline.SimplifyParams) error {
+func (simplifierSvc *SimplifierService) TrackedInvoke(simplifier_ simplifier.Simplifier, encoding encoder.Encoding, outputFilePath string, conflicts int, parameters pipeline.SimplifyParams) error {
 	if simplifier_ != simplifier.Cadical {
 		log.Fatal("Simplifier not supported")
 	}
@@ -32,16 +33,54 @@ func (simplifierSvc *SimplifierService) TrackedInvoke(simplifier_ simplifier.Sim
 
 	simplifierBinPath := config.Paths.Bin.Cadical
 	rsFilePath := outputFilePath + ".rs.txt"
-	args := []string{encoding, "-o", outputFilePath, "-e", rsFilePath, "-c", strconv.Itoa(conflicts)}
+	args := []string{"-o", outputFilePath, "-e", rsFilePath, "-c", strconv.Itoa(conflicts)}
 
 	cmd := exec.Command(simplifierBinPath, args...)
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
 	}
+	stdinPipe, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
 	if err := cmd.Start(); err != nil {
 		return err
 	}
+
+	// Provide the encoding to the solver (through stdin)
+	var encodingString string
+	{
+		var encodingReader io.Reader
+		if cube, exists := encoding.Cube.Get(); exists {
+			// Handle cubes
+			cubesetPath, err := encoding.GetCubesetPath(config.Paths.Cubesets)
+			if err != nil {
+				return err
+			}
+
+			encodingReader, err = simplifierSvc.cubeSelectorSvc.EncodingFromCube(encoding.BasePath, cubesetPath, cube.Index)
+			if err != nil {
+				return err
+			}
+		} else {
+			// Handle regular files
+			encodingReader, err = os.OpenFile(encoding.BasePath, os.O_RDONLY, 0644)
+			if err != nil {
+				return err
+			}
+		}
+		builder := strings.Builder{}
+		io.Copy(&builder, encodingReader)
+		encodingString = builder.String()
+	}
+
+	_, err = io.Copy(stdinPipe, strings.NewReader(encodingString))
+	if err != nil {
+		return err
+	}
+	stdinPipe.Close()
+
 	logFilePath := simplifierSvc.getLogPath(outputFilePath)
 	simplifierSvc.filesystemSvc.WriteFromPipe(stdoutPipe, logFilePath)
 	cmd.Wait()
@@ -54,16 +93,11 @@ func (simplifierSvc *SimplifierService) TrackedInvoke(simplifier_ simplifier.Sim
 
 	// Add back the removed comments
 	if parameters.PreserveComments {
-		log.Println("Preserving", encoding, outputFilePath)
-		originalEncoding, err := os.OpenFile(encoding, os.O_RDONLY, 0644)
-		simplifierSvc.errorSvc.Fatal(err, "Simplifier: failed to open encoding for reading")
-		defer originalEncoding.Close()
-
 		simplifiedEncoding, err := os.OpenFile(outputFilePath, os.O_WRONLY|os.O_APPEND, 0644)
 		simplifierSvc.errorSvc.Fatal(err, "Simplifier: failed to open encoding for appending")
 		defer simplifiedEncoding.Close()
 
-		scanner := bufio.NewScanner(originalEncoding)
+		scanner := bufio.NewScanner(strings.NewReader(encodingString))
 		for scanner.Scan() {
 			line := scanner.Text()
 			if strings.HasPrefix(line, "c ") {
@@ -73,7 +107,7 @@ func (simplifierSvc *SimplifierService) TrackedInvoke(simplifier_ simplifier.Sim
 	}
 
 	// TODO: Add more details
-	simplifierSvc.logSvc.Info("Simplifier: " + encoding)
+	simplifierSvc.logSvc.Info("Simplifier: " + encoding.GetName())
 
 	return nil
 }
@@ -113,7 +147,7 @@ func (simplifierSvc *SimplifierService) RunWith(simplifier_ simplifier.Simplifie
 			var outputFilePath string
 			switch simplifier_ {
 			case simplifier.Cadical:
-				outputFilePath = fmt.Sprintf("%s.cadical_c%d.cnf", encoding.BasePath, conflicts)
+				outputFilePath = fmt.Sprintf("%s.cadical_c%d.cnf", encoding.GetEncodingPath(), conflicts)
 			}
 			simplifiedEncodings = append(simplifiedEncodings, encoder.Encoding{BasePath: outputFilePath})
 
@@ -125,12 +159,13 @@ func (simplifierSvc *SimplifierService) RunWith(simplifier_ simplifier.Simplifie
 			}
 			os.Remove(outputFilePath)
 
-			pool.Submit(func(simplifier_ simplifier.Simplifier, encoding, outputFilePath string, conflicts int, parameters pipeline.SimplifyParams) func() {
+			// encodingPath := encoding.GetEncodingPath()
+			pool.Submit(func(simplifier_ simplifier.Simplifier, encoding encoder.Encoding, outputFilePath string, conflicts int, parameters pipeline.SimplifyParams) func() {
 				return func() {
 					err := simplifierSvc.TrackedInvoke(simplifier_, encoding, outputFilePath, conflicts, parameters)
-					simplifierSvc.errorSvc.Fatal(err, "Simplifier: failed to simplify "+encoding)
+					simplifierSvc.errorSvc.Fatal(err, "Simplifier: failed to simplify "+encoding.GetName())
 				}
-			}(simplifier_, encoding.BasePath, outputFilePath, conflicts, parameters))
+			}(simplifier_, encoding, outputFilePath, conflicts, parameters))
 		}
 	}
 

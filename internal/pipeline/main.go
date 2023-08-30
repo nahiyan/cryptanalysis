@@ -54,6 +54,7 @@ type CubeParams struct {
 	// TODO: Add support for cutoff depth apart from in increamental cubing
 	ThresholdType cuber.ThresholdType
 	Thresholds    []int
+	ThresholdsMap map[int][]int
 	Workers       int
 	Timeout       int
 }

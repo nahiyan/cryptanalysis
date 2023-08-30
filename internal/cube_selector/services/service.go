@@ -40,11 +40,14 @@ func (cubeSelectorSvc *CubeSelectorService) RandomCubes(cubesCount, selectionSiz
 }
 
 // TODO: Decide if it should be in the cubesets or cuber module
-func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(encodingFilePath string, cubesetPath string, cubeIndex int, output io.Writer) error {
+func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(encodingFilePath string, cubesetPath string, cubeIndex int) (io.Reader, error) {
+	var stringBuilder strings.Builder
+	var reader io.Reader
+
 	// * 1. Read the instance
 	instanceReader, err := os.OpenFile(encodingFilePath, os.O_RDONLY, 0644)
 	if err != nil {
-		return err
+		return reader, err
 	}
 	defer instanceReader.Close()
 	instanceScanner := bufio.NewScanner(instanceReader)
@@ -52,7 +55,7 @@ func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(encodingFilePath st
 	// * 2. Get the cube from the binary
 	cubeLiterals, err := cubeSelectorSvc.cubesetSvc.GetCube(cubesetPath, cubeIndex)
 	if err != nil {
-		return err
+		return reader, err
 	}
 
 	// * 3. Get the num. of variables and clauses along with the body
@@ -64,21 +67,22 @@ func (cubeSelectorSvc *CubeSelectorService) EncodingFromCube(encodingFilePath st
 
 			// * 4. Generate a new header with an increased number of clauses
 			newHeader := fmt.Sprintf("p cnf %d %d", numVars, numClauses+len(cubeLiterals))
-			output.Write([]byte(newHeader + "\n"))
+			stringBuilder.WriteString(newHeader + "\n")
 
 			continue
 		}
 
-		output.Write([]byte(line + "\n"))
+		stringBuilder.WriteString(line + "\n")
 	}
 
 	// * 5. Assemble the new encoding by adding the cube literals as unit clauses
 	for _, cubeLiteral := range cubeLiterals {
 		clause := fmt.Sprintf("%d 0\n", cubeLiteral)
-		output.Write([]byte(clause))
+		stringBuilder.WriteString(clause)
 	}
 
-	return nil
+	reader = strings.NewReader(stringBuilder.String())
+	return reader, nil
 }
 
 func (cubeSelectorSvc *CubeSelectorService) Select(cubesets []string, parameters pipeline.CubeSelectParams) []encoder.Encoding {

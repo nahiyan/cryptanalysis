@@ -119,6 +119,10 @@ func (encoding Encoding) GetName() string {
 	return encoding.BasePath[:len(encoding.BasePath)-4]
 }
 
+func (encoding Encoding) GetEncodingPath() string {
+	return encoding.GetName() + ".cnf"
+}
+
 func (encoding Encoding) GetCubesetPath(cubesetDir string) (string, error) {
 	cube, exists := encoding.Cube.Get()
 	if !exists {

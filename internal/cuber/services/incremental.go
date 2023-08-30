@@ -7,6 +7,7 @@ import (
 	"cryptanalysis/internal/encoder"
 	"cryptanalysis/internal/pipeline"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"os"
@@ -26,10 +27,13 @@ func (cuberSvc *CuberService) EncodingsFromCubes(encodingPath, cubesetPath strin
 		newBaseEncoding := path.Base(cubesetPath)
 		newEncodingsPath := path.Join(cuberSvc.configSvc.Config.Paths.Encodings, newBaseEncoding+fmt.Sprintf(".cube%d.cnf", i-1))
 
-		encodingWriter, err := os.OpenFile(newEncodingsPath, os.O_CREATE|os.O_WRONLY, 0644)
+		encodingReader, err := cuberSvc.cubeSelectorSvc.EncodingFromCube(encodingPath, cubesetPath, i)
 		cuberSvc.errorSvc.Fatal(err, "Inc. cuber: failed to write encoding from cube")
-		err = cuberSvc.cubeSelectorSvc.EncodingFromCube(encodingPath, cubesetPath, i, encodingWriter)
+
+		encodingFile, err := os.OpenFile(newEncodingsPath, os.O_CREATE|os.O_WRONLY, 0644)
 		cuberSvc.errorSvc.Fatal(err, "Inc. cuber: failed to write encoding from cube")
+		io.Copy(encodingFile, encodingReader)
+
 		encodings = append(encodings, newEncodingsPath)
 	}
 

@@ -57,11 +57,9 @@ func (sha256Svc *Sha256Service) Run(message []byte, steps int, addChainingVars b
 	expandedMessage := make([]uint32, 64)
 	for i := 0; i < 16; i++ {
 		expandedMessage[i] = binary.BigEndian.Uint32(message[i*4:])
-		// fmt.Printf("W[%d] = %08x\n", i, expandedMessage[i])
 	}
 	for i := 16; i < steps; i++ {
 		expandedMessage[i] = sig1(expandedMessage[i-2]) + expandedMessage[i-7] + sig0(expandedMessage[i-15]) + expandedMessage[i-16]
-		// fmt.Printf("W[%d] = %08x\n", i, expandedMessage[i])
 	}
 
 	var a uint32 = h0

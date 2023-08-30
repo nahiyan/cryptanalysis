@@ -95,6 +95,7 @@ func (solverSvc *SimplifierService) ParseOutput(outputReader io.Reader, logFileP
 		}
 	}
 
+	// TODO: Support original instances existing only in memory
 	// Get the numVariables and numClauses of the original instance
 	{
 		segments := strings.Split(logFilePath, ".")

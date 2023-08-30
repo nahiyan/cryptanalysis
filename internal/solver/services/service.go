@@ -21,7 +21,7 @@ import (
 )
 
 // Important: Register new SAT Solver here
-func (solverSvc *SolverService) GetCmdInfo(solver_ solver.Solver, solutionPath string, timeout int) (string, []string) {
+func (solverSvc *SolverService) GetCmdInfo(solver_ solver.Solver, timeout int) (string, []string) {
 	config := solverSvc.configSvc.Config
 
 	var binPath string
@@ -67,9 +67,7 @@ func (solverSvc *SolverService) GetCmdInfo(solver_ solver.Solver, solutionPath s
 
 func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver.Solver, timeout int) (solver.Result, int) {
 	config := solverSvc.configSvc.Config
-	solutionsDir := solverSvc.configSvc.Config.Paths.Solutions
-	solutionPath := path.Join(solutionsDir, path.Base(encoding.GetName())+"."+string(solver_)+".sol")
-	binPath, solverArgs := solverSvc.GetCmdInfo(solver_, solutionPath, timeout)
+	binPath, solverArgs := solverSvc.GetCmdInfo(solver_, timeout)
 	duration := time.Duration(timeout) * time.Second
 
 	// Local search
@@ -100,21 +98,22 @@ func (solverSvc *SolverService) Invoke(encoding encoder.Encoding, solver_ solver
 	startTime := time.Now()
 	cmd.Start()
 
+	var encodingReader io.Reader
 	if cube, exists := encoding.Cube.Get(); exists {
 		// Handle cubes
 		cubesetPath, err := encoding.GetCubesetPath(solverSvc.configSvc.Config.Paths.Cubesets)
 		solverSvc.errorSvc.Fatal(err, "Solver: can't get cubeset path of an encoding that isn't cubed")
 
-		err = solverSvc.cubeSelectorSvc.EncodingFromCube(encoding.BasePath, cubesetPath, cube.Index, stdinPipe)
+		encodingReader, err = solverSvc.cubeSelectorSvc.EncodingFromCube(encoding.BasePath, cubesetPath, cube.Index)
 		solverSvc.errorSvc.Fatal(err, "Solver: failed to construct instance from cube")
 	} else {
 		// Handle regular files
-		reader, err := os.OpenFile(encoding.BasePath, os.O_RDONLY, 0644)
+		encodingReader, err = os.OpenFile(encoding.BasePath, os.O_RDONLY, 0644)
 		solverSvc.errorSvc.Fatal(err, "Solver: failed to read the instance file")
 
-		_, err = io.Copy(stdinPipe, reader)
-		solverSvc.errorSvc.Fatal(err, "Solver: failed to provide the instance to the solver")
 	}
+	_, err = io.Copy(stdinPipe, encodingReader)
+	solverSvc.errorSvc.Fatal(err, "Solver: failed to provide the instance to the solver")
 	stdinPipe.Close()
 
 	// Write from stdout pipe to log file
@@ -186,7 +185,7 @@ func (solverSvc *SolverService) ShouldSkip(encoding encoder.Encoding, solver_ so
 
 func (solverSvc *SolverService) RunSlurm(encodings []encoder.Encoding, parameters pipeline.SolveParams) {
 	config := solverSvc.configSvc.Config
-	dirs := []string{config.Paths.Solutions, solverSvc.configSvc.Config.Paths.Logs, solverSvc.configSvc.Config.Paths.Tmp}
+	dirs := []string{solverSvc.configSvc.Config.Paths.Logs, solverSvc.configSvc.Config.Paths.Tmp}
 	err := solverSvc.filesystemSvc.PrepareDirs(dirs)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to prepare directory for storing the solutions, logs, and tasks")
 
@@ -239,14 +238,13 @@ func (solverSvc *SolverService) RunSlurm(encodings []encoder.Encoding, parameter
 		timeout)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to create slurm job file")
 
-	// TODO: Show how many tasks are scheduled in total
 	jobId, err := solverSvc.slurmSvc.ScheduleJob(jobFilePath, nil)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to schedule the job")
 	log.Printf("Solver: scheduled job with ID %d with %d tasks (%d per worker)\n", jobId, len(tasks), tasksPerWorker)
 }
 
 func (solverSvc *SolverService) RunRegular(encodings []encoder.Encoding, parameters pipeline.SolveParams) {
-	dirs := []string{solverSvc.configSvc.Config.Paths.Solutions, solverSvc.configSvc.Config.Paths.Logs}
+	dirs := []string{solverSvc.configSvc.Config.Paths.Logs}
 	err := solverSvc.filesystemSvc.PrepareDirs(dirs)
 	solverSvc.errorSvc.Fatal(err, "Solver: failed to prepare directory for storing the solutions and logs")
 

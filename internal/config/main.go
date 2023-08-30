@@ -26,7 +26,6 @@ type Config struct {
 		Database  string
 		Encodings string
 		Logs      string
-		Solutions string
 		Cubesets  string
 		Tmp       string
 	}
