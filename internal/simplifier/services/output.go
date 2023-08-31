@@ -69,7 +69,7 @@ func (solverSvc *SimplifierService) ParseOutput(outputReader io.Reader, logFileP
 			})
 
 			if !hasSimplified {
-				return result, errors.New("instance not found to be simplified, but probably solved")
+				return result, errors.New("instance not found to be simplified but probably solved")
 			}
 		}
 

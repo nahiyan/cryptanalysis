@@ -113,19 +113,18 @@ func (simplifierSvc *SimplifierService) TrackedInvoke(simplifier_ simplifier.Sim
 }
 
 func (simplifierSvc *SimplifierService) ShouldSkip(instancePath string, simplifier_ simplifier.Simplifier) bool {
-	if !simplifierSvc.filesystemSvc.FileExists(instancePath) {
-		return false
-	}
+	return simplifierSvc.filesystemSvc.FileExists(instancePath)
+	// TODO: Add the processing back
+	// logFilePath := simplifierSvc.getLogPath(instancePath)
 
-	logFilePath := simplifierSvc.getLogPath(instancePath)
+	// if simplifierSvc.combinedLogsSvc.IsLoaded() {
+	// 	_, err := simplifierSvc.ParseOutputFromCombinedLog(path.Base(logFilePath), simplifier_)
+	// 	return err == nil
+	// }
 
-	if simplifierSvc.combinedLogsSvc.IsLoaded() {
-		_, err := simplifierSvc.ParseOutputFromCombinedLog(path.Base(logFilePath), simplifier_)
-		return err == nil
-	}
-
-	_, err := simplifierSvc.ParseOutputFromFile(logFilePath, simplifier_)
-	return err == nil
+	// _, err := simplifierSvc.ParseOutputFromFile(logFilePath, simplifier_)
+	// log.Println(err)
+	// return err == nil
 }
 
 func (simplifierSvc *SimplifierService) RunWith(simplifier_ simplifier.Simplifier, encodings []encoder.Encoding, parameters pipeline.SimplifyParams) []encoder.Encoding {
@@ -153,8 +152,7 @@ func (simplifierSvc *SimplifierService) RunWith(simplifier_ simplifier.Simplifie
 
 			// Check if it should be skipped
 			if simplifierSvc.ShouldSkip(outputFilePath, simplifier_) {
-				// TODO: Add more details
-				simplifierSvc.logSvc.Info("Simplifier: skipped " + encoding.BasePath)
+				simplifierSvc.logSvc.Info("Simplifier: skipped " + path.Base(outputFilePath))
 				continue
 			}
 			os.Remove(outputFilePath)
