@@ -949,17 +949,34 @@ void add_clauses(State& state)
             state.solver.stats.two_bit_set_based_cpu_time += std::clock() - start_time;
         }
         // TODO: Fix bug with this time calculation
-        state.solver.stats.two_bit_cpu_time += std::clock() - two_bit_start_time;
+        if (block_index == TWO_BIT_CNDS_BLOCKS - 1)
+            state.solver.stats.two_bit_cpu_time += std::clock() - two_bit_start_time;
 
         // Block inconsistencies
         if (is_inconsistent) {
             auto start_time = std::clock();
-            bool blocked = block_inconsistency(state, block_index);
+            block_inconsistency(state, block_index);
             state.solver.stats.inconsistency_count++;
             state.solver.stats.two_bit_cpu_time += std::clock() - start_time;
-            if (blocked)
-                return;
         }
+    }
+
+    // Add the shortest blocking clause
+    int shortest_len = INT_MAX, shortest_len_index = -1;
+    for (int i = 0; i < state.out_refined.size(); i++) {
+        int length = state.out_refined[i].size();
+        if (length >= shortest_len)
+            continue;
+        shortest_len = length;
+        shortest_len_index = i;
+    }
+    if (shortest_len_index != -1) {
+        minisat_clause_t shortest_clause;
+        state.out_refined[shortest_len_index].copyTo(shortest_clause);
+        state.out_refined.clear();
+        state.out_refined.push();
+        shortest_clause.copyTo(state.out_refined[0]);
+        return;
     }
 #endif
 
@@ -994,7 +1011,7 @@ void add_clauses(State& state)
         printf("Note: Adding only the shortest conflict clause of size %d\n", conflict_clause.size());
         state.out_refined.push();
         for (int count = 0; count < conflict_clause.size(); count++)
-            state.out_refined[0].push(mkLit(var(conflict_clause[count]), state.solver.value((conflict_clause[count])) == l_False));
+            state.out_refined[0].push(mkLit(var(conflict_clause[count]), state.solver.value(conflict_clause[count]) == l_False));
 
         print(conflict_clause);
     }
