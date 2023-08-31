@@ -416,14 +416,14 @@ void add_2_bit_equations(State& state, int operation_id, int function_id, std::v
         return;
 
     // Find rules for one output at a time
-    std::vector<std::string> addition_rules;
+    std::vector<std::string> rule_keys;
     if (operation_id >= TWO_BIT_CONSTRAINT_ADD3_ID) {
         int output_vars_n = operation_id >= TWO_BIT_CONSTRAINT_ADD4_ID ? 3 : 2;
         std::vector<int> non_q_outputs; // Output indices that aren't '?'
-        for (int x = 0; x < output_vars_n; x++) {
+        for (int x = 0; x < output_vars_n; x++)
             if (rule_key[chunks_n - 1 - x] != '?')
                 non_q_outputs.push_back(chunks_n - 1 - x);
-        }
+
         int non_q_outputs_n = non_q_outputs.size();
         if (non_q_outputs_n >= 2) {
             // Break down the rules
@@ -436,49 +436,34 @@ void add_2_bit_equations(State& state, int operation_id, int function_id, std::v
                     if (non_q_outputs[x] != index)
                         rule[index] = '?';
 
-                addition_rules.push_back(rule);
+                rule_keys.push_back(rule);
             }
         } else if (non_q_outputs_n == 0) {
             return;
         }
     }
 
-    std::string rule_value;
-    if (addition_rules.size() > 0) {
-        std::vector<std::string> values;
-        for (auto& key : addition_rules) {
+    // Deal with rule expansion (for addition rules)
+    std::vector<std::string> rule_values;
+    if (rule_keys.size() > 0) {
+        for (auto& key : rule_keys) {
             // Find the value of the rule (if it exists)
             auto rule_it = state.solver.rules.find(key);
             if (rule_it == state.solver.rules.end())
                 continue;
-            values.push_back(rule_it->second);
+            rule_values.push_back(rule_it->second);
         }
 
-        if (values.size() > 0) {
-            int width = values[0].size();
-            for (int i = 0; i < width; i++) {
-                char c = '2';
-                for (auto& value : values) {
-                    if (value[i] == '1') {
-                        c = '1';
-                        break;
-                    } else if (value[i] == '0') {
-                        c = '0';
-                        break;
-                    }
-                }
-                rule_value += c;
-            }
-        }
-
-        if (rule_value.size() == 0)
+        // Break if no rule is found
+        if (rule_values.size() == 0)
             return;
     } else {
         // Find the value of the rule (if it exists)
         auto rule_it = state.solver.rules.find(rule_key);
         if (rule_it == state.solver.rules.end())
             return;
-        rule_value = rule_it->second;
+        rule_values.push_back(rule_it->second);
+        rule_keys.push_back(rule_key);
     }
 
     // Function to check if the diff. var indicates that at least a variable in f and g is unknown
@@ -487,46 +472,50 @@ void add_2_bit_equations(State& state, int operation_id, int function_id, std::v
     };
 
     // Derive the relationships between the f and g variables
-    int rule_i = -1;
-    for (int block_index = 0; block_index < TWO_BIT_CNDS_BLOCKS; block_index++) {
-        for (int i = 0; i < chunks_n; i++) {
-            int selector = i + 1;
-            for (int j = selector; j < chunks_n; j++) {
-                rule_i++;
-                // Help the solver only with unknown bits, skip otherwise
-                if (!is_unknown(rule_key[i + 1]) || !is_unknown(rule_key[j + 1]))
-                    continue;
+    for (int r = 0; r < rule_values.size(); r++) {
+        std::string rule_value = rule_values[r];
+        std::string rule_key = rule_keys[r];
+        int rule_i = -1;
+        for (int block_index = 0; block_index < TWO_BIT_CNDS_BLOCKS; block_index++) {
+            for (int i = 0; i < chunks_n; i++) {
+                int selector = i + 1;
+                for (int j = selector; j < chunks_n; j++) {
+                    rule_i++;
+                    // Help the solver only with unknown bits, skip otherwise
+                    if (!is_unknown(rule_key[i + 1]) || !is_unknown(rule_key[j + 1]))
+                        continue;
 
-                if (rule_value[rule_i] == '2')
-                    continue;
+                    if (rule_value[rule_i] == '2')
+                        continue;
 
-                // Select the variables from the relations matrix
-                int vars[2] = { var_ids[(i * 3) + block_index], var_ids[(j * 3) + block_index] };
+                    // Select the variables from the relations matrix
+                    int vars[2] = { var_ids[(i * 3) + block_index], var_ids[(j * 3) + block_index] };
 
-                // Add the equation
-                bool are_equal = rule_value[rule_i] == '1';
-                auto equation = equation_t { vars[0], vars[1], are_equal ? 0 : 1 };
-                state.equations[block_index]->push_back(equation);
+                    // Add the equation
+                    bool are_equal = rule_value[rule_i] == '1';
+                    auto equation = equation_t { vars[0], vars[1], are_equal ? 0 : 1 };
+                    state.equations[block_index]->push_back(equation);
 
-                // Map the equation variables (if they don't exist)
-                for (int x = 0; x < 2; x++)
-                    if (state.eq_var_map.find(vars[x]) == state.eq_var_map.end())
-                        state.eq_var_map[vars[x]] = state.eq_var_map.size();
+                    // Map the equation variables (if they don't exist)
+                    for (int x = 0; x < 2; x++)
+                        if (state.eq_var_map.find(vars[x]) == state.eq_var_map.end())
+                            state.eq_var_map[vars[x]] = state.eq_var_map.size();
 
-                // Connect the equation with this function result
-                std::vector<int> variables;
-                for (Lit& lit : base_clause)
-                    variables.push_back(var(lit));
-                auto func_result = FunctionResult {
-                    operation_id,
-                    function_id,
-                    variables,
-                };
-                auto eq_func_relation = state.eq_func_rels.find(equation);
-                if (state.eq_func_rels.find(equation) == state.eq_func_rels.end())
-                    state.eq_func_rels.insert({ equation, { func_result } });
-                else
-                    state.eq_func_rels[equation].push_back(func_result);
+                    // Connect the equation with this function result
+                    std::vector<int> variables;
+                    for (Lit& lit : base_clause)
+                        variables.push_back(var(lit));
+                    auto func_result = FunctionResult {
+                        operation_id,
+                        function_id,
+                        variables,
+                    };
+                    auto eq_func_relation = state.eq_func_rels.find(equation);
+                    if (state.eq_func_rels.find(equation) == state.eq_func_rels.end())
+                        state.eq_func_rels.insert({ equation, { func_result } });
+                    else
+                        state.eq_func_rels[equation].push_back(func_result);
+                }
             }
         }
     }
@@ -1004,9 +993,8 @@ void add_clauses(State& state)
 
         printf("Note: Adding only the shortest conflict clause of size %d\n", conflict_clause.size());
         state.out_refined.push();
-        for (int count = 0; count < conflict_clause.size(); count++) {
+        for (int count = 0; count < conflict_clause.size(); count++)
             state.out_refined[0].push(mkLit(var(conflict_clause[count]), state.solver.value((conflict_clause[count])) == l_False));
-        }
 
         print(conflict_clause);
     }
