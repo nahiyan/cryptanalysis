@@ -157,7 +157,7 @@ def gen_2_bit_conds(id, func, inputs_n, outputs_n=1):
 
             # Try all possible operands
             mask = []
-            for c in candidate:
+            for c in candidate[:-outputs_n]:
                 if c == "x" or c == "-":
                     mask.append(1)
                 else:
@@ -167,7 +167,7 @@ def gen_2_bit_conds(id, func, inputs_n, outputs_n=1):
             for i in range(pow(2, varying_values_n)):
                 ops = []
                 k = 0
-                for j, _ in enumerate(candidate):
+                for j in range(len(mask)):
                     # If it's masked, we need to fill up the value
                     if mask[j] == 1:
                         value = i >> k & 1
