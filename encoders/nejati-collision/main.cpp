@@ -132,7 +132,6 @@ void collision(int rounds)
             g.cnf.varName(r2, "Ds0_" + to_string(i) + "_x1");
             g.cnf.varName(DW[i - 15] + 3, "Ds0_" + to_string(i) + "_x2");
             g.cnf.xor3(Ds0[i], r1, r2, DW[i - 15] + 3, 29);
-            g.cnf.xor3Rules(Ds0[i], r1, r2, DW[i - 15] + 3, 29);
 
             // s1 = (w[i-2] >>> 17) XOR (w[i-2] >>> 19) XOR (w[i-2] >> 10)
             g.cnf.rotr(r1, DW[i - 2], 17);
@@ -143,8 +142,6 @@ void collision(int rounds)
             g.cnf.varName(r2, "Ds1_" + to_string(i) + "_x1");
             g.cnf.varName(DW[i - 2] + 10, "Ds1_" + to_string(i) + "_x2");
             g.cnf.xor3(Ds1[i], r1, r2, DW[i - 2] + 10, 22);
-            g.cnf.xor3Rules(Ds1[i], r1, r2, DW[i - 2] + 10, 22);
-
 
             // Addition: w[i] = w[i-16] + s0 + w[i-7] + s1
             g.cnf.newVars(DwCarry[i], 32, "add_Dw" + to_string(i) + "_z0");
