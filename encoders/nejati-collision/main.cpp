@@ -19,6 +19,38 @@ int cfg_diff_impl;
 int cfg_rand_inp_diff;
 string cfg_diff_const_file;
 
+void fix_diff_char(SHA256& block, char& diff, int* target, int* alt_target1, int* alt_target2) {
+    auto& formula = block.cnf;
+    switch (diff) {
+        case '-':
+            formula.fixedValue(target, 0, 1);
+            break;
+        case 'x':
+            formula.fixedValue(target, 1, 1);
+            break;
+        case 'u':
+            formula.fixedValue(target, 1, 1);
+            formula.fixedValue(alt_target1, 1, 1);
+            formula.fixedValue(alt_target2, 0, 1);
+            break;
+        case 'n':
+            formula.fixedValue(target, 1, 1);
+            formula.fixedValue(alt_target1, 0, 1);
+            formula.fixedValue(alt_target2, 1, 1);
+            break;
+        case '1':
+            formula.fixedValue(target, 0, 1);
+            formula.fixedValue(alt_target1, 1, 1);
+            formula.fixedValue(alt_target2, 1, 1);
+            break;
+        case '0':
+            formula.fixedValue(target, 0, 1);
+            formula.fixedValue(alt_target1, 0, 1);
+            formula.fixedValue(alt_target2, 0, 1);
+            break;
+    }
+}
+
 void collision(int rounds)
 {
     SHA256 f(rounds), g(rounds);
@@ -76,49 +108,11 @@ void collision(int rounds)
         for (int i = -4; i < rounds; i++) {
             if (i >= 0) {
                 for (int j = 0; j < 32; j++)
-                    if (W[i][31 - j] == '-') {
-                        g.cnf.fixedValue(&DW[i][j], 0, 1);
-                    } else if (W[i][31 - j] == 'x') {
-                        g.cnf.fixedValue(&DW[i][j], 1, 1);
-                    } else if (W[i][31 - j] == 'u') {
-                        g.cnf.fixedValue(&DW[i][j], 1, 1);
-                        g.cnf.fixedValue(&f.w[i][j], 1, 1);
-                        g.cnf.fixedValue(&g.w[i][j], 0, 1);
-                    } else if (W[i][31 - j] == 'n') {
-                        g.cnf.fixedValue(&DW[i][j], 1, 1);
-                        g.cnf.fixedValue(&f.w[i][j], 0, 1);
-                        g.cnf.fixedValue(&g.w[i][j], 1, 1);
-                    }
+                    fix_diff_char(g, W[i][31 - j], &DW[i][j], &f.w[i][j], &g.w[i][j]);
             }
             for (int j = 0; j < 32; j++) {
-                if (A[i + 4][31 - j] == '-') {
-                    g.cnf.fixedValue(&DA[i + 4][j], 0, 1);
-
-                } else if (A[i + 4][31 - j] == 'x') {
-                    g.cnf.fixedValue(&DA[i + 4][j], 1, 1);
-                } else if (A[i + 4][31 - j] == 'u') {
-                    g.cnf.fixedValue(&DA[i + 4][j], 1, 1);
-                    g.cnf.fixedValue(&f.A[i + 4][j], 1, 1);
-                    g.cnf.fixedValue(&g.A[i + 4][j], 0, 1);
-                } else if (A[i + 4][31 - j] == 'n') {
-                    g.cnf.fixedValue(&DA[i + 4][j], 1, 1);
-                    g.cnf.fixedValue(&f.A[i + 4][j], 0, 1);
-                    g.cnf.fixedValue(&g.A[i + 4][j], 1, 1);
-                }
-
-                if (E[i + 4][31 - j] == '-') {
-                    g.cnf.fixedValue(&DE[i + 4][j], 0, 1);
-                } else if (E[i + 4][31 - j] == 'x') {
-                    g.cnf.fixedValue(&DE[i + 4][j], 1, 1);
-                } else if (E[i + 4][31 - j] == 'u') {
-                    g.cnf.fixedValue(&DE[i + 4][j], 1, 1);
-                    g.cnf.fixedValue(&f.E[i + 4][j], 1, 1);
-                    g.cnf.fixedValue(&g.E[i + 4][j], 0, 1);
-                } else if (E[i + 4][31 - j] == 'n') {
-                    g.cnf.fixedValue(&DE[i + 4][j], 1, 1);
-                    g.cnf.fixedValue(&f.E[i + 4][j], 0, 1);
-                    g.cnf.fixedValue(&g.E[i + 4][j], 1, 1);
-                }
+                fix_diff_char(g, A[i + 4][31 - j], &DA[i + 4][j], &f.A[i + 4][j], &g.A[i + 4][j]);
+                fix_diff_char(g, E[i + 4][31 - j], &DE[i + 4][j], &f.E[i + 4][j], &g.E[i + 4][j]);
             }
         }
 
