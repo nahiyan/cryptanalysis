@@ -14,31 +14,21 @@
 #define TWO_BIT_CNDS_BLOCKS 2
 #define TWO_BIT_CNDS true
 #define INFER_CARRIES true
-#define IO_CONSTRAINT_ADD2_ID 0
-#define IO_CONSTRAINT_IF_ID 1
-#define IO_CONSTRAINT_MAJ_ID 2
-#define IO_CONSTRAINT_XOR3_ID 3
-#define IO_CONSTRAINT_ADD3_ID 4
-#define IO_CONSTRAINT_ADD4_ID 5
-#define IO_CONSTRAINT_ADD5_ID 6
-#define IO_CONSTRAINT_ADD6_ID 7
-#define IO_CONSTRAINT_ADD7_ID 8
-#define OI_CONSTRAINT_IF_ID 9
-#define OI_CONSTRAINT_MAJ_ID 10
-#define OI_CONSTRAINT_XOR3_ID 11
-#define OI_CONSTRAINT_ADD3_ID 12
-#define OI_CONSTRAINT_ADD4_ID 13
-#define OI_CONSTRAINT_ADD5_ID 14
-#define OI_CONSTRAINT_ADD6_ID 15
-#define OI_CONSTRAINT_ADD7_ID 16
-#define TWO_BIT_CONSTRAINT_IF_ID 17
-#define TWO_BIT_CONSTRAINT_MAJ_ID 18
-#define TWO_BIT_CONSTRAINT_XOR3_ID 19
-#define TWO_BIT_CONSTRAINT_ADD3_ID 20
-#define TWO_BIT_CONSTRAINT_ADD4_ID 21
-#define TWO_BIT_CONSTRAINT_ADD5_ID 22
-#define TWO_BIT_CONSTRAINT_ADD6_ID 23
-#define TWO_BIT_CONSTRAINT_ADD7_ID 24
+#define TWO_BIT_CONSTRAINT_XOR2_ID 0
+#define TWO_BIT_CONSTRAINT_ADD2_ID 1
+#define TWO_BIT_CONSTRAINT_IF_ID 2
+#define TWO_BIT_CONSTRAINT_MAJ_ID 3
+#define TWO_BIT_CONSTRAINT_XOR3_ID 4
+#define TWO_BIT_CONSTRAINT_ADD3_ID 5
+#define TWO_BIT_CONSTRAINT_ADD4_ID 6
+#define TWO_BIT_CONSTRAINT_ADD5_ID 7
+#define TWO_BIT_CONSTRAINT_ADD6_ID 8
+#define TWO_BIT_CONSTRAINT_ADD7_ID 9
+
+#define ADD_E 0
+#define ADD_A 1
+#define ADD_W 2
+#define ADD_T 3
 
 namespace Crypto {
 void load_rules(Solver& solver, const char* filename)
@@ -417,7 +407,7 @@ void add_2_bit_equations(State& state, int operation_id, int function_id, std::v
 
     // Find rules for one output at a time
     std::vector<std::string> rule_keys;
-    if (operation_id >= TWO_BIT_CONSTRAINT_ADD3_ID) {
+    if (operation_id >= TWO_BIT_CONSTRAINT_ADD2_ID) {
         int output_vars_n = operation_id >= TWO_BIT_CONSTRAINT_ADD4_ID ? 3 : 2;
         std::vector<int> non_q_outputs; // Output indices that aren't '?'
         for (int x = 0; x < output_vars_n; x++)
@@ -859,19 +849,18 @@ void add_addition_2_bit_clauses(State& state, int i, int j, std::vector<int>& id
         new_vec = prepare_add_2_bit_vec(ids, carries_n, j, 2);
 
     int operation_id = 0;
-    if ((j > 1 && function_id == 1) || (j == 0 && function_id == 3) || (j == 1 && function_id == 2))
+    if ((j > 1 && function_id == ADD_A) || (j == 0 && function_id == ADD_T) || (j == 1 && function_id == ADD_W))
         operation_id = TWO_BIT_CONSTRAINT_ADD5_ID;
-    else if ((j == 1 && function_id == 1) || (j == 0 && function_id == 2))
+    else if ((j == 1 && function_id == ADD_A) || (j == 0 && function_id == ADD_W))
         operation_id = TWO_BIT_CONSTRAINT_ADD4_ID;
-    else if ((j == 0 && function_id == 1) || (j > 1 && function_id == 0))
+    else if ((j == 0 && function_id == ADD_A) || (j > 1 && function_id == ADD_E))
         operation_id = TWO_BIT_CONSTRAINT_ADD3_ID;
-    else if ((j == 1 && function_id == 3) || (j > 1 && function_id == 2))
+    else if ((j == 1 && function_id == ADD_T) || (j > 1 && function_id == ADD_W))
         operation_id = TWO_BIT_CONSTRAINT_ADD6_ID;
-    else if (j > 1 && function_id == 3)
+    else if (j > 1 && function_id == ADD_T)
         operation_id = TWO_BIT_CONSTRAINT_ADD7_ID;
-    else
-        // TODO: Add two-bit conditions for ADD2
-        return;
+    else if (j == 0 && function_id == ADD_E)
+        operation_id = TWO_BIT_CONSTRAINT_ADD2_ID;
 
     add_2_bit_equations(state, operation_id, function_id, new_vec);
 }
@@ -948,7 +937,6 @@ void add_clauses(State& state)
             is_inconsistent = confl_equations->size() > 0;
             state.solver.stats.two_bit_set_based_cpu_time += std::clock() - start_time;
         }
-        // TODO: Fix bug with this time calculation
         if (block_index == TWO_BIT_CNDS_BLOCKS - 1)
             state.solver.stats.two_bit_cpu_time += std::clock() - two_bit_start_time;
 
@@ -986,17 +974,17 @@ void add_clauses(State& state)
     for (int i = 0; i < state.solver.steps; i++) {
         for (int j = 0; j < 32; j++) {
             // Add E
-            add_addition_clauses(state, i, j, state.solver.var_ids.add_e[i], 1, 0);
+            add_addition_clauses(state, i, j, state.solver.var_ids.add_e[i], 1, ADD_E);
 
             // Add A
-            add_addition_clauses(state, i, j, state.solver.var_ids.add_a[i], 2, 1);
+            add_addition_clauses(state, i, j, state.solver.var_ids.add_a[i], 2, ADD_A);
 
             // Add W
             if (i >= 16)
-                add_addition_clauses(state, i, j, state.solver.var_ids.add_w[i - 16], 2, 2);
+                add_addition_clauses(state, i, j, state.solver.var_ids.add_w[i - 16], 2, ADD_W);
 
             // Add T
-            add_addition_clauses(state, i, j, state.solver.var_ids.add_t[i], 2, 3);
+            add_addition_clauses(state, i, j, state.solver.var_ids.add_t[i], 2, ADD_T);
         }
     }
     state.solver.stats.carry_inference_cpu_time += std::clock() - carry_inference_start_time;
