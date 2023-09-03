@@ -104,7 +104,6 @@ void collision(int rounds)
                     g.cnf.fixedValue(&DA[i + 4][j], 1, 1);
                     g.cnf.fixedValue(&f.A[i + 4][j], 0, 1);
                     g.cnf.fixedValue(&g.A[i + 4][j], 1, 1);
-                    // printf("i, j = %d, %d; %d %d %d\n", i + 4, j, f.A[i + 4][j], g.A[i + 4][j], DA[i+4][j]);
                 }
 
                 if (E[i + 4][31 - j] == '-') {
