@@ -106,10 +106,9 @@ void collision(int rounds)
 
         /* Fixing the differences from the initial path */
         for (int i = -4; i < rounds; i++) {
-            if (i >= 0) {
+            if (i >= 0)
                 for (int j = 0; j < 32; j++)
                     fix_diff_char(g, W[i][31 - j], &DW[i][j], &f.w[i][j], &g.w[i][j]);
-            }
             for (int j = 0; j < 32; j++) {
                 fix_diff_char(g, A[i + 4][31 - j], &DA[i + 4][j], &f.A[i + 4][j], &g.A[i + 4][j]);
                 fix_diff_char(g, E[i + 4][31 - j], &DE[i + 4][j], &f.E[i + 4][j], &g.E[i + 4][j]);
