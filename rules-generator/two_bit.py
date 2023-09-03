@@ -3,14 +3,16 @@ from itertools import product
 from rules_gen import if_, maj, xor3, bin_add
 from collections.abc import Iterable
 
-TWO_BIT_CONSTRAINT_IF_ID = 17
-TWO_BIT_CONSTRAINT_MAJ_ID = 18
-TWO_BIT_CONSTRAINT_XOR3_ID = 19
-TWO_BIT_CONSTRAINT_ADD3_ID = 20
-TWO_BIT_CONSTRAINT_ADD4_ID = 21
-TWO_BIT_CONSTRAINT_ADD5_ID = 22
-TWO_BIT_CONSTRAINT_ADD6_ID = 23
-TWO_BIT_CONSTRAINT_ADD7_ID = 24
+TWO_BIT_CONSTRAINT_XOR2_ID = 0
+TWO_BIT_CONSTRAINT_ADD2_ID = 1
+TWO_BIT_CONSTRAINT_IF_ID = 2
+TWO_BIT_CONSTRAINT_MAJ_ID = 3
+TWO_BIT_CONSTRAINT_XOR3_ID = 4
+TWO_BIT_CONSTRAINT_ADD3_ID = 5
+TWO_BIT_CONSTRAINT_ADD4_ID = 6
+TWO_BIT_CONSTRAINT_ADD5_ID = 7
+TWO_BIT_CONSTRAINT_ADD6_ID = 8
+TWO_BIT_CONSTRAINT_ADD7_ID = 9
 
 if not os.path.exists("output"):
     os.mkdir("output")
@@ -31,10 +33,10 @@ def print_matrix(matrix):
     c = len(matrix[0])
     print(end="  ")
     for i in range(c):
-        print(f'{i}', end=" ")
+        print(f"{i}", end=" ")
     print()
     for i in range(r):
-        print(f'{i}', end=" ")
+        print(f"{i}", end=" ")
         for j in range(c):
             print(matrix[i][j], end=" ")
         print()
@@ -62,6 +64,10 @@ def maj_w(ops):
 
 def xor3_w(ops):
     return xor3(ops[0], ops[1], ops[2])
+
+
+def xor2(ops):
+    return ops[0] ^ ops[1]
 
 
 def bin_add_w(ops):
@@ -225,6 +231,8 @@ def gen_2_bit_conds(id, func, inputs_n, outputs_n=1):
             print(id, key, value)
 
 
+gen_2_bit_conds(TWO_BIT_CONSTRAINT_XOR2_ID, xor2, 2)
+gen_2_bit_conds(TWO_BIT_CONSTRAINT_ADD2_ID, bin_add_w, 2, 2)
 gen_2_bit_conds(TWO_BIT_CONSTRAINT_IF_ID, if_w, 3)
 gen_2_bit_conds(TWO_BIT_CONSTRAINT_MAJ_ID, maj_w, 3)
 gen_2_bit_conds(TWO_BIT_CONSTRAINT_XOR3_ID, xor3_w, 3)
