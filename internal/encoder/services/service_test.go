@@ -13,6 +13,7 @@ func TestGetInstanceName(t *testing.T) {
 			Function:     "md4",
 			TargetHash:   "ffffffffffffffffffffffffffffffff",
 			IsXorEnabled: true,
+			AttackType:   encoder.Preimage,
 		}
 		instance := getInstanceName(info)
 		expectation := "transalg_md4_35_ffffffffffffffffffffffffffffffff.cnf"
@@ -29,6 +30,7 @@ func TestGetInstanceName(t *testing.T) {
 			TargetHash:   "ffffffffffffffffffffffffffffffff",
 			IsXorEnabled: true,
 			AdderType:    encoder.Espresso,
+			AttackType:   encoder.Preimage,
 		}
 		instance := getInstanceName(info)
 		expectation := "nejati_encoder_md4_35_ffffffffffffffffffffffffffffffff_espresso_xor.cnf"

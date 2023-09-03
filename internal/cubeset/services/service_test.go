@@ -6,19 +6,19 @@ import (
 	"testing"
 )
 
-func readAt(bCubesFile *os.File, index int64, t *testing.T) int16 {
-	bytes := make([]byte, 2)
-	_, err := bCubesFile.ReadAt(bytes, index*2)
+func readAt(bCubesFile *os.File, index int64, t *testing.T) int32 {
+	bytes := make([]byte, 4)
+	_, err := bCubesFile.ReadAt(bytes, index*4)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return int16(binary.BigEndian.Uint16(bytes))
+	return int32(binary.BigEndian.Uint32(bytes))
 }
 
 func initialize(t *testing.T) *CubesetService {
 	svc := CubesetService{}
 
-	cubeset := "a -414 -408 -250 232 -2234 2487 2248 -421 -494 -373 0\na -414 -408 -250 232 -2234 2487 -2248 -359 2238 226 587 595 531 532 2290 373 2258 -550 0\na 414 -415 2300 250 2298 232 473 234 2487 545 249 -367 469 238 421 -2248 490 492 -256 375 -377 -498 0\n"
+	cubeset := "a -414 -408 -250 232 -2234 2487 2248 -421 -494 -373 0\na -414 -408 -250 232 -2234 2487 -2248 -359 2238 226 587 595 531 532 2290 373 2258 -550 0\na 414 -415 37358 250 -40233 232 473 234 2487 545 249 -367 469 238 421 -2248 490 492 -256 375 -377 -498 0\n"
 	err := os.WriteFile("x.cubes", []byte(cubeset), 0644)
 	if err != nil {
 		t.Fatal(err)
@@ -99,8 +99,8 @@ func TestBinEncode(t *testing.T) {
 		}
 	}
 	{
-		b := make([]byte, 2)
-		_, err := bCubesFile.ReadAt(b, 50*2)
+		b := make([]byte, 4)
+		_, err := bCubesFile.ReadAt(b, 50*4)
 		if err == nil || err.Error() != "EOF" {
 			t.Fatalf("expected EOF but got %s", err)
 		}
@@ -186,7 +186,7 @@ func TestGetCube(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		expectedCube := []int{414, -415, 2300, 250, 2298, 232, 473, 234, 2487, 545, 249, -367, 469, 238, 421, -2248, 490, 492, -256, 375, -377, -498}
+		expectedCube := []int{414, -415, 37358, 250, -40233, 232, 473, 234, 2487, 545, 249, -367, 469, 238, 421, -2248, 490, 492, -256, 375, -377, -498}
 		if !areCubesEqual(cube, expectedCube) {
 			t.Fatalf("got %v but expected %v", cube, expectedCube)
 		}

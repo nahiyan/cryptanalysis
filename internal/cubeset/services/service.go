@@ -40,12 +40,12 @@ func (cubesetSvc *CubesetService) BinEncode(cubesetPath string) error {
 		}
 		literals := strings.Fields(line[2 : len(line)-2])
 		for _, literal_ := range literals {
-			literal, err := strconv.ParseInt(literal_, 10, 16)
+			literal, err := strconv.ParseInt(literal_, 10, 32)
 			if err != nil {
 				return err
 			}
-			bytes := make([]byte, 2)
-			binary.BigEndian.PutUint16(bytes, uint16(literal))
+			bytes := make([]byte, 4)
+			binary.BigEndian.PutUint32(bytes, uint32(literal))
 			_, err = binCubesWriter.Write(bytes)
 			if err != nil {
 				return err
@@ -92,7 +92,7 @@ func (cubesetSvc *CubesetService) GetCube(cubesetPath string, index int) ([]int,
 		return nil, err
 	}
 	endIndex := binary.BigEndian.Uint32(endIndex_)
-	endAddress := int64(endIndex * 2)
+	endAddress := int64(endIndex * 4)
 
 	startIndex := uint32(0)
 	if index > 1 {
@@ -103,7 +103,7 @@ func (cubesetSvc *CubesetService) GetCube(cubesetPath string, index int) ([]int,
 		}
 		startIndex = binary.BigEndian.Uint32(startAddress_)
 	}
-	startAddress := int64(startIndex * 2)
+	startAddress := int64(startIndex * 4)
 
 	bytes := make([]byte, endAddress-startAddress)
 	_, err = cubesFile.ReadAt(bytes, startAddress)
@@ -112,9 +112,9 @@ func (cubesetSvc *CubesetService) GetCube(cubesetPath string, index int) ([]int,
 	}
 
 	cube := []int{}
-	for i := 0; i < len(bytes); i += 2 {
-		word := bytes[i : i+2]
-		literal := int16(binary.BigEndian.Uint16(word))
+	for i := 0; i < len(bytes); i += 4 {
+		word := bytes[i : i+4]
+		literal := int32(binary.BigEndian.Uint32(word))
 		cube = append(cube, int(literal))
 	}
 
