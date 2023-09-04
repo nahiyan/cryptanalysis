@@ -10,21 +10,37 @@
 #include <set>
 #include <vector>
 
+// Configuration
 #define DEBUG false
 #define TWO_BIT_CNDS_BLOCKS 2
 #define TWO_BIT_CNDS true
 #define INFER_CARRIES true
+
+// 2-bit rules
 #define TWO_BIT_CONSTRAINT_XOR2_ID 0
-#define TWO_BIT_CONSTRAINT_ADD2_ID 1
-#define TWO_BIT_CONSTRAINT_IF_ID 2
-#define TWO_BIT_CONSTRAINT_MAJ_ID 3
-#define TWO_BIT_CONSTRAINT_XOR3_ID 4
+#define TWO_BIT_CONSTRAINT_IF_ID 1
+#define TWO_BIT_CONSTRAINT_MAJ_ID 2
+#define TWO_BIT_CONSTRAINT_XOR3_ID 3
+#define TWO_BIT_CONSTRAINT_ADD2_ID 4
 #define TWO_BIT_CONSTRAINT_ADD3_ID 5
 #define TWO_BIT_CONSTRAINT_ADD4_ID 6
 #define TWO_BIT_CONSTRAINT_ADD5_ID 7
 #define TWO_BIT_CONSTRAINT_ADD6_ID 8
 #define TWO_BIT_CONSTRAINT_ADD7_ID 9
 
+// Functions for 2-bit conditions
+#define TWO_BIT_IF3 0
+#define TWO_BIT_MAJ3 1
+#define TWO_BIT_S0 2
+#define TWO_BIT_S1 3
+#define TWO_BIT_SIGMA0 4
+#define TWO_BIT_SIGMA1 5
+#define TWO_BIT_ADD_E 6
+#define TWO_BIT_ADD_A 7
+#define TWO_BIT_ADD_W 8
+#define TWO_BIT_ADD_T 9
+
+// Functions for modular addition
 #define ADD_E 0
 #define ADD_A 1
 #define ADD_W 2
@@ -565,29 +581,30 @@ std::vector<int> prepare_func_vec(std::vector<int>& ids, int offset, int functio
 {
     int ids_n = ids.size();
     std::vector<int> new_vec;
-    if (function_id < 0 || function_id > 3)
+
+    if (function_id == TWO_BIT_SIGMA0 || function_id == TWO_BIT_SIGMA1)
+        for (int i = 0; i < ids_n; i++) {
+            int r_rotate_amount = 0;
+            if (i >= 0 && i <= 2)
+                r_rotate_amount = function_id == TWO_BIT_SIGMA0 ? 2 : 6;
+            else if (i >= 3 && i <= 5)
+                r_rotate_amount = function_id == TWO_BIT_SIGMA0 ? 13 : 11;
+            else if (i >= 6 && i <= 8)
+                r_rotate_amount = function_id == TWO_BIT_SIGMA0 ? 22 : 25;
+            new_vec.push_back(r_rotate_id(ids[i], r_rotate_amount, offset));
+        }
+    else if (function_id == TWO_BIT_S0 || function_id == TWO_BIT_S1)
+        for (int i = 0; i < ids_n; i++) {
+            int r_rotate_amount = 0;
+            if (i >= 0 && i <= 2)
+                r_rotate_amount = function_id == TWO_BIT_S0 ? 7 : 17;
+            else if (i >= 3 && i <= 5)
+                r_rotate_amount = function_id == TWO_BIT_S0 ? 18 : 19;
+            new_vec.push_back(r_rotate_id(ids[i], r_rotate_amount, offset));
+        }
+    else
         for (int i = 0; i < ids_n; i++)
             new_vec.push_back(ids[i] + offset);
-    if (function_id == 0 || function_id == 1)
-        for (int i = 0; i < ids_n; i++) {
-            int r_rotate_amount = 0;
-            if (i >= 0 && i <= 2)
-                r_rotate_amount = function_id == 0 ? 2 : 6;
-            else if (i >= 3 && i <= 5)
-                r_rotate_amount = function_id == 0 ? 13 : 11;
-            else if (i >= 6 && i <= 8)
-                r_rotate_amount = function_id == 0 ? 22 : 25;
-            new_vec.push_back(r_rotate_id(ids[i], r_rotate_amount, offset));
-        }
-    else if (function_id == 2 || function_id == 3)
-        for (int i = 0; i < ids_n; i++) {
-            int r_rotate_amount = 0;
-            if (i >= 0 && i <= 2)
-                r_rotate_amount = function_id == 2 ? 7 : 17;
-            else if (i >= 3 && i <= 5)
-                r_rotate_amount = function_id == 2 ? 18 : 19;
-            new_vec.push_back(r_rotate_id(ids[i], r_rotate_amount, offset));
-        }
 
     return new_vec;
 }
@@ -875,56 +892,56 @@ void add_clauses(State& state)
             // If
             {
                 std::vector<int> ids = prepare_func_vec(state.solver.var_ids.if_[i], j);
-                add_2_bit_equations(state, TWO_BIT_CONSTRAINT_IF_ID, 0, ids);
+                add_2_bit_equations(state, TWO_BIT_CONSTRAINT_IF_ID, TWO_BIT_IF3, ids);
             }
 
             // Maj
             {
                 std::vector<int> ids = prepare_func_vec(state.solver.var_ids.maj[i], j);
-                add_2_bit_equations(state, TWO_BIT_CONSTRAINT_MAJ_ID, 1, ids);
+                add_2_bit_equations(state, TWO_BIT_CONSTRAINT_MAJ_ID, TWO_BIT_MAJ3, ids);
             }
 
             // Sigma0
             {
-                std::vector<int> ids = prepare_func_vec(state.solver.var_ids.sigma0[i], j, 0);
-                add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR3_ID, 2, ids);
+                std::vector<int> ids = prepare_func_vec(state.solver.var_ids.sigma0[i], j, TWO_BIT_SIGMA0);
+                add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR3_ID, TWO_BIT_SIGMA0, ids);
             }
 
             // Sigma1
             {
-                std::vector<int> ids = prepare_func_vec(state.solver.var_ids.sigma1[i], j, 1);
-                add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR3_ID, 3, ids);
+                std::vector<int> ids = prepare_func_vec(state.solver.var_ids.sigma1[i], j, TWO_BIT_SIGMA1);
+                add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR3_ID, TWO_BIT_SIGMA1, ids);
             }
 
             if (i >= 16) {
                 // S0
                 if (j <= 28) {
-                    std::vector<int> ids = prepare_func_vec(state.solver.var_ids.s0[i - 16], j, 2);
-                    add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR3_ID, 4, ids);
+                    std::vector<int> ids = prepare_func_vec(state.solver.var_ids.s0[i - 16], j, TWO_BIT_S0);
+                    add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR3_ID, TWO_BIT_S0, ids);
                 } else {
                     // TODO: Implement XOR2 2-bit conditions
                 }
 
                 // S1
                 if (j <= 21) {
-                    std::vector<int> ids = prepare_func_vec(state.solver.var_ids.s1[i - 16], j, 3);
-                    add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR3_ID, 5, ids);
+                    std::vector<int> ids = prepare_func_vec(state.solver.var_ids.s1[i - 16], j, TWO_BIT_S1);
+                    add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR3_ID, TWO_BIT_S1, ids);
                 } else {
                     // TODO: Implement XOR2 2-bit conditions
                 }
 
                 // Add W
-                add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_w[i - 16], 2, 2);
+                add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_w[i - 16], 2, TWO_BIT_ADD_W);
             }
 
             // Add E
-            add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_e[i], 1, 0);
+            add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_e[i], 1, TWO_BIT_ADD_E);
 
             // Add A
-            add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_a[i], 2, 1);
+            add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_a[i], 2, TWO_BIT_ADD_A);
 
             // Add T
-            add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_t[i], 2, 3);
+            add_addition_2_bit_clauses(state, i, j, state.solver.var_ids.add_t[i], 2, TWO_BIT_ADD_T);
         }
     }
     state.solver.stats.two_bit_rules_cpu_time += std::clock() - two_bit_start_time;
