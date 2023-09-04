@@ -747,7 +747,7 @@ bool block_inconsistency(State& state, int block_index = 0)
                     assert(value != l_Undef);
                     confl_clause_lits.insert(mkLit(var, value == l_True));
                 }
-                state.solver.stats.two_bit_clauses_n[instance.operation_id - TWO_BIT_CONSTRAINT_IF_ID]++;
+                state.solver.stats.two_bit_clauses_n[instance.operation_id - TWO_BIT_CONSTRAINT_XOR2_ID]++;
             }
         }
         for (auto& lit : confl_clause_lits)

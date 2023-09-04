@@ -1485,7 +1485,7 @@ lbool Solver::solve_()
     printf("X time: %.02fs\n", static_cast<double>(stats.two_bit_x_cpu_time) / CLOCKS_PER_SEC);
     printf("Inconsistencies: %d\n", stats.inconsistency_count);
     {
-        printf("Two-bit clauses (%.02f s ~= %0.2f s (R) + %0.2f s (SI) + %0.2f s (AM) + %0.2f s (NS) + %0.2f s (NSC) + %0.2f s (I)):\n",
+        printf("Two-bit inconsistencies (%.02f s ~= %0.2f s (R) + %0.2f s (SI) + %0.2f s (AM) + %0.2f s (NS) + %0.2f s (NSC) + %0.2f s (I)):\n",
             static_cast<double>(stats.two_bit_cpu_time) / CLOCKS_PER_SEC,
             static_cast<double>(stats.two_bit_rules_cpu_time) / CLOCKS_PER_SEC,
             static_cast<double>(stats.two_bit_set_based_cpu_time) / CLOCKS_PER_SEC,
@@ -1494,14 +1494,16 @@ lbool Solver::solve_()
             static_cast<double>(stats.two_bit_nullspace_vectors_combo_cpu_time) / CLOCKS_PER_SEC,
             static_cast<double>(stats.two_bit_blocking_inconsistency_cpu_time) / CLOCKS_PER_SEC);
     }
-    printf("If: %d\n", stats.two_bit_clauses_n[0]);
-    printf("Maj: %d\n", stats.two_bit_clauses_n[1]);
-    printf("XOR3: %d\n", stats.two_bit_clauses_n[2]);
-    printf("ADD3: %d\n", stats.two_bit_clauses_n[4]);
-    printf("ADD4: %d\n", stats.two_bit_clauses_n[4]);
-    printf("ADD5: %d\n", stats.two_bit_clauses_n[5]);
-    printf("ADD6: %d\n", stats.two_bit_clauses_n[6]);
-    printf("ADD7: %d\n", stats.two_bit_clauses_n[7]);
+    printf("XOR2: %d\n", stats.two_bit_clauses_n[0]);
+    printf("If: %d\n", stats.two_bit_clauses_n[1]);
+    printf("Maj: %d\n", stats.two_bit_clauses_n[2]);
+    printf("XOR3: %d\n", stats.two_bit_clauses_n[3]);
+    printf("ADD2: %d\n", stats.two_bit_clauses_n[4]);
+    printf("ADD3: %d\n", stats.two_bit_clauses_n[5]);
+    printf("ADD4: %d\n", stats.two_bit_clauses_n[6]);
+    printf("ADD5: %d\n", stats.two_bit_clauses_n[7]);
+    printf("ADD6: %d\n", stats.two_bit_clauses_n[8]);
+    printf("ADD7: %d\n", stats.two_bit_clauses_n[9]);
     printf("Carry inference clauses (%.02f s):\n", static_cast<double>(stats.carry_inference_cpu_time) / CLOCKS_PER_SEC);
     printf("ADD(E): %d %d\n", stats.carry_infer_high_clauses_n[0], stats.carry_infer_low_clauses_n[0]);
     printf("ADD(A): %d %d\n", stats.carry_infer_high_clauses_n[1], stats.carry_infer_low_clauses_n[1]);

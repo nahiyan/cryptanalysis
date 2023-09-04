@@ -176,7 +176,7 @@ public:
     int steps = 0;
 
     struct Stats {
-        int two_bit_clauses_n[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+        int two_bit_clauses_n[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
         int carry_infer_high_clauses_n[4] = {0, 0, 0, 0};
         int carry_infer_low_clauses_n[4] = {0, 0, 0, 0};
         int callback_count = 0;
