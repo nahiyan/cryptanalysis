@@ -37,10 +37,7 @@ void SHA256::encode() {
     cnf.xor3(s0[i], r1, r2, w[i - 15] + 3, 29);
 
     // s0: j: 29-31
-    cnf.varName(r1 + 29, "s0_" + to_string(i) + "_x0_");
-    cnf.varName(r2 + 29, "s0_" + to_string(i) + "_x1_");
     cnf.xor2(s0[i] + 29, r1 + 29, r2 + 29, 3);
-
 
     // s1: j: 0-21
     cnf.rotr(r1, w[i - 2], 17);
@@ -52,8 +49,6 @@ void SHA256::encode() {
     cnf.xor3(s1[i], r1, r2, w[i - 2] + 10, 22);
 
     // s1: j: 22-31
-    cnf.varName(r1 + 22, "s1_" + to_string(i) + "_x0_");
-    cnf.varName(r2 + 22, "s1_" + to_string(i) + "_x1_");
     cnf.xor2(s1[i] + 22, r1 + 22, r2 + 22, 10);
 
     // Addition: w[i]
