@@ -572,35 +572,42 @@ std::vector<int> prepare_add_2_bit_vec(std::vector<int>& ids, int carries_n, int
     return new_vec;
 }
 
-int r_rotate_id(int id, int amount, int offset)
-{
-    return (id - amount) + (amount + offset) % 32;
-}
-
 std::vector<int> prepare_func_vec(std::vector<int>& ids, int offset, int function_id = -1)
 {
     int ids_n = ids.size();
     std::vector<int> new_vec;
 
+    auto r_rot_id = [](int id, int amount, int offset) {
+        return (id - amount) + (amount + offset) % 32;
+    };
+
     if (function_id == TWO_BIT_SIGMA0 || function_id == TWO_BIT_SIGMA1)
         for (int i = 0; i < ids_n; i++) {
-            int r_rotate_amount = 0;
+            int r_rot_amount = 0;
             if (i >= 0 && i <= 2)
-                r_rotate_amount = function_id == TWO_BIT_SIGMA0 ? 2 : 6;
+                r_rot_amount = function_id == TWO_BIT_SIGMA0 ? 2 : 6;
             else if (i >= 3 && i <= 5)
-                r_rotate_amount = function_id == TWO_BIT_SIGMA0 ? 13 : 11;
+                r_rot_amount = function_id == TWO_BIT_SIGMA0 ? 13 : 11;
             else if (i >= 6 && i <= 8)
-                r_rotate_amount = function_id == TWO_BIT_SIGMA0 ? 22 : 25;
-            new_vec.push_back(r_rotate_id(ids[i], r_rotate_amount, offset));
+                r_rot_amount = function_id == TWO_BIT_SIGMA0 ? 22 : 25;
+            new_vec.push_back(r_rot_id(ids[i], r_rot_amount, offset));
         }
     else if (function_id == TWO_BIT_S0 || function_id == TWO_BIT_S1)
         for (int i = 0; i < ids_n; i++) {
-            int r_rotate_amount = 0;
+            int r_rot_amount = 0;
             if (i >= 0 && i <= 2)
-                r_rotate_amount = function_id == TWO_BIT_S0 ? 7 : 17;
+                r_rot_amount = function_id == TWO_BIT_S0 ? 7 : 17;
             else if (i >= 3 && i <= 5)
-                r_rotate_amount = function_id == TWO_BIT_S0 ? 18 : 19;
-            new_vec.push_back(r_rotate_id(ids[i], r_rotate_amount, offset));
+                r_rot_amount = function_id == TWO_BIT_S0 ? 18 : 19;
+
+            // Skip the third operand if it's XOR2
+            if (i >= 6 && i <= 8)
+                if (function_id == TWO_BIT_S0 && offset > 28)
+                    continue;
+                else if (function_id == TWO_BIT_S1 && offset > 21)
+                    continue;
+
+            new_vec.push_back(r_rot_id(ids[i], r_rot_amount, offset));
         }
     else
         for (int i = 0; i < ids_n; i++)
@@ -866,17 +873,17 @@ void add_addition_2_bit_clauses(State& state, int i, int j, std::vector<int>& id
         new_vec = prepare_add_2_bit_vec(ids, carries_n, j, 2);
 
     int operation_id = 0;
-    if ((j > 1 && function_id == ADD_A) || (j == 0 && function_id == ADD_T) || (j == 1 && function_id == ADD_W))
+    if ((j > 1 && function_id == TWO_BIT_ADD_A) || (j == 0 && function_id == TWO_BIT_ADD_T) || (j == 1 && function_id == TWO_BIT_ADD_W))
         operation_id = TWO_BIT_CONSTRAINT_ADD5_ID;
-    else if ((j == 1 && function_id == ADD_A) || (j == 0 && function_id == ADD_W))
+    else if ((j == 1 && function_id == TWO_BIT_ADD_A) || (j == 0 && function_id == TWO_BIT_ADD_W))
         operation_id = TWO_BIT_CONSTRAINT_ADD4_ID;
-    else if ((j == 0 && function_id == ADD_A) || (j > 1 && function_id == ADD_E))
+    else if ((j == 0 && function_id == TWO_BIT_ADD_A) || (j > 0 && function_id == TWO_BIT_ADD_E))
         operation_id = TWO_BIT_CONSTRAINT_ADD3_ID;
-    else if ((j == 1 && function_id == ADD_T) || (j > 1 && function_id == ADD_W))
+    else if ((j == 1 && function_id == TWO_BIT_ADD_T) || (j > 1 && function_id == TWO_BIT_ADD_W))
         operation_id = TWO_BIT_CONSTRAINT_ADD6_ID;
-    else if (j > 1 && function_id == ADD_T)
+    else if (j > 1 && function_id == TWO_BIT_ADD_T)
         operation_id = TWO_BIT_CONSTRAINT_ADD7_ID;
-    else if (j == 0 && function_id == ADD_E)
+    else if (j == 0 && function_id == TWO_BIT_ADD_E)
         operation_id = TWO_BIT_CONSTRAINT_ADD2_ID;
 
     add_2_bit_equations(state, operation_id, function_id, new_vec);
@@ -915,19 +922,21 @@ void add_clauses(State& state)
 
             if (i >= 16) {
                 // S0
-                if (j <= 28) {
+                {
                     std::vector<int> ids = prepare_func_vec(state.solver.var_ids.s0[i - 16], j, TWO_BIT_S0);
-                    add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR3_ID, TWO_BIT_S0, ids);
-                } else {
-                    // TODO: Implement XOR2 2-bit conditions
+                    if (j <= 28)
+                        add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR3_ID, TWO_BIT_S0, ids);
+                    else
+                        add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR2_ID, TWO_BIT_S0, ids);
                 }
 
                 // S1
-                if (j <= 21) {
+                {
                     std::vector<int> ids = prepare_func_vec(state.solver.var_ids.s1[i - 16], j, TWO_BIT_S1);
-                    add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR3_ID, TWO_BIT_S1, ids);
-                } else {
-                    // TODO: Implement XOR2 2-bit conditions
+                    if (j <= 21)
+                        add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR3_ID, TWO_BIT_S1, ids);
+                    else
+                        add_2_bit_equations(state, TWO_BIT_CONSTRAINT_XOR2_ID, TWO_BIT_S1, ids);
                 }
 
                 // Add W
