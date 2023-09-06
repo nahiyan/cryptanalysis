@@ -19,7 +19,7 @@ int cfg_diff_impl;
 int cfg_rand_inp_diff;
 string cfg_diff_const_file;
 
-void fix_diff_char(SHA256& block, char& diff, int* target, int* alt_target1, int* alt_target2) {
+void fix_starting_point(SHA256& block, char& diff, int* target, int* alt_target1, int* alt_target2) {
     auto& formula = block.cnf;
     switch (diff) {
         case '-':
@@ -108,10 +108,10 @@ void collision(int rounds)
         for (int i = -4; i < rounds; i++) {
             if (i >= 0)
                 for (int j = 0; j < 32; j++)
-                    fix_diff_char(g, W[i][31 - j], &DW[i][j], &f.w[i][j], &g.w[i][j]);
+                    fix_starting_point(g, W[i][31 - j], &DW[i][j], &f.w[i][j], &g.w[i][j]);
             for (int j = 0; j < 32; j++) {
-                fix_diff_char(g, A[i + 4][31 - j], &DA[i + 4][j], &f.A[i + 4][j], &g.A[i + 4][j]);
-                fix_diff_char(g, E[i + 4][31 - j], &DE[i + 4][j], &f.E[i + 4][j], &g.E[i + 4][j]);
+                fix_starting_point(g, A[i + 4][31 - j], &DA[i + 4][j], &f.A[i + 4][j], &g.A[i + 4][j]);
+                fix_starting_point(g, E[i + 4][31 - j], &DE[i + 4][j], &f.E[i + 4][j], &g.E[i + 4][j]);
             }
         }
 
