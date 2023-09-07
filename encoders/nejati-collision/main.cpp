@@ -19,35 +19,36 @@ int cfg_diff_impl;
 int cfg_rand_inp_diff;
 string cfg_diff_const_file;
 
-void fix_starting_point(SHA256& block, char& diff, int* target, int* alt_target1, int* alt_target2) {
+void fix_starting_point(SHA256& block, char& diff, int* target, int* alt_target1, int* alt_target2)
+{
     auto& formula = block.cnf;
     switch (diff) {
-        case '-':
-            formula.fixedValue(target, 0, 1);
-            break;
-        case 'x':
-            formula.fixedValue(target, 1, 1);
-            break;
-        case 'u':
-            formula.fixedValue(target, 1, 1);
-            formula.fixedValue(alt_target1, 1, 1);
-            formula.fixedValue(alt_target2, 0, 1);
-            break;
-        case 'n':
-            formula.fixedValue(target, 1, 1);
-            formula.fixedValue(alt_target1, 0, 1);
-            formula.fixedValue(alt_target2, 1, 1);
-            break;
-        case '1':
-            formula.fixedValue(target, 0, 1);
-            formula.fixedValue(alt_target1, 1, 1);
-            formula.fixedValue(alt_target2, 1, 1);
-            break;
-        case '0':
-            formula.fixedValue(target, 0, 1);
-            formula.fixedValue(alt_target1, 0, 1);
-            formula.fixedValue(alt_target2, 0, 1);
-            break;
+    case '-':
+        formula.fixedValue(target, 0, 1);
+        break;
+    case 'x':
+        formula.fixedValue(target, 1, 1);
+        break;
+    case 'u':
+        formula.fixedValue(target, 1, 1);
+        formula.fixedValue(alt_target1, 1, 1);
+        formula.fixedValue(alt_target2, 0, 1);
+        break;
+    case 'n':
+        formula.fixedValue(target, 1, 1);
+        formula.fixedValue(alt_target1, 0, 1);
+        formula.fixedValue(alt_target2, 1, 1);
+        break;
+    case '1':
+        formula.fixedValue(target, 0, 1);
+        formula.fixedValue(alt_target1, 1, 1);
+        formula.fixedValue(alt_target2, 1, 1);
+        break;
+    case '0':
+        formula.fixedValue(target, 0, 1);
+        formula.fixedValue(alt_target1, 0, 1);
+        formula.fixedValue(alt_target2, 0, 1);
+        break;
     }
 }
 
@@ -106,9 +107,32 @@ void collision(int rounds)
 
         /* Fixing the differences from the initial path */
         for (int i = -4; i < rounds; i++) {
-            if (i >= 0)
+            if (i >= 0) {
+                // bool areDifferent = false;
+                // if (i <= 15) {
+                //     for (int j = 0; j < 32; j++)
+                //         if (W[i][j] == 'n' || W[i][j] == 'u' || W[i][j] == 'x') {
+                //             areDifferent = true;
+                //             break;
+                //         }
+                    
+                //     if (areDifferent) {
+                //         vector<int> lits;
+                //         for (int j = 0; j < 32; j++)
+                //             lits.push_back(DW[i][j]);
+                //         g.cnf.addClause(lits);
+                //     }
+                // }
+
+                // if (i >= 16 || !areDifferent) {
+                //     for (int j = 0; j < 32; j++)
+                //         fix_starting_point(g, W[i][31 - j], &DW[i][j], &f.w[i][j], &g.w[i][j]);
+                // }
+
                 for (int j = 0; j < 32; j++)
                     fix_starting_point(g, W[i][31 - j], &DW[i][j], &f.w[i][j], &g.w[i][j]);
+            }
+
             for (int j = 0; j < 32; j++) {
                 fix_starting_point(g, A[i + 4][31 - j], &DA[i + 4][j], &f.A[i + 4][j], &g.A[i + 4][j]);
                 fix_starting_point(g, E[i + 4][31 - j], &DE[i + 4][j], &f.E[i + 4][j], &g.E[i + 4][j]);
@@ -181,7 +205,7 @@ void collision(int rounds)
             g.cnf.varName(DE[i + 2], "Dif_" + to_string(i) + "_x1");
             g.cnf.varName(DE[i + 1], "Dif_" + to_string(i) + "_x2");
             g.cnf.xor2(Df1[i], f.f1[i], g.f1[i], 32);
-            
+
             g.cnf.newVars(Df2[i], 32, "Dmaj_" + to_string(i) + "_z0");
             g.cnf.varName(DA[i + 3], "Dmaj_" + to_string(i) + "_x0");
             g.cnf.varName(DA[i + 2], "Dmaj_" + to_string(i) + "_x1");
