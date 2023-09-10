@@ -48,8 +48,8 @@ func (sha256Svc *Sha256Service) Run(message []byte, steps int, addChainingVars b
 	var h1 uint32 = 0xbb67ae85
 	var h2 uint32 = 0x3c6ef372
 	var h3 uint32 = 0xa54ff53a
-	var h5 uint32 = 0x9b05688c
 	var h4 uint32 = 0x510e527f
+	var h5 uint32 = 0x9b05688c
 	var h6 uint32 = 0x1f83d9ab
 	var h7 uint32 = 0x5be0cd19
 
@@ -83,17 +83,7 @@ func (sha256Svc *Sha256Service) Run(message []byte, steps int, addChainingVars b
 		c = b
 		b = a
 		a = t1 + t2
-		// fmt.Printf("Step %d %08x %08x\n", i, a, e)
 	}
-
-	h0 = a
-	h1 = b
-	h2 = c
-	h3 = d
-	h4 = e
-	h5 = f
-	h6 = g
-	h7 = h
 
 	if addChainingVars {
 		h0 += a
@@ -104,6 +94,15 @@ func (sha256Svc *Sha256Service) Run(message []byte, steps int, addChainingVars b
 		h5 += f
 		h6 += g
 		h7 += h
+	} else {
+		h0 = a
+		h1 = b
+		h2 = c
+		h3 = d
+		h4 = e
+		h5 = f
+		h6 = g
+		h7 = h
 	}
 
 	digest := fmt.Sprintf("%08x%08x%08x%08x%08x%08x%08x%08x", h0, h1, h2, h3, h4, h5, h6, h7)
