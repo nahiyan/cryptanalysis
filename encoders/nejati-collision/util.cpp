@@ -197,7 +197,7 @@ void sha256_comp(unsigned* w, unsigned* H, int rounds, bool chaining)
     H[7] = h;
 
     for (int i = 0; i < 8; i++)
-        printf("Nunu exploded: %08x ", H[i]);
+        printf("Hash: %08x ", H[i]);
 }
 
 void sha256_msg(unsigned char* m, int size, unsigned* hash, int rounds)
