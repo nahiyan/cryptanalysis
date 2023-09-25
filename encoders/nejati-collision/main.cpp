@@ -52,6 +52,14 @@ void fix_starting_point(SHA256& block, char& diff, int* target, int* alt_target1
     }
 }
 
+void enforce_difference(SHA256& block, int* target) {
+    vector<int> clause;
+    for (int i = 0; i < 32; i++) {
+        clause.push_back(target[i]);
+    }
+    block.cnf.addClause(clause);
+}
+
 void collision(int rounds)
 {
     SHA256 f(rounds), g(rounds);
