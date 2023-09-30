@@ -163,6 +163,67 @@ char to_gc(int x, int x_prime)
         return 0;
 }
 
+std::string identify_register(State& state, int& target_var)
+{
+    std::unordered_map<std::string, int>& vmap = state.solver.var_map;
+    int& order = state.solver.steps;
+
+    // Register A
+    for (int i = 4; i < order + 4; i++) {
+        int word_start = vmap[std::format("A_{}_f", i)];
+        for (int j = 0; j < 32; j++) {
+            int var = word_start + j;
+
+            if (var == target_var)
+                return std::format("A_{},{}", i - 4, j);
+        }
+        word_start = vmap[std::format("A_{}_g", i)];
+        for (int j = 0; j < 32; j++) {
+            int var = word_start + j;
+
+            if (var == target_var)
+                return std::format("A_{},{}", i - 4, j);
+        }
+    }
+
+    // Register E
+    for (int i = 4; i < order + 4; i++) {
+        int word_start = vmap[std::format("E_{}_f", i)];
+        for (int j = 0; j < 32; j++) {
+            int var = word_start + j;
+
+            if (var == target_var)
+                return std::format("E_{},{}", i - 4, j);
+        }
+        word_start = vmap[std::format("E_{}_g", i)];
+        for (int j = 0; j < 32; j++) {
+            int var = word_start + j;
+
+            if (var == target_var)
+                return std::format("E_{},{}", i - 4, j);
+        }
+    }
+
+    // Register W
+    for (int i = 0; i < order; i++) {
+        int word_start = vmap[std::format("w{}_f", i)];
+        for (int j = 0; j < 32; j++) {
+            int var = word_start + j;
+
+            if (var == target_var)
+                return std::format("W_{},{}", i, j);
+        }
+        word_start = vmap[std::format("w{}_g", i)];
+        for (int j = 0; j < 32; j++) {
+            int var = word_start + j;
+
+            if (var == target_var)
+                return std::format("W_{},{}", i, j);
+        }
+    }
+    return "?";
+}
+
 int sum(std::vector<int>& v)
 {
     int s = 0;
@@ -225,6 +286,21 @@ void print(equation_t equation)
     int y = std::get<1>(equation);
     int z = std::get<2>(equation);
     printf("Equation: %d %s %d\n", x, z == 1 ? "=/=" : "=", y);
+}
+
+void print_equation(State& state, equation_t equation)
+{
+    int x = std::get<0>(equation);
+    int y = std::get<1>(equation);
+    int z = std::get<2>(equation);
+
+    auto x_reg = identify_register(state, x);
+    auto y_reg = identify_register(state, y);
+
+    if (x_reg == "?" || y_reg == "?")
+        return;
+
+    printf("Equation: %s %s %s\n", x_reg.c_str(), z == 1 ? "=/=" : "=", y_reg.c_str());
 }
 
 void print(equations_t equations)
