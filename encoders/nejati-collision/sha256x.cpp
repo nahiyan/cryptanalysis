@@ -87,7 +87,6 @@ void SHA256::encode() {
   }
 
   /* Initialization vector */
-  initialBlock = false;
   if (initialBlock) {
     cnf.fixedValue(in[0], 0x6a09e667);
     cnf.fixedValue(in[1], 0xbb67ae85);
