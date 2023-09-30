@@ -317,6 +317,53 @@ void print(NTL::vec_GF2& equation)
     printf("\n");
 }
 
+uint32_t get_word(State& state, int strt_index)
+{
+    int values[32];
+    for (int i = 0; i < 32; i++) {
+        auto value = state.solver.value(strt_index + i);
+        if (value == l_Undef) {
+            printf("Value is undefined");
+            exit(-1);
+        }
+        values[i] = value == l_True ? 1 : 0;
+    }
+
+    uint32_t value = 0;
+    for (int i = 0; i < 32; i++)
+        value |= ((uint32_t)values[i] & 0x01) << i;
+
+    return value;
+}
+
+uint32_t get_word_debug(State& state, int strt_index)
+{
+    int values[32];
+    for (int i = 0; i < 32; i++) {
+        auto value = state.solver.value(strt_index + i);
+        if (value == l_Undef) {
+            printf("index %d is undefined\n", i);
+            value = l_False;
+        }
+        values[i] = value == l_True ? 1 : 0;
+    }
+
+    uint32_t value = 0;
+    for (int i = 0; i < 32; i++)
+        value |= ((uint32_t)values[i] & 0x01) << i;
+
+    return value;
+}
+
+std::vector<int> word_to_vec(uint32_t word)
+{
+    std::vector<int> vec;
+    for (int i = 0; i < 32; i++)
+        vec.push_back(word >> i & 1);
+
+    return vec;
+}
+
 // Get index of the shortest conflict clause, -1 if no conflict clause is found
 int get_shortest_conflict_clause(State& state)
 {
