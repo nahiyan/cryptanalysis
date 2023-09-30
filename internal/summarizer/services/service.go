@@ -244,9 +244,9 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 						message2, err := summarizerSvc.solutionSvc.ExtractFromLiterals(solutionLiterals[message2Index-1 : message2Index+512])
 						summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed extract the message from the solution literal")
 
-						hash, err = summarizerSvc.sha256Svc.Run(message, steps, false)
+						hash, err = summarizerSvc.sha256Svc.Run(message, steps, true)
 						summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the SHA256 hash")
-						hash2, err := summarizerSvc.sha256Svc.Run(message2, steps, false)
+						hash2, err := summarizerSvc.sha256Svc.Run(message2, steps, true)
 						summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the SHA256 hash")
 
 						// Collision verification
