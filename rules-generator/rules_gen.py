@@ -22,8 +22,6 @@ OI_CONSTRAINT_ADD7_ID = 16
 
 if not os.path.exists("output"):
     os.mkdir("output")
-rules_db = open("output/rules-io-oi.db", "wb")
-
 
 def uniq(data):
     return [list(x) for x in set(tuple(x) for x in data)]
@@ -221,7 +219,6 @@ def oi_rules_gen(id, n):
     for output in output_freq:
         if output_freq[output] == 1:
             print(output, rules[output])
-            rules_db.write(to_bytearray(id, output + rules[output]))
 
 
 def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
@@ -315,30 +312,7 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
                         sum_syms.add(gc(sum_1, sum_2))
             print("IF:  ", i[0], i[1], i[2], "->", to_sym(out_syms_if))
             print("MAJ: ", i[0], i[1], i[2], "->", to_sym(out_syms_maj))
-            print("XOR3:", i[0], i[1], i[2], "->", to_sym(out_syms_xor3))
-            print(
-                "ADD3:",
-                i[0],
-                i[1],
-                i[2],
-                "->",
-                to_sym(carry1_syms),
-                to_sym(sum_syms),
-            )
-            rules_db.write(to_bytearray(IO_CONSTRAINT_IF_ID, i + [to_sym(out_syms_if)]))
-            rules_db.write(
-                to_bytearray(IO_CONSTRAINT_MAJ_ID, i + [to_sym(out_syms_maj)])
-            )
-            rules_db.write(
-                to_bytearray(IO_CONSTRAINT_XOR3_ID, i + [to_sym(out_syms_xor3)])
-            )
-            # TODO: Add rules to the DB for all other operations
-            rules_db.write(
-                to_bytearray(
-                    IO_CONSTRAINT_ADD3_ID,
-                    i + [to_sym(carry1_syms), to_sym(sum_syms)],
-                )
-            )
+            print("XOR3 ", i[0], i[1], i[2], " ", to_sym(out_syms_xor3), sep="")
         elif n == 4:
             carry2_syms = set()
             carry1_syms = set()
@@ -556,17 +530,19 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
 
 
 def __main__():
-    # gen_io_rules(4, ["x", "-"])
-    for i in range(3, 8):
-        id = (
-            OI_CONSTRAINT_ADD3_ID
-            if i == 3
-            else OI_CONSTRAINT_ADD4_ID
-            if i == 4
-            else OI_CONSTRAINT_ADD5_ID
-            if i == 5
-            else OI_CONSTRAINT_ADD6_ID
-            if i == 6
-            else OI_CONSTRAINT_ADD7_ID
-        )
-        oi_rules_gen(id, i)
+    gen_io_rules(3, ["x", "-", "n", "u", "1", "0"])
+    # for i in range(3, 8):
+    #     id = (
+    #         OI_CONSTRAINT_ADD3_ID
+    #         if i == 3
+    #         else OI_CONSTRAINT_ADD4_ID
+    #         if i == 4
+    #         else OI_CONSTRAINT_ADD5_ID
+    #         if i == 5
+    #         else OI_CONSTRAINT_ADD6_ID
+    #         if i == 6
+    #         else OI_CONSTRAINT_ADD7_ID
+    #     )
+    #     oi_rules_gen(id, i)
+
+__main__()
