@@ -16,7 +16,7 @@ void xFormula::add(int *z, int *a, int *b, int *t, int *T, int *c, int *d, int *
 {
     assert( multiAdderType == ESPRESSO );
     int n = 32;
-    for( int i = 0; i < n; i++ )
+    for(int i = 0; i < n; i++)
     {
         vector<int> input;
         input.push_back(a[i]);
@@ -25,44 +25,43 @@ void xFormula::add(int *z, int *a, int *b, int *t, int *T, int *c, int *d, int *
         if ( d != NULL ) input.push_back(d[i]);
         if ( e != NULL ) input.push_back(e[i]);
 
+        int m = input.size();
+
         if (i > 0)
             input.push_back(t[i-1]);
-        if (i > 1 && input.size() > 3)
-            input.push_back(T[i-2]);
+        if (i > 1)
+            if ((m == 3 && i >= 3) || (m > 3))
+                input.push_back(T[i-2]);
 
         vector<int> output;
         output.push_back(z[i]);
         output.push_back(t[i]);
-        if (input.size() > 3)
+        if (m > 2)
             output.push_back(T[i]);
 
         // Generate clauses
-        for(int x = 0; x < pow(2, input.size()); x++) {
-            vector<int> clause;
+        for(int x = 0; x < pow(2, input.size()); x++)
+        {
+            vector<int> base_clause;
             // Input
             for (int y = 0; y < input.size(); y++)
-                clause.push_back((x >> y & 1) == 1 ? -input[y] : input[y]);
+                base_clause.push_back((x >> y & 1) == 1 ? -input[y] : input[y]);
 
             // Sum of the input
-            auto sum = [](vector<int> x) {
+            auto _sum = [](vector<int> v) {
                 int s = 0;
-                for (auto& x_: x)
-                    s += x_ < 0 ? 1 : 0;
+                for (int& v_: v)
+                    s += v_ < 0 ? 1 : 0;
                 return s;
             };
 
             // Output
-            int sum_ = sum(clause);
-            for (int y = 0; y < output.size(); y++) {
-                vector<int> c(clause);
-                c.insert(c.begin(), (sum_ >> y & 1) == 1 ? output[y] : -output[y]);
-                addClause(c);
-
-                // printf("Clause (sum: %d): ", sum_);
-                // for (auto& lit: c) {
-                //     printf("%d ", lit);
-                // }
-                // printf("\n");
+            int sum = _sum(base_clause);
+            for (int y = 0; y < output.size(); y++)
+            {
+                vector<int> clause(base_clause);
+                clause.insert(clause.begin(), (sum >> y & 1) == 1 ? output[y] : -output[y]);
+                addClause(clause);
             }
         }
     }
