@@ -249,6 +249,11 @@ func (summarizerSvc *SummarizerService) GetSolutions(logFiles []string, workers 
 						hash2, err := summarizerSvc.sha256Svc.Run(message2, steps, true)
 						summarizerSvc.errorSvc.Fatal(err, "Summarizer: failed to generate the SHA256 hash")
 
+						log.Println(hex.EncodeToString(message))
+						log.Println(hex.EncodeToString(message2))
+						log.Println(hash)
+						log.Println(hash2)
+
 						// Collision verification
 						solution.verified = hash == hash2 && string(message2) != string(message)
 						// TODO: Support message pairs for collision attacks
