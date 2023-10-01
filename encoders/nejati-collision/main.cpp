@@ -115,31 +115,9 @@ void collision(int rounds)
 
         /* Fixing the differences from the initial path */
         for (int i = -4; i < rounds; i++) {
-            if (i >= 0) {
-                // bool areDifferent = false;
-                // if (i <= 15) {
-                //     for (int j = 0; j < 32; j++)
-                //         if (W[i][j] == 'n' || W[i][j] == 'u' || W[i][j] == 'x') {
-                //             areDifferent = true;
-                //             break;
-                //         }
-                    
-                //     if (areDifferent) {
-                //         vector<int> lits;
-                //         for (int j = 0; j < 32; j++)
-                //             lits.push_back(DW[i][j]);
-                //         g.cnf.addClause(lits);
-                //     }
-                // }
-
-                // if (i >= 16 || !areDifferent) {
-                //     for (int j = 0; j < 32; j++)
-                //         fix_starting_point(g, W[i][31 - j], &DW[i][j], &f.w[i][j], &g.w[i][j]);
-                // }
-
+            if (i >= 0) 
                 for (int j = 0; j < 32; j++)
                     fix_starting_point(g, W[i][31 - j], &DW[i][j], &f.w[i][j], &g.w[i][j]);
-            }
 
             for (int j = 0; j < 32; j++) {
                 fix_starting_point(g, A[i + 4][31 - j], &DA[i + 4][j], &f.A[i + 4][j], &g.A[i + 4][j]);
