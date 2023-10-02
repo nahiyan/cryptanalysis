@@ -355,6 +355,14 @@ uint32_t get_word_debug(State& state, int strt_index)
     return value;
 }
 
+void get_word_debug2(State& state, int strt_index, int* values)
+{
+    for (int i = 0; i < 32; i++) {
+        auto value = state.solver.value(strt_index + i);
+        values[i] = value == l_True ? 1 : (value == l_Undef ? 2 : 0);
+    }
+}
+
 std::vector<int> word_to_vec(uint32_t word)
 {
     std::vector<int> vec;
@@ -1014,6 +1022,57 @@ void add_addition_2_bit_clauses(State& state, int i, int j, std::vector<int>& id
 
 void add_clauses(State& state)
 {
+    int w[8] = {0, 33-1, 65-1, 97-1, 129 - 1, 161 - 1, 193 - 1, 225 - 1};
+    for (int i = 0; i < 8; i++) {
+        int wi[32];
+        get_word_debug2(state, w[i], wi);
+        printf("W%d: ", i);
+        for (int i = 0; i < 32; i++) {
+            printf("%d", wi[31 - i]);
+        }
+        printf("\n");
+    }
+    // for (int i = 0; i < 8; i++) {
+    //     int wi = state.solver.var_map[std::format("w{}", i)];
+    //     printf("%d\n", wi);
+
+    // }
+    // {
+    //     int t0[32];
+    //     get_word_debug2(state, 5825 - 1, t0);
+    //     printf("T0: ");
+    //     for (int i = 0; i < 32; i++) {
+    //         printf("%d", t0[31 - i]);
+    //     }
+    //     printf("\n");
+
+    //     int w0[32];
+    //     get_word_debug2(state, 0, w0);
+    //     printf("W0: ");
+    //     for (int i = 0; i < 32; i++) {
+    //         printf("%d", w0[31 - i]);
+    //     }
+    //     printf("\n");
+
+    //     int a0[32];
+    //     get_word_debug2(state, 1409 - 1, a0);
+    //     printf("A0: ");
+    //     for (int i = 0; i < 32; i++) {
+    //         printf("%d", a0[31 - i]);
+    //     }
+    //     printf("\n");
+
+    //     int e0[32];
+    //     get_word_debug2(state, 1441 - 1, e0);
+    //     printf("E0: ");
+    //     for (int i = 0; i < 32; i++) {
+    //         printf("%d", e0[31 - i]);
+    //     }
+    //     printf("\n");
+    // }
+
+    // exit(0);
+
 #if TWO_BIT_CNDS
     clock_t two_bit_start_time = std::clock();
     // Handle 2-bit conditions
