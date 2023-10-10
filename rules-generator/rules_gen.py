@@ -310,9 +310,9 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
                         carry2_syms.add(gc(carry2_1, carry2_2))
                         carry1_syms.add(gc(carry1_1, carry1_2))
                         sum_syms.add(gc(sum_1, sum_2))
-            print("IF:  ", i[0], i[1], i[2], "->", to_sym(out_syms_if))
-            print("MAJ: ", i[0], i[1], i[2], "->", to_sym(out_syms_maj))
-            print("XOR3 ", i[0], i[1], i[2], " ", to_sym(out_syms_xor3), sep="")
+            print(IO_CONSTRAINT_IF_ID, f"{i[0]}{i[1]}{i[2]}", to_sym(out_syms_if))
+            print(IO_CONSTRAINT_MAJ_ID, f"{i[0]}{i[1]}{i[2]}", to_sym(out_syms_maj))
+            print(IO_CONSTRAINT_XOR3_ID, f"{i[0]}{i[1]}{i[2]}", to_sym(out_syms_xor3))
         elif n == 4:
             carry2_syms = set()
             carry1_syms = set()
