@@ -1022,16 +1022,16 @@ void add_addition_2_bit_clauses(State& state, int i, int j, std::vector<int>& id
 
 void add_clauses(State& state)
 {
-    int w[8] = {0, 33-1, 65-1, 97-1, 129 - 1, 161 - 1, 193 - 1, 225 - 1};
-    for (int i = 0; i < 8; i++) {
-        int wi[32];
-        get_word_debug2(state, w[i], wi);
-        printf("W%d: ", i);
-        for (int i = 0; i < 32; i++) {
-            printf("%d", wi[31 - i]);
-        }
-        printf("\n");
-    }
+    // int w[8] = {0, 33-1, 65-1, 97-1, 129 - 1, 161 - 1, 193 - 1, 225 - 1};
+    // for (int i = 0; i < 8; i++) {
+    //     int wi[32];
+    //     get_word_debug2(state, w[i], wi);
+    //     printf("W%d: ", i);
+    //     for (int i = 0; i < 32; i++) {
+    //         printf("%d", wi[31 - i]);
+    //     }
+    //     printf("\n");
+    // }
     // for (int i = 0; i < 8; i++) {
     //     int wi = state.solver.var_map[std::format("w{}", i)];
     //     printf("%d\n", wi);
