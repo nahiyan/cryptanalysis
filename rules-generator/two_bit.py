@@ -1,6 +1,6 @@
 import os
 from itertools import product
-from rules_gen import if_, maj, xor3, bin_add
+from rules_gen import if_, maj, xor3, add
 from collections.abc import Iterable
 
 TWO_BIT_CONSTRAINT_XOR2_ID = 0
@@ -71,7 +71,7 @@ def xor2(ops):
 
 
 def bin_add_w(ops):
-    carry2, carry1, sum = bin_add(ops)
+    carry2, carry1, sum = add(ops)
     if len(ops) >= 4:
         return carry2, carry1, sum
     else:
