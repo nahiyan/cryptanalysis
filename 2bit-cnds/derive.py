@@ -1,6 +1,7 @@
 from collections import namedtuple, deque
 from itertools import product
 from time import time
+import re
 import sys
 
 TWO_BIT_CONSTRAINT_XOR2_ID = 0
@@ -24,93 +25,85 @@ IO_CONSTRAINT_ADD5_ID = 6
 IO_CONSTRAINT_ADD6_ID = 7
 IO_CONSTRAINT_ADD7_ID = 8
 
+k = [
+    0x428A2F98,
+    0x71374491,
+    0xB5C0FBCF,
+    0xE9B5DBA5,
+    0x3956C25B,
+    0x59F111F1,
+    0x923F82A4,
+    0xAB1C5ED5,
+    0xD807AA98,
+    0x12835B01,
+    0x243185BE,
+    0x550C7DC3,
+    0x72BE5D74,
+    0x80DEB1FE,
+    0x9BDC06A7,
+    0xC19BF174,
+    0xE49B69C1,
+    0xEFBE4786,
+    0x0FC19DC6,
+    0x240CA1CC,
+    0x2DE92C6F,
+    0x4A7484AA,
+    0x5CB0A9DC,
+    0x76F988DA,
+    0x983E5152,
+    0xA831C66D,
+    0xB00327C8,
+    0xBF597FC7,
+    0xC6E00BF3,
+    0xD5A79147,
+    0x06CA6351,
+    0x14292967,
+    0x27B70A85,
+    0x2E1B2138,
+    0x4D2C6DFC,
+    0x53380D13,
+    0x650A7354,
+    0x766A0ABB,
+    0x81C2C92E,
+    0x92722C85,
+    0xA2BFE8A1,
+    0xA81A664B,
+    0xC24B8B70,
+    0xC76C51A3,
+    0xD192E819,
+    0xD6990624,
+    0xF40E3585,
+    0x106AA070,
+    0x19A4C116,
+    0x1E376C08,
+    0x2748774C,
+    0x34B0BCB5,
+    0x391C0CB3,
+    0x4ED8AA4A,
+    0x5B9CCA4F,
+    0x682E6FF3,
+    0x748F82EE,
+    0x78A5636F,
+    0x84C87814,
+    0x8CC70208,
+    0x90BEFFFA,
+    0xA4506CEB,
+    0xBEF9A3F7,
+    0xC67178F2,
+]
+
 Table = namedtuple(
     "Table", ["da", "de", "dw", "ds0", "ds1", "dsigma0", "dsigma1", "dch", "dmaj", "dt"]
 )
-
-F32 = 0xFFFFFFFF
-
 Equation = namedtuple("Equation", ["x", "y", "diff"])
 
 
-# def _rotr(x, y):
-#     return ((x >> y) | (x << (32 - y))) & F32
-
-
-def _maj(x, y, z):
-    return (x & y) ^ (x & z) ^ (y & z)
-
-
-def _ch(x, y, z):
-    return (x & y) ^ ((~x) & z)
-
-
-# def _s0(x):
-#     return _rotr(x, 7) ^ _rotr(x, 18) ^ (x >> 3)
-
-
-def s0_gc(gc):
-    gc = [1 if x in ["u", "n", "x"] else 0 for x in gc]
-    x, y, z = deque(gc), deque(gc), deque(gc)
-    x.rotate(7)
-    y.rotate(18)
-    z.rotate(3)
-    for i in range(3):
-        z[i] = 0
-    output = [None] * 32
-    for i in range(32):
-        output[i] = str("x" if x[i] ^ y[i] ^ z[i] == 1 else "-")
-    return "".join(output)
-
-
-# def _s1(x):
-#     return _rotr(x, 17) ^ _rotr(x, 19) ^ (x >> 10)
-
-
-def s1_gc(gc):
-    gc = [1 if x in ["u", "n", "x"] else 0 for x in gc]
-    x, y, z = deque(gc), deque(gc), deque(gc)
-    x.rotate(17)
-    y.rotate(19)
-    z.rotate(10)
-    for i in range(10):
-        z[i] = 0
-    output = [None] * 32
-    for i in range(32):
-        output[i] = str("x" if x[i] ^ y[i] ^ z[i] == 1 else "-")
-    return "".join(output)
-
-
-# def _sigma0(x):
-#     return _rotr(x, 2) ^ _rotr(x, 13) ^ _rotr(x, 22)
-
-
-def sigma0_gc(gc):
-    gc = [1 if x in ["u", "n", "x"] else 0 for x in gc]
-    x, y, z = deque(gc), deque(gc), deque(gc)
-    x.rotate(2)
-    y.rotate(13)
-    z.rotate(22)
-    output = [None] * 32
-    for i in range(32):
-        output[i] = str("x" if x[i] ^ y[i] ^ z[i] == 1 else "-")
-    return "".join(output)
-
-
-# def _sigma1(x):
-#     return _rotr(x, 6) ^ _rotr(x, 11) ^ _rotr(x, 25)
-
-
-def sigma1_gc(gc):
-    gc = [1 if x in ["u", "n", "x"] else 0 for x in gc]
-    x, y, z = deque(gc), deque(gc), deque(gc)
-    x.rotate(6)
-    y.rotate(11)
-    z.rotate(25)
-    output = [None] * 32
-    for i in range(32):
-        output[i] = str("x" if x[i] ^ y[i] ^ z[i] == 1 else "-")
-    return "".join(output)
+def add(addends):
+    sum_ = sum(addends)
+    output_bits = 3 if len(addends) > 3 else 2
+    output = [sum_ >> i & 1 for i in range(output_bits)]
+    output.reverse()
+    return output
 
 
 def load_rules(path):
@@ -164,7 +157,6 @@ def print_table(table):
                 table.dsigma1[i],
                 table.dmaj[i],
                 table.dch[i],
-                # table.dt[i],
             )
         else:
             print()
@@ -177,54 +169,10 @@ def _int_diff(gc, n=32):
         if gc_bit not in ["u", "n", "-", "1", "0"]:
             return value, True
         value += (1 if gc_bit == "u" else -1 if gc_bit == "n" else 0) * pow(2, i)
-    return value & (pow(2, n) - 1), False
+    return value % pow(2, n), False
 
 
-# def naive_search(str_var, constant):
-#     _has_q_marks = lambda var: sum([1 if c == "?" else 0 for c in var]) > 0
-
-#     hole_positions = []
-#     for i, c in enumerate(str_var):
-#         if c in ["x", "?"]:
-#             hole_positions.append(i)
-#     hole_count = len(hole_positions)
-
-#     conforms = (
-#         lambda x, y: sum(
-#             [
-#                 1 if y[hole_positions[i]] == "x" and x[i] not in ["u", "n"] else 0
-#                 for i, _ in enumerate(x)
-#             ]
-#         )
-#         == 0
-#     )
-#     combos = product(
-#         ["n", "u", "-"] if _has_q_marks(str_var) else ["n", "u"], repeat=hole_count
-#     )
-
-#     # if _has_q_marks(str_var):
-#     #     print("Debugging q marks")
-#     #     for combo in combos:
-#     #         print("".join(combo))
-
-#     # print(str_var, _has_q_marks(str_var))
-#     for combo in combos:
-#         if not conforms(combo, str_var):
-#             continue
-#         new_str_var = list(str_var)
-#         for i, position in enumerate(hole_positions):
-#             choice = combo[i]
-#             new_str_var[position] = choice
-#         new_str_var = "".join(new_str_var)
-#         int_diff, err = _int_diff(new_str_var)
-#         assert not err
-#         # print(new_str_var, int_diff)
-#         if int_diff == constant:
-#             return new_str_var, False
-#     return 0, True
-
-
-def derive_words_(word_x, word_y, constant):
+def derive_words_step(word_x, word_y, constant):
     table = {
         "?": ["n", "u", "-"],
         "x": ["n", "u"],
@@ -311,7 +259,7 @@ def derive_words(word_x, word_y, constant, n=32):
 
     new_words = [], []
     for word_x, word_y, constant in new_words_list:
-        derived_word_x, derived_word_y = derive_words_(word_x, word_y, constant)
+        derived_word_x, derived_word_y = derive_words_step(word_x, word_y, constant)
         new_words[0].append(derived_word_x)
         new_words[1].append(derived_word_y)
     new_words[0].reverse()
@@ -321,7 +269,7 @@ def derive_words(word_x, word_y, constant, n=32):
 
 
 def derive_word(word, constant):
-    problemetic_gcs = set(["7", "E"])
+    problemetic_gcs = set(["7", "E", "?"])
     adjustable_gcs = set(["x", "n", "5", "C", "D"])
     gcs = set(list(word))
     # table used to derive GCs after manipulation
@@ -378,7 +326,8 @@ def propagate_addition(table, row, name, vars_):
         addends = [
             0 if i in underived_indices else addend for i, addend in enumerate(vars_)
         ]
-        constant = sum(addends) & F32
+        constant = sum(addends) % pow(2, 32)
+        print(row, name, constant)
 
         if underived_count == 1:
             index = underived_indices[0]
@@ -397,7 +346,7 @@ def propagate_addition(table, row, name, vars_):
                     constant *= -1
             underived_vars = [vars_[x] for x in underived_indices]
             derived_vars = derive_words(underived_vars[0], underived_vars[1], constant)
-        
+
         for i, index in enumerate(underived_indices):
             value = derived_vars[i]
             match name:
@@ -445,9 +394,34 @@ def propagate(table, rules):
     for i in table.dw:
         if i >= 16:
             # s0
-            table.ds0[i] = s0_gc(table.dw[i - 15])
+            word = table.dw[i - 15][::-1]
+            s0 = [None] * 32
+            for j in range(32):
+                x, y, z = (
+                    word[(j + 7) % 32],
+                    word[(j + 18) % 32],
+                    (word[(j + 3) % 32] if j <= 28 else "0"),
+                )
+                rule = f"{IO_CONSTRAINT_XOR3_ID}{x}{y}{z}"
+                if rule in rules:
+                    value = rules[rule]
+                    s0[31 - j] = value
+            table.ds0[i] = "".join(s0)
+
             # s1
-            table.ds1[i] = s1_gc(table.dw[i - 2])
+            word = table.dw[i - 2][::-1]
+            s1 = [None] * 32
+            for j in range(32):
+                x, y, z = (
+                    word[(j + 17) % 32],
+                    word[(j + 19) % 32],
+                    (word[(j + 10) % 32] if j <= 21 else "0"),
+                )
+                rule = f"{IO_CONSTRAINT_XOR3_ID}{x}{y}{z}"
+                if rule in rules:
+                    value = rules[rule]
+                    s1[31 - j] = value
+            table.ds1[i] = "".join(s1)
 
             # add_W
             add_w_vars = [
@@ -460,7 +434,13 @@ def propagate(table, rules):
             propagate_addition(table, i, "add_w", add_w_vars)
 
         # sigma1
-        table.dsigma1[i] = sigma1_gc(table.de[i - 1])
+        sigma1 = [None] * 32
+        for j in range(32):
+            rule = f"{IO_CONSTRAINT_XOR3_ID}{table.de[i - 1][(j - 6) % 32]}{table.de[i - 1][(j - 11) % 32]}{table.de[i - 1][(j - 25) % 32]}"
+            if rule in rules:
+                value = rules[rule]
+                sigma1[j] = value
+        table.dsigma1[i] = "".join(sigma1)
 
         # ch
         ch = [None] * 32
@@ -483,7 +463,13 @@ def propagate(table, rules):
         propagate_addition(table, i, "add_e", add_e_vars)
 
         # sigma0
-        table.dsigma0[i] = sigma0_gc(table.da[i - 1])
+        sigma0 = [None] * 32
+        for j in range(32):
+            rule = f"{IO_CONSTRAINT_XOR3_ID}{table.da[i - 1][(j - 2) % 32]}{table.da[i - 1][(j - 13) % 32]}{table.da[i - 1][(j - 22) % 32]}"
+            if rule in rules:
+                value = rules[rule]
+                sigma0[j] = value
+        table.dsigma0[i] = "".join(sigma0)
 
         # maj
         maj = [None] * 32
@@ -503,6 +489,188 @@ def propagate(table, rules):
             table.dmaj[i],
         ]
         propagate_addition(table, i, "add_a", add_a_vars)
+
+        # dk = "".join([str(k[i] >> (32 - x) & 1) for x in range(32)])
+        # # E_i
+        # prop_inputs, prop_output = otf_prop_add_words(
+        #     [
+        #         table.da[i - 4],
+        #         table.de[i - 4],
+        #         table.dsigma1[i],
+        #         table.dch[i],
+        #         dk,
+        #         table.dw[i],
+        #     ],
+        #     table.de[i],
+        # )
+        # # print(f"i = {i}")
+        # # for word in prop_inputs:
+        # #     print(word)
+        # # print(prop_output)
+        # table.da[i - 4] = prop_inputs[0]
+        # table.de[i - 4] = prop_inputs[1]
+        # table.dsigma1[i] = prop_inputs[2]
+        # table.dch[i] = prop_inputs[3]
+        # table.dw[i] = prop_inputs[5]
+        # table.de[i] = prop_output
+
+        # # A_i + A_{i - 4}
+        # _, prop_output = otf_prop_add_words(
+        #     [
+        #         table.da[i],
+        #         table.da[i - 4],
+        #     ],
+        #     "?" * 32,
+        # )
+        # prop_inputs, prop_output = otf_prop_add_words(
+        #     [
+        #         table.de[i],
+        #         table.dsigma0[i],
+        #         table.dmaj[i],
+        #     ],
+        #     prop_output,
+        # )
+        # table.de[i] = prop_inputs[0]
+        # table.dsigma0[i] = prop_inputs[1]
+        # table.dmaj[i] = prop_inputs[2]
+
+        # A_i
+        # prop_inputs, prop_output = otf_prop_add_words(
+        #     [
+        #         table.de[i - 4],
+        #         table.dsigma1[i],
+        #         table.dch[i],
+        #         dk,
+        #         table.dw[i],
+        #         table.dsigma0[i],
+        #         table.dmaj[i],
+        #     ],
+        #     table.da[i],
+        # )
+        # table.da[i] = prop_output
+        # table.de[i - 4] = prop_inputs[0]
+        # table.dsigma1[i] = prop_inputs[1]
+        # table.dch[i] = prop_inputs[2]
+        # table.dw[i] = prop_inputs[4]
+        # table.dsigma0[i] = prop_inputs[5]
+        # table.dmaj[i] = prop_inputs[6]
+
+
+def otf_prop(func, vars):
+    gc_to_bin = (
+        lambda gc: (0, 0)
+        if gc == "0"
+        else (1, 1)
+        if gc == "1"
+        else (1, 0)
+        if gc == "u"
+        else (0, 1)
+    )
+    bin_to_gc = (
+        lambda bin: "0"
+        if bin == (0, 0)
+        else "1"
+        if bin == (1, 1)
+        else "u"
+        if bin == (1, 0)
+        else "n"
+    )
+    flatten_pairs = lambda pairs: (
+        [pair[0] for pair in pairs],
+        [pair[1] for pair in pairs],
+    )
+
+    input_vars, output_vars = vars[0], vars[1]
+    n, m = len(input_vars), len(output_vars)
+    symbols = {
+        "?": ["u", "n", "1", "0"],
+        "-": ["1", "0"],
+        "x": ["u", "n"],
+        "0": ["0"],
+        "u": ["u"],
+        "n": ["n"],
+        "1": ["1"],
+        "3": ["0", "u"],
+        "5": ["0", "n"],
+        "7": ["0", "u", "n"],
+        "A": ["u", "1"],
+        "B": ["1", "u", "0"],
+        "C": ["n", "1"],
+        "D": ["0", "n", "1"],
+        "E": ["u", "n", "1"],
+    }
+    input_gcs = set()
+    for var in input_vars:
+        for var_ in symbols[var]:
+            input_gcs.add(var_)
+    combos = product(input_gcs, repeat=n)
+    possibilities = [set() for _ in range(n + m)]
+    for combo in combos:
+        # Input must conform to that given
+        skip = False
+        for i, var in enumerate(combo):
+            if var not in symbols[input_vars[i]]:
+                skip = True
+        if skip:
+            continue
+
+        bin_input_vars = flatten_pairs([gc_to_bin(var) for var in combo])
+        bin_outputs = [func(inputs) for inputs in bin_input_vars]
+        gc_outputs = [
+            bin_to_gc((bin_outputs[0][i], bin_outputs[1][i]))
+            for i in range(len(bin_outputs[0]))
+        ]
+
+        # Output must conform to that given
+        skip = False
+        for i, gc in enumerate(gc_outputs):
+            if gc not in symbols[output_vars[i]]:
+                skip = True
+        if skip:
+            continue
+
+        # rules.append(("".join(combo), "".join(gc_outputs)))
+        merged_io = "".join(combo) + "".join(gc_outputs)
+        for i, gc in enumerate(merged_io):
+            possibilities[i].add(gc)
+        # print("".join(combo), "".join(gc_outputs))
+    propagation = []
+    for p in possibilities:
+        for symbol in symbols:
+            if set(symbols[symbol]) == p:
+                propagation.append(symbol)
+    propagation = "".join(propagation)
+    return propagation[:n], propagation[n:]
+
+
+def otf_prop_add_words(words, sum, n=32):
+    high_carries, low_carries = ["0"] * n, ["0"] * n
+    m = len(words)
+    prop_words = [[]] * m
+    for i in range(m):
+        prop_words[i] = [None] * n
+    output_prop = [None] * n
+    for i in range(n):
+        gcs = [words[j][n - i - 1] for j in range(m)]
+        if i > 0:
+            gcs.append(low_carries[i - 1])
+        if i > 1 and m >= 3:
+            gcs.append(high_carries[i - 2])
+        inputs_prop, outputs_prop = otf_prop(
+            add, (gcs, ("??" if m >= 3 else "?") + f"{sum[n - i - 1]}")
+        )
+        if m >= 3:
+            sys.stdout.flush()
+            high_carries[i] = outputs_prop[0]
+        low_carries[i] = outputs_prop[1] if m >= 3 else outputs_prop[0]
+        for k, gc in enumerate(inputs_prop[:m]):
+            prop_words[k][n - i - 1] = gc
+        # print(outputs_prop[-1], end="")
+        output_prop[n - i - 1] = outputs_prop[-1]
+    # print()
+    for i in range(m):
+        prop_words[i] = "".join(prop_words[i])
+    return prop_words, "".join(output_prop)
 
 
 def set_iv(table):
@@ -708,19 +876,7 @@ def derive_equations(table, rules):
     return equations
 
 
-def derive(order):
-    two_bit_rules = load_rules("2-bit-rules.txt")
-    print(len(two_bit_rules), "2-bit rules")
-
-    prop_rules = load_rules("prop-rules.txt")
-    print(len(prop_rules), "prop. rules")
-
-    table = load_table(f"{order}.table")
-    # set_iv(table)
-    propagate(table, prop_rules)
-    print_table(table)
-    equations = derive_equations(table, two_bit_rules)
-
+def summarize_2bit_cnds(equations):
     with open("cnds.log", "r") as cnds_file:
         cnds = cnds_file.read()
     found_equations, not_found_equations = [], []
@@ -735,11 +891,83 @@ def derive(order):
     print("Found equations:", len(found_equations))
     for equation in found_equations:
         print(equation)
+    print()
     print("Non-existent equations:", len(not_found_equations))
     for equation in not_found_equations:
         print(equation)
+    print()
+
+    missing_equations = []
+    for cnd in cnds.split("\n"):
+        result = re.findall(
+            r"Eq\(x='([AWE]_\d+,\d+)', y='([AWE]_\d+,\d+)', diff=(\d)\)", cnd
+        )[0]
+        x, y, diff = result[0], result[1], int(result[2])
+        eq_a = Equation(x, y, diff)
+        eq_b = Equation(y, x, diff)
+        if eq_a not in equations and eq_b not in equations:
+            missing_equations.append(eq_a)
+    print("Missing equations:", len(missing_equations))
+    for eq in missing_equations:
+        print(eq)
 
 
-start_time = time()
-derive(27)
-print("{:.2f} seconds".format(time() - start_time))
+def print_steps(table):
+    sbs = lambda x: f"{{{x}}}" if x < 0 else x
+    k_gc = lambda i: "".join([str(k[i] >> j & 1) for j in range(32)][::-1])
+
+    for i in table.dw:
+        print(
+            f"W_{i} = M_{i}"
+            if i <= 15
+            else f"W_{i} = σ_1(W_{i - 2}) + W_{i - 7} + σ_0(W_{i - 15}) + W_{i - 16}"
+        )
+        print(
+            f"[{table.dw[i]}]"
+            if i <= 15
+            else f"[{table.dw[i]}] = [{table.ds1[i]}] + [{table.dw[i - 7]}] + [{table.ds0[i]}] + [{table.dw[i - 16]}]"
+        )
+
+        print(
+            f"E_{i} = A_{sbs(i - 4)} + E_{sbs(i - 4)} + Σ_1(E_{sbs(i - 1)}) + IF(E_{sbs(i - 1)}, E_{sbs(i - 2)}, E_{sbs(i - 3)}) + K_{i} + W_{i}"
+        )
+        print(
+            f"[{table.de[i]}] = [{table.da[i - 4]}] + [{table.de[i - 4]}] + [{table.dsigma1[i]}] + [{table.dch[i]}] + [{k_gc(i)}] + [{table.dw[i]}]"
+        )
+
+        print(
+            f"A_{i} = E_{i} - A_{sbs(i-4)} + Σ_0(A_{sbs(i-1)}) + MAJ_(A_{sbs(i-1)}, A_{sbs(i-2)}, A_{sbs(i-3)})"
+        )
+        print(
+            f"[{table.da[i]}] = [{table.de[i]}] - [{table.da[i - 4]}] + [{table.dsigma0[i]}] + [{table.dmaj[i]}]"
+        )
+
+
+def derive(order):
+    two_bit_rules = load_rules("2-bit-rules.txt")
+    print(len(two_bit_rules), "2-bit rules")
+
+    prop_rules = load_rules("prop-rules.txt")
+    print(len(prop_rules), "prop. rules")
+
+    table = load_table(f"{order}.table")
+    start_time = time()
+    propagate(table, prop_rules)
+    #!Debug
+    table.ds0[22] = "0nun1n--uu--n--nuuu0u--uu-uuuu0-"
+    table.ds1[17] = "---nuu1ununnn-1unnnnnn-n--0-1---"
+    table.ds1[19] = "-------nuuu-----unn---nun-nn-u-n"
+    table.dch[9] = "-u-------uu-uu-u0u1--u-0-n---n0-"
+    print_table(table)
+    print_steps(table)
+    equations = derive_equations(table, two_bit_rules)
+    print()
+    print("2-bit cnds: {:.2f} seconds".format(time() - start_time), "\n")
+    summarize_2bit_cnds(equations)
+    print()
+
+
+if __name__ == "__main__":
+    start_time = time()
+    derive(27)
+    print("Total: {:.2f} seconds".format(time() - start_time))
