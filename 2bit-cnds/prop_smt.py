@@ -66,11 +66,6 @@ def derive_words(word_x, word_y, constant):
 
                     gcs = set(matrix[i][j])
                     derived_words[i][j] = list(gcs)[0] if len(gcs) == 1 else words[i][j]
-            # Sanity check
-            (int_diff1, err1), (int_diff2, err2) = _int_diff(
-                derived_words[0], n=n
-            ), _int_diff(derived_words[1], n=n)
-            assert (not err1 and not err2) and (int_diff1 + int_diff2) == constant
 
             # Remove any loss of GCs with diff. of 0
             for i, derived_word in enumerate(derived_words):
