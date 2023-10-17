@@ -20,8 +20,10 @@ OI_CONSTRAINT_ADD5_ID = 14
 OI_CONSTRAINT_ADD6_ID = 15
 OI_CONSTRAINT_ADD7_ID = 16
 
+
 if not os.path.exists("output"):
     os.mkdir("output")
+
 
 def uniq(data):
     return [list(x) for x in set(tuple(x) for x in data)]
@@ -39,16 +41,12 @@ def xor3(x, y, z):
     return x ^ y ^ z
 
 
-def bin_add(ops):
-    carries = []
-    bitsum = 0
-
-    for op in ops:
-        bitsum += op & 1
-    sum = bitsum & 1
-    carries.append(bitsum >> 1 & 1)
-    carries.append(bitsum >> 2 & 1)
-    return carries[1], carries[0], sum
+def add(addends):
+    sum_ = sum(addends)
+    output_bits = 3 if len(addends) > 3 else 2
+    output = [sum_ >> i & 1 for i in range(output_bits)]
+    output.reverse()
+    return output
 
 
 def gc(x, y):
@@ -174,7 +172,7 @@ def oi_rules_gen(id, n):
     for i in range(pow(2, n)):
         ops = [i >> (n - 1 - x) & 1 for x in range(n)]
 
-        o1, o2, o3 = bin_add(ops)
+        o1, o2, o3 = add(ops)
         num1s = 0
         for op in ops:
             if op == 1:
@@ -189,7 +187,7 @@ def oi_rules_gen(id, n):
         for j in range(pow(2, n)):
             ops_ = [j >> (n - 1 - x) & 1 for x in range(n)]
 
-            o1_, o2_, o3_ = bin_add(ops_)
+            o1_, o2_, o3_ = add(ops_)
             num1s_ = 0
             for op in ops_:
                 if op == 1:
@@ -265,7 +263,6 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
         for x in uniq(perm):
             perms.append(x)
 
-    rules = []
     for i in perms:
         s = []
         for j in range(n):
@@ -305,14 +302,19 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
                         out_syms_if.add(gc(if_1, if_2))
                         out_syms_maj.add(gc(maj_1, maj_2))
                         out_syms_xor3.add(gc(xor3_1, xor3_2))
-                        carry2_1, carry1_1, sum_1 = bin_add([ops[0], ops[2], ops[4]])
-                        carry2_2, carry1_2, sum_2 = bin_add([ops[1], ops[3], ops[5]])
+                        carry2_1, carry1_1, sum_1 = add([ops[0], ops[2], ops[4]])
+                        carry2_2, carry1_2, sum_2 = add([ops[1], ops[3], ops[5]])
                         carry2_syms.add(gc(carry2_1, carry2_2))
                         carry1_syms.add(gc(carry1_1, carry1_2))
                         sum_syms.add(gc(sum_1, sum_2))
             print(IO_CONSTRAINT_IF_ID, f"{i[0]}{i[1]}{i[2]}", to_sym(out_syms_if))
             print(IO_CONSTRAINT_MAJ_ID, f"{i[0]}{i[1]}{i[2]}", to_sym(out_syms_maj))
             print(IO_CONSTRAINT_XOR3_ID, f"{i[0]}{i[1]}{i[2]}", to_sym(out_syms_xor3))
+            print(
+                IO_CONSTRAINT_ADD3_ID,
+                f"{i[0]}{i[1]}{i[2]}",
+                f"{to_sym(carry1_syms)}{to_sym(sum_syms)}",
+            )
         elif n == 4:
             carry2_syms = set()
             carry1_syms = set()
@@ -336,10 +338,10 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
                                 elif op_s == "n":
                                     ops.append(0)
                                     ops.append(1)
-                            carry2_1, carry1_1, sum_1 = bin_add(
+                            carry2_1, carry1_1, sum_1 = add(
                                 [ops[0], ops[2], ops[4], ops[6]]
                             )
-                            carry2_2, carry1_2, sum_2 = bin_add(
+                            carry2_2, carry1_2, sum_2 = add(
                                 [ops[1], ops[3], ops[5], ops[7]]
                             )
                             carry2_syms.add(gc(carry2_1, carry2_2))
@@ -380,26 +382,19 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
                                     elif op_s == "n":
                                         ops.append(0)
                                         ops.append(1)
-                                carry2_1, carry1_1, sum_1 = bin_add(
+                                carry2_1, carry1_1, sum_1 = add(
                                     [ops[0], ops[2], ops[4], ops[6], ops[8]]
                                 )
-                                carry2_2, carry1_2, sum_2 = bin_add(
+                                carry2_2, carry1_2, sum_2 = add(
                                     [ops[1], ops[3], ops[5], ops[7], ops[9]]
                                 )
                                 carry2_syms.add(gc(carry2_1, carry2_2))
                                 carry1_syms.add(gc(carry1_1, carry1_2))
                                 sum_syms.add(gc(sum_1, sum_2))
             print(
-                "ADD5:",
-                i[0],
-                i[1],
-                i[2],
-                i[3],
-                i[4],
-                "->",
-                to_sym(carry2_syms),
-                to_sym(carry1_syms),
-                to_sym(sum_syms),
+                IO_CONSTRAINT_ADD7_ID,
+                f"{i[0]}{i[1]}{i[2]}{i[3]}{i[4]}",
+                f"{to_sym(carry2_syms)}{to_sym(carry1_syms)}{to_sym(sum_syms)}",
             )
         elif n == 6:
             carry2_syms = set()
@@ -426,7 +421,7 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
                                         elif op_s == "n":
                                             ops.append(0)
                                             ops.append(1)
-                                    carry2_1, carry1_1, sum_1 = bin_add(
+                                    carry2_1, carry1_1, sum_1 = add(
                                         [
                                             ops[0],
                                             ops[2],
@@ -436,7 +431,7 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
                                             ops[10],
                                         ]
                                     )
-                                    carry2_2, carry1_2, sum_2 = bin_add(
+                                    carry2_2, carry1_2, sum_2 = add(
                                         [
                                             ops[1],
                                             ops[3],
@@ -450,17 +445,9 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
                                     carry1_syms.add(gc(carry1_1, carry1_2))
                                     sum_syms.add(gc(sum_1, sum_2))
             print(
-                "ADD6:",
-                i[0],
-                i[1],
-                i[2],
-                i[3],
-                i[4],
-                i[5],
-                "->",
-                to_sym(carry2_syms),
-                to_sym(carry1_syms),
-                to_sym(sum_syms),
+                IO_CONSTRAINT_ADD6_ID,
+                f"{i[0]}{i[1]}{i[2]}{i[3]}{i[4]}{i[5]}",
+                f"{to_sym(carry2_syms)}{to_sym(carry1_syms)}{to_sym(sum_syms)}",
             )
         elif n == 7:
             carry2_syms = set()
@@ -488,7 +475,7 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
                                             elif op_s == "n":
                                                 ops.append(0)
                                                 ops.append(1)
-                                        carry2_1, carry1_1, sum_1 = bin_add(
+                                        carry2_1, carry1_1, sum_1 = add(
                                             [
                                                 ops[0],
                                                 ops[2],
@@ -499,7 +486,7 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
                                                 ops[12],
                                             ]
                                         )
-                                        carry2_2, carry1_2, sum_2 = bin_add(
+                                        carry2_2, carry1_2, sum_2 = add(
                                             [
                                                 ops[1],
                                                 ops[3],
@@ -514,35 +501,14 @@ def gen_io_rules(n, allowed_input_syms=None, allowed_out_syms=None):
                                         carry1_syms.add(gc(carry1_1, carry1_2))
                                         sum_syms.add(gc(sum_1, sum_2))
             print(
-                "ADD7:",
-                i[0],
-                i[1],
-                i[2],
-                i[3],
-                i[4],
-                i[5],
-                i[6],
-                "->",
-                to_sym(carry2_syms),
-                to_sym(carry1_syms),
-                to_sym(sum_syms),
+                IO_CONSTRAINT_ADD7_ID,
+                f"{i[0]}{i[1]}{i[2]}{i[3]}{i[4]}{i[5]}{i[6]}",
+                f"{to_sym(carry2_syms)}{to_sym(carry1_syms)}{to_sym(sum_syms)}",
             )
 
 
-def __main__():
-    gen_io_rules(3, ["x", "-", "n", "u", "1", "0"])
-    # for i in range(3, 8):
-    #     id = (
-    #         OI_CONSTRAINT_ADD3_ID
-    #         if i == 3
-    #         else OI_CONSTRAINT_ADD4_ID
-    #         if i == 4
-    #         else OI_CONSTRAINT_ADD5_ID
-    #         if i == 5
-    #         else OI_CONSTRAINT_ADD6_ID
-    #         if i == 6
-    #         else OI_CONSTRAINT_ADD7_ID
-    #     )
-    #     oi_rules_gen(id, i)
-
-__main__()
+if __name__ == "__main__":
+    gen_io_rules(3)
+    gen_io_rules(5, ["0", "1", "-", "x", "u", "n"])
+    gen_io_rules(6, ["0", "1", "-", "x", "u", "n"])
+    gen_io_rules(7, ["0", "1", "-", "x", "u", "n"])
