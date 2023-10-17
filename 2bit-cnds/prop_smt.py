@@ -1,4 +1,5 @@
 from z3 import *
+from derive import _int_diff
 
 
 def derive_words(word_x, word_y, constant):
@@ -42,6 +43,9 @@ def derive_words(word_x, word_y, constant):
     while True:
         result = s.check()
         if result == unsat:
+            if len(solutions) == 0:
+                print("Failed")
+
             # check consistency
             derived_words = ([None] * n, [None] * n)
             matrix = {}
@@ -53,6 +57,19 @@ def derive_words(word_x, word_y, constant):
                         matrix[i][j].append(solution[i][j])
                     gcs = set(matrix[i][j])
                     derived_words[i][j] = list(gcs)[0] if len(gcs) == 1 else words[i][j]
+            # Sanity check
+            (int_diff1, err1), (int_diff2, err2) = _int_diff(
+                derived_words[0], n=n
+            ), _int_diff(derived_words[1], n=n)
+            assert (not err1 and not err2) and (int_diff1 + int_diff2) == constant
+            
+            # Remove any loss of GCs with diff. of 0
+            for i, derived_word in enumerate(derived_words):
+                for j in range(n):
+                    if derived_word[j] == "-" and words[i][j] in ["1", "0"]:
+                        derived_words[i][j] = words[i][j]
+            
+            # Return the result
             return "".join(derived_words[0]), "".join(derived_words[1])
         model_ = s.model()
         model = {}
@@ -75,8 +92,8 @@ def derive_words(word_x, word_y, constant):
         s.add(Or([vars[var] != model_[vars[var]] for var in model]))
 
 
-word_x, word_y = derive_words(
-    "x-x-xx-xxx-x-x", "-------BDD--B-", 0b01010100000111
-)
-# word_x, word_y = derive_words("x-x-xx-xx", "-------BD", 0b010101000)
-print(word_x, word_y, sep="\n")
+if __name__ == "__main__":
+    word_x, word_y = derive_words(
+        "0nun1x--ux--n--nxxu0x--ux-uuxu0-", ["0"] * 32, 3434604988
+    )
+    print(word_x, word_y, sep="\n")
