@@ -55,6 +55,15 @@ def derive_words(word_x, word_y, constant):
                     matrix[i][j] = []
                     for solution in solutions:
                         matrix[i][j].append(solution[i][j])
+
+                        # Sanity check
+                        (int_diff1, err1), (int_diff2, err2) = _int_diff(
+                            "".join(solution[0]), n=n
+                        ), _int_diff("".join(solution[1]), n=n)
+                        assert (not err1 and not err2) and (
+                            (int_diff1 + int_diff2) % pow(2, n)
+                        ) == constant
+
                     gcs = set(matrix[i][j])
                     derived_words[i][j] = list(gcs)[0] if len(gcs) == 1 else words[i][j]
             # Sanity check
@@ -62,13 +71,13 @@ def derive_words(word_x, word_y, constant):
                 derived_words[0], n=n
             ), _int_diff(derived_words[1], n=n)
             assert (not err1 and not err2) and (int_diff1 + int_diff2) == constant
-            
+
             # Remove any loss of GCs with diff. of 0
             for i, derived_word in enumerate(derived_words):
                 for j in range(n):
                     if derived_word[j] == "-" and words[i][j] in ["1", "0"]:
                         derived_words[i][j] = words[i][j]
-            
+
             # Return the result
             return "".join(derived_words[0]), "".join(derived_words[1])
         model_ = s.model()
