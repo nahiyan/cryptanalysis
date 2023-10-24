@@ -3,6 +3,7 @@ from itertools import product
 from time import time
 import re
 import sys
+from propagator import derive_word_w, derive_words_w
 
 TWO_BIT_CONSTRAINT_XOR2_ID = 0
 TWO_BIT_CONSTRAINT_IF_ID = 1
@@ -98,6 +99,261 @@ Table = namedtuple(
 Equation = namedtuple("Equation", ["x", "y", "diff"])
 
 
+def derive_words_old(word_x, word_y, constant):
+    table = {
+        "x": [1, -1],
+        "B": [0, 1],
+        "D": [0, -1],
+        "-": [0],
+        "u": [1],
+        "n": [-1],
+        "?": [-1, 0, 1],
+        "A": [-1, 0, 1],
+        "5": [1, -1],
+        "0": [0],
+        "1": [0],
+    }
+
+    words = (word_x, word_y)
+    n = len(word_x)
+    vars = z3.Ints(" ".join([str(x) for x in range(n * 2)]))
+    s = Solver()
+    for i in range(n):
+        bit_x, bit_y = word_x[n - 1 - i], word_y[n - 1 - i]
+        s.add(Or([vars[i] == x for x in table[bit_x]]))
+        s.add(Or([vars[n + i] == x for x in table[bit_y]]))
+    s.add(
+        sum(
+            [
+                (
+                    (0 if word_x[n - 1 - i] in ["-", "1", "0"] else vars[i])
+                    + (0 if word_y[n - 1 - i] in ["-", "1", "0"] else vars[n + i])
+                )
+                * pow(2, i)
+                for i in range(n)
+            ]
+        )
+        % pow(2, n)
+        == constant
+    )
+    solutions = []
+    while True:
+        result = s.check()
+        if result == unsat:
+            if len(solutions) == 0:
+                print("Failed")
+
+            # check consistency
+            derived_words = ([None] * n, [None] * n)
+            matrix = {}
+            for i in range(2):
+                matrix[i] = {}
+                for j in range(n):
+                    matrix[i][j] = []
+                    for solution in solutions:
+                        matrix[i][j].append(solution[i][j])
+
+                        # Sanity check
+                        (int_diff1, err1), (int_diff2, err2) = _int_diff(
+                            "".join(solution[0]), n=n
+                        ), _int_diff("".join(solution[1]), n=n)
+                        assert (not err1 and not err2) and (
+                            (int_diff1 + int_diff2) % pow(2, n)
+                        ) == constant
+
+                    gcs = set(matrix[i][j])
+                    derived_words[i][j] = list(gcs)[0] if len(gcs) == 1 else words[i][j]
+
+            # Remove any loss of GCs with diff. of 0
+            for i, derived_word in enumerate(derived_words):
+                for j in range(n):
+                    if derived_word[j] == "-" and words[i][j] in ["1", "0"]:
+                        derived_words[i][j] = words[i][j]
+
+            # Return the result
+            return "".join(derived_words[0]), "".join(derived_words[1])
+        model_ = s.model()
+        model = {}
+        for var in model_:
+            model[int(var.name())] = model_[var].as_long()
+
+        solution = ([], [])
+        derive_gc = lambda value: "u" if value == 1 else "n" if value == -1 else "-"
+        for i in range(n - 1, -1, -1):
+            value = model[i]
+            solution[0].append(derive_gc(value))
+        for i in range(2 * n - 1, n - 1, -1):
+            value = model[i]
+            solution[1].append(derive_gc(value))
+        solution = ("".join(solution[0]), "".join(solution[1]))
+        solutions.append(solution)
+        # print(solution[0], solution[1], sep="\n")
+
+        # block it
+        s.add(Or([vars[var] != model_[vars[var]] for var in model]))
+
+
+def derive_words_new(words, constant, n=32):
+    assert len(words) > 0
+    n = len(words[0])
+    table = {
+        "?": [(0, 0), (0, 1), (1, 0), (1, 1)],
+        "-": [(0, 0), (1, 1)],
+        "x": [(0, 1), (1, 0)],
+        "0": [(0, 0)],
+        "u": [(1, 0)],
+        "n": [(0, 1)],
+        "1": [(1, 0)],
+        "3": [(0, 0), (1, 0)],
+        "5": [(0, 0), (0, 1)],
+        "7": [(0, 0), (1, 0), (0, 1)],
+        "A": [(1, 0), (1, 1)],
+        "B": [(0, 0), (1, 0), (1, 1)],
+        "C": [(0, 1), (1, 1)],
+        "D": [(0, 0), (0, 1), (1, 1)],
+        "E": [(1, 0), (0, 1), (1, 1)],
+    }
+
+    symbols = {
+        "?": ["u", "n", "1", "0"],
+        "-": ["1", "0"],
+        "x": ["u", "n"],
+        "0": ["0"],
+        "u": ["u"],
+        "n": ["n"],
+        "1": ["1"],
+        "3": ["0", "u"],
+        "5": ["0", "n"],
+        "7": ["0", "u", "n"],
+        "A": ["u", "1"],
+        "B": ["1", "u", "0"],
+        "C": ["n", "1"],
+        "D": ["0", "n", "1"],
+        "E": ["u", "n", "1"],
+    }
+
+    # print(f"Constant: {constant}")
+    m = len(words)
+    bitvec_pairs = [
+        (BitVec(f"w{i}_a", n), BitVec(f"w{i}_b", n)) for i, _ in enumerate(words)
+    ]
+    addends = [a - b for a, b in bitvec_pairs]
+    sum_ = sum(addends)
+
+    s = Solver()
+    for i, word in enumerate(words):
+        for j in range(n):
+            gc = word[n - j - 1]
+            vec_x, vec_y = bitvec_pairs[i]
+            bit_f = Extract(j, j, vec_x)
+            bit_g = Extract(j, j, vec_y)
+            assert gc in table
+            if gc == "-":
+                s.add(bit_f == bit_g)
+                continue
+            elif gc == "x":
+                s.add(bit_f != bit_g)
+                continue
+            possibilities = table[gc]
+            if len(possibilities) == 1:
+                p_f, p_g = possibilities[0]
+                s.add(And(bit_f == p_f, bit_g == p_g))
+            else:
+                s.add(
+                    Or(
+                        [
+                            And([bit_f == p_f, bit_g == p_g])
+                            for p_f, p_g in possibilities
+                        ]
+                    )
+                )
+
+    s.add(sum_ == constant)
+
+    solutions = []
+    while s.check() == sat:
+        model = s.model()
+        # print(model)
+        solutions.append(model)
+
+        # Block it
+        # block = []
+        # for var in model:
+        #     block.append(var() != model[var])
+        # s.add(Or(block))
+
+        block = []
+        for x, y in bitvec_pairs:
+            for i in range(n):
+                bit_x, bit_y = Extract(i, i, x), Extract(i, i, y)
+                values = model.eval(bit_x), model.eval(bit_y)
+                # if values[0] == values[1]:
+                #     block.append(bit_x - bit_y == )
+                #     continue
+                # block.append(bit_x - bit_y != values[0] - values[1])
+                block.append(bit_x - bit_y != model.eval(bit_x - bit_y))
+                # block.append(And([bit_x != values[0], bit_y != values[1]]))
+                # block.append(bit_x != values[0])
+                # block.append(bit_y != values[1])
+        s.add(Or(block))
+
+        # for word_index, (x, y) in enumerate(bitvec_pairs):
+        #     x_value, y_value = model[x].as_long(), model[y].as_long()
+        #     word = []
+        #     for i in range(n - 1, -1, -1):
+        #         pair = (x_value >> i & 1, y_value >> i & 1)
+        #         word.append(
+        #             "0"
+        #             if pair == (0, 0)
+        #             else "1"
+        #             if pair == (1, 1)
+        #             else "u"
+        #             if pair == (1, 0)
+        #             else "n"
+        #         )
+        #     print("".join(word))
+        # print()
+
+        # block = []
+        # for x, y in bitvec_pairs:
+        #     x_value, y_value = model[x].as_long(), model[y].as_long()
+        #     d = x_value - y_value
+        #     block.append(x - y != d)
+        # s.add(Or(block))
+    else:
+        cases = [[set() for _ in range(n)] for _ in range(m)]
+        for solution in solutions:
+            for word_index, (x, y) in enumerate(bitvec_pairs):
+                x_value, y_value = solution[x].as_long(), solution[y].as_long()
+                word = []
+                for i in range(n - 1, -1, -1):
+                    pair = (x_value >> i & 1, y_value >> i & 1)
+                    word.append(
+                        "0"
+                        if pair == (0, 0)
+                        else "1"
+                        if pair == (1, 1)
+                        else "u"
+                        if pair == (1, 0)
+                        else "n"
+                    )
+                for i, gc in enumerate(word):
+                    cases[word_index][i].add(gc)
+        words = []
+        for case in cases:
+            word = []
+            for i, gcs in enumerate(case):
+                for symbol in symbols:
+                    if gcs == set(symbols[symbol]):
+                        word.append(symbol)
+            word = "".join(word)
+            words.append(word)
+
+        # print("Fail" if len(solutions) == 0 else f"Done: {len(solutions)}")
+
+        return words
+
+
 def add(addends):
     sum_ = sum(addends)
     output_bits = 3 if len(addends) > 3 else 2
@@ -162,10 +418,11 @@ def print_table(table):
             print()
 
 
-def _int_diff(gc, n=32):
+def _int_diff(word):
+    n = len(word)
     value = 0
     for i in range(n):
-        gc_bit = gc[n - 1 - i]
+        gc_bit = word[n - 1 - i]
         if gc_bit not in ["u", "n", "-", "1", "0"]:
             return value, True
         value += (1 if gc_bit == "u" else -1 if gc_bit == "n" else 0) * pow(2, i)
@@ -200,7 +457,7 @@ def derive_words_step(word_x, word_y, constant):
     n = len(holes)
     combos = product(possible_gcs, repeat=n)
     combos_count = int(pow(len(possible_gcs), n))
-    if combos_count >= 1000000:
+    if combos_count >= 1e6:
         return "".join(word_x), "".join(word_y)
     m = int(len(subject) / 2)
     matches = []
@@ -232,86 +489,6 @@ def derive_words_step(word_x, word_y, constant):
     return derived_word_x, derived_word_y
 
 
-def derive_words(word_x, word_y, constant, n=32):
-    new_words = [], []
-    delta_zero_gcs = ["-", "1", "0"]
-    new_words_list = []
-    new_words_constant = []
-    for i in range(n):
-        gcs = word_x[n - i - 1], word_y[n - i - 1]
-        new_words[0].append(gcs[0])
-        new_words[1].append(gcs[1])
-        new_words_constant.append(constant >> i & 1)
-        if (
-            gcs[0] in delta_zero_gcs
-            and gcs[1] in delta_zero_gcs
-            and new_words_constant[-1] == 0
-        ) or i == n - 1:
-            new_words[0].reverse()
-            new_words[1].reverse()
-            new_words_constant.reverse()
-            new_words_constant[: len(new_words[0])]
-            new_words_constant = int("".join([str(x) for x in new_words_constant]), 2)
-            # print("".join(new_words[0]), "".join(new_words[1]), format(new_words_constant, f"0{len(new_words[0])}b"), sep="\n", end="\n\n")
-            new_words_list.append((new_words[0], new_words[1], new_words_constant))
-            new_words = [], []
-            new_words_constant = []
-
-    new_words = [], []
-    for word_x, word_y, constant in new_words_list:
-        derived_word_x, derived_word_y = derive_words_step(word_x, word_y, constant)
-        new_words[0].append(derived_word_x)
-        new_words[1].append(derived_word_y)
-    new_words[0].reverse()
-    new_words[1].reverse()
-    derived_word_x, derived_word_y = "".join(new_words[0]), "".join(new_words[1])
-    return derived_word_x, derived_word_y
-
-
-def derive_word(word, constant):
-    problemetic_gcs = set(["7", "E", "?"])
-    adjustable_gcs = set(["x", "n", "5", "C", "D"])
-    gcs = set(list(word))
-    # table used to derive GCs after manipulation
-    table = {
-        "x": {0: "n", 1: "u"},
-        "3": {0: "0", 1: "u"},
-        "5": {0: "n", 1: "0"},
-        "A": {0: "1", 1: "u"},
-        "B": {0: "-", 1: "u"},
-        "C": {0: "n", 1: "1"},
-        "D": {0: "n", 1: "-"},
-    }
-
-    # detect if derivable
-    if not gcs.isdisjoint(problemetic_gcs):
-        return "", True
-    if "x" in gcs and not gcs == set(["-", "x"]):
-        return "", True
-
-    # perform manipulations to keep each bit from influencing others during diff. calc.
-    new_constant = constant
-    for i in range(32):
-        gc = word[31 - i]
-        if gc in adjustable_gcs:
-            new_constant += pow(2, i)
-    if "x" in gcs:
-        new_constant = int(new_constant / 2)
-
-    # derive
-    derived_word = list(word)
-    for i in range(32):
-        gc = word[31 - i]
-        bit = new_constant >> i & 1
-        if gc in table:
-            derived_word[31 - i] = table[gc][bit]
-    derived_word = "".join(derived_word)
-
-    int_diff, err = _int_diff(derived_word)
-    assert not err and int_diff == constant
-    return derived_word, False
-
-
 def propagate_addition(table, row, name, vars_):
     underived_indices = []
     for i, var in enumerate(vars_):
@@ -327,7 +504,8 @@ def propagate_addition(table, row, name, vars_):
             0 if i in underived_indices else addend for i, addend in enumerate(vars_)
         ]
         constant = sum(addends) % pow(2, 32)
-        print(row, name, constant)
+        #! Debug
+        # print(row, name, constant)
 
         if underived_count == 1:
             index = underived_indices[0]
@@ -335,18 +513,16 @@ def propagate_addition(table, row, name, vars_):
             if index == 0 or (name == "add_a" and index == 2):
                 constant *= -1
 
-            derived_var, err = derive_word(underived_var, constant)
-            if err:
-                print("Failed", underived_var, constant)
-                return
-            derived_vars = [derived_var]
+            derived_vars, err = derive_words_w([underived_var], constant)
+            assert not err
         else:
             for index in underived_indices:
                 if index == 0 or (name == "add_a" and index == 2):
                     constant *= -1
             underived_vars = [vars_[x] for x in underived_indices]
-            derived_vars = derive_words(underived_vars[0], underived_vars[1], constant)
-
+            # print("Addition:", f"{name}_{row}", underived_vars, constant)
+            derived_vars, err = derive_words_w(underived_vars, constant)
+            assert not err
         for i, index in enumerate(underived_indices):
             value = derived_vars[i]
             match name:
@@ -659,6 +835,7 @@ def otf_prop_add_words(words, sum, n=32):
         inputs_prop, outputs_prop = otf_prop(
             add, (gcs, ("??" if m >= 3 else "?") + f"{sum[n - i - 1]}")
         )
+        print(i, inputs_prop, outputs_prop)
         if m >= 3:
             sys.stdout.flush()
             high_carries[i] = outputs_prop[0]
@@ -873,6 +1050,39 @@ def derive_equations(table, rules):
                     )
                 )
 
+            # add_e
+            # sum_ = table.de[i][31 - j]
+            # addends = [
+            #     table.da[i - 4][31 - j],
+            #     table.de[i - 4][31 - j],
+            #     table.dsigma1[i][31 - j],
+            #     table.dch[i][31 - j],
+            #     str(k[i] >> j & 1),
+            #     table.dw[i][31 - j],
+            # ]
+            # key = f"{TWO_BIT_CONSTRAINT_ADD6_ID}"
+            # for addend in addends:
+            #     key += addend
+            # key += f"??{sum_}"
+            # if key in rules:
+            #     value = rules[key]
+            #     equations.extend(
+            #         get_equations(
+            #             value,
+            #             [
+            #                 f"A_{i - 4},{j}",
+            #                 f"E_{i - 4},{j}",
+            #                 f"?_{i},{j}",
+            #                 f"?_{i},{j}",
+            #                 f"?_{i},{j}",
+            #                 f"W_{i},{j}",
+            #                 f"?_{i},{j}",
+            #                 f"?_{i},{j}",
+            #                 f"E_{i},{j}",
+            #             ],
+            #         )
+            #     )
+
     return equations
 
 
@@ -953,13 +1163,8 @@ def derive(order):
     table = load_table(f"{order}.table")
     start_time = time()
     propagate(table, prop_rules)
-    #!Debug
-    table.ds0[22] = "0nun1n--uu--n--nuuu0u--uu-uuuu0-"
-    table.ds1[17] = "---nuu1ununnn-1unnnnnn-n--0-1---"
-    table.ds1[19] = "-------nuuu-----unn---nun-nn-u-n"
-    table.dch[9] = "-u-------uu-uu-u0u1--u-0-n---n0-"
     print_table(table)
-    print_steps(table)
+    # print_steps(table)
     equations = derive_equations(table, two_bit_rules)
     print()
     print("2-bit cnds: {:.2f} seconds".format(time() - start_time), "\n")
