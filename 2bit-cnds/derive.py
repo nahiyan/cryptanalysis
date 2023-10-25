@@ -3,7 +3,7 @@ from itertools import product
 from time import time
 import re
 import sys
-from propagator import derive_word_w, derive_words_w
+from propagator import derive_words_w, _int_diff
 
 TWO_BIT_CONSTRAINT_XOR2_ID = 0
 TWO_BIT_CONSTRAINT_IF_ID = 1
@@ -25,6 +25,7 @@ IO_CONSTRAINT_ADD4_ID = 5
 IO_CONSTRAINT_ADD5_ID = 6
 IO_CONSTRAINT_ADD6_ID = 7
 IO_CONSTRAINT_ADD7_ID = 8
+
 
 k = [
     0x428A2F98,
@@ -94,264 +95,72 @@ k = [
 ]
 
 Table = namedtuple(
-    "Table", ["da", "de", "dw", "ds0", "ds1", "dsigma0", "dsigma1", "dch", "dmaj", "dt"]
+    "Table", ["da", "de", "dw", "ds0", "ds1", "dsigma0", "dsigma1", "dch", "dmaj", "ds"]
 )
 Equation = namedtuple("Equation", ["x", "y", "diff"])
 
 
-def derive_words_old(word_x, word_y, constant):
-    table = {
-        "x": [1, -1],
-        "B": [0, 1],
-        "D": [0, -1],
-        "-": [0],
-        "u": [1],
-        "n": [-1],
-        "?": [-1, 0, 1],
-        "A": [-1, 0, 1],
-        "5": [1, -1],
-        "0": [0],
-        "1": [0],
-    }
-
-    words = (word_x, word_y)
-    n = len(word_x)
-    vars = z3.Ints(" ".join([str(x) for x in range(n * 2)]))
-    s = Solver()
-    for i in range(n):
-        bit_x, bit_y = word_x[n - 1 - i], word_y[n - 1 - i]
-        s.add(Or([vars[i] == x for x in table[bit_x]]))
-        s.add(Or([vars[n + i] == x for x in table[bit_y]]))
-    s.add(
-        sum(
-            [
-                (
-                    (0 if word_x[n - 1 - i] in ["-", "1", "0"] else vars[i])
-                    + (0 if word_y[n - 1 - i] in ["-", "1", "0"] else vars[n + i])
+def otf_2bit_eqs(func, inputs, outputs, names=[]):
+    positions = []
+    combined = inputs + outputs
+    in_length, out_length = len(inputs), len(outputs)
+    for i, c in enumerate(combined):
+        if c in ["x", "-"]:
+            positions.append(i)
+    # print(positions)
+    n = len(positions)
+    # print(n)
+    selection = []
+    for i in range(pow(2, n)):
+        values = [i >> j & 1 for j in range(n)]
+        candidate = list(combined)
+        for j, position in enumerate(positions):
+            value = values[j]
+            char = candidate[position]
+            candidate[position] = (
+                ("u" if value == 1 else "n")
+                if char == "x"
+                else ("1" if value == 1 else "0")
+            )
+        candidate_inputs = "".join(candidate[:in_length])
+        candidate_outputs = "".join(candidate[in_length:])
+        prop_inputs, prop_outputs = otf_prop(add, (candidate_inputs, candidate_outputs))
+        # print(prop_inputs, prop_outputs)
+        if len(prop_outputs) == 0:
+            continue
+        selection.append((candidate_inputs, candidate_outputs))
+    equations = []
+    for s in selection:
+        combined = s[0] + s[1]
+        # print(s[0], s[1])
+        for i in range(len(combined)):
+            selector = i + 1
+            for j in range(selector, len(combined)):
+                eq = Equation(
+                    names[i], names[j], 1 if combined[i] != combined[j] else 0
                 )
-                * pow(2, i)
-                for i in range(n)
-            ]
-        )
-        % pow(2, n)
-        == constant
-    )
-    solutions = []
-    while True:
-        result = s.check()
-        if result == unsat:
-            if len(solutions) == 0:
-                print("Failed")
+                eq_alt = Equation(eq.y, eq.x, eq.diff)
 
-            # check consistency
-            derived_words = ([None] * n, [None] * n)
-            matrix = {}
-            for i in range(2):
-                matrix[i] = {}
-                for j in range(n):
-                    matrix[i][j] = []
-                    for solution in solutions:
-                        matrix[i][j].append(solution[i][j])
+                if eq.x[0] == "?" or eq.y[0] == "?":
+                    continue
 
-                        # Sanity check
-                        (int_diff1, err1), (int_diff2, err2) = _int_diff(
-                            "".join(solution[0]), n=n
-                        ), _int_diff("".join(solution[1]), n=n)
-                        assert (not err1 and not err2) and (
-                            (int_diff1 + int_diff2) % pow(2, n)
-                        ) == constant
+                if eq in equations or eq_alt in equations:
+                    continue
+                equations.append(eq)
+    finalized_equations = []
+    for eq in equations:
+        inv_eq = Equation(eq.x, eq.y, 0 if eq.diff == 1 else 1)
+        inv_eq_alt = Equation(inv_eq.y, inv_eq.x, inv_eq.diff)
 
-                    gcs = set(matrix[i][j])
-                    derived_words[i][j] = list(gcs)[0] if len(gcs) == 1 else words[i][j]
+        # Remove contradicting equations
+        if inv_eq in equations or inv_eq_alt in equations:
+            continue
 
-            # Remove any loss of GCs with diff. of 0
-            for i, derived_word in enumerate(derived_words):
-                for j in range(n):
-                    if derived_word[j] == "-" and words[i][j] in ["1", "0"]:
-                        derived_words[i][j] = words[i][j]
+        finalized_equations.append(eq)
 
-            # Return the result
-            return "".join(derived_words[0]), "".join(derived_words[1])
-        model_ = s.model()
-        model = {}
-        for var in model_:
-            model[int(var.name())] = model_[var].as_long()
-
-        solution = ([], [])
-        derive_gc = lambda value: "u" if value == 1 else "n" if value == -1 else "-"
-        for i in range(n - 1, -1, -1):
-            value = model[i]
-            solution[0].append(derive_gc(value))
-        for i in range(2 * n - 1, n - 1, -1):
-            value = model[i]
-            solution[1].append(derive_gc(value))
-        solution = ("".join(solution[0]), "".join(solution[1]))
-        solutions.append(solution)
-        # print(solution[0], solution[1], sep="\n")
-
-        # block it
-        s.add(Or([vars[var] != model_[vars[var]] for var in model]))
-
-
-def derive_words_new(words, constant, n=32):
-    assert len(words) > 0
-    n = len(words[0])
-    table = {
-        "?": [(0, 0), (0, 1), (1, 0), (1, 1)],
-        "-": [(0, 0), (1, 1)],
-        "x": [(0, 1), (1, 0)],
-        "0": [(0, 0)],
-        "u": [(1, 0)],
-        "n": [(0, 1)],
-        "1": [(1, 0)],
-        "3": [(0, 0), (1, 0)],
-        "5": [(0, 0), (0, 1)],
-        "7": [(0, 0), (1, 0), (0, 1)],
-        "A": [(1, 0), (1, 1)],
-        "B": [(0, 0), (1, 0), (1, 1)],
-        "C": [(0, 1), (1, 1)],
-        "D": [(0, 0), (0, 1), (1, 1)],
-        "E": [(1, 0), (0, 1), (1, 1)],
-    }
-
-    symbols = {
-        "?": ["u", "n", "1", "0"],
-        "-": ["1", "0"],
-        "x": ["u", "n"],
-        "0": ["0"],
-        "u": ["u"],
-        "n": ["n"],
-        "1": ["1"],
-        "3": ["0", "u"],
-        "5": ["0", "n"],
-        "7": ["0", "u", "n"],
-        "A": ["u", "1"],
-        "B": ["1", "u", "0"],
-        "C": ["n", "1"],
-        "D": ["0", "n", "1"],
-        "E": ["u", "n", "1"],
-    }
-
-    # print(f"Constant: {constant}")
-    m = len(words)
-    bitvec_pairs = [
-        (BitVec(f"w{i}_a", n), BitVec(f"w{i}_b", n)) for i, _ in enumerate(words)
-    ]
-    addends = [a - b for a, b in bitvec_pairs]
-    sum_ = sum(addends)
-
-    s = Solver()
-    for i, word in enumerate(words):
-        for j in range(n):
-            gc = word[n - j - 1]
-            vec_x, vec_y = bitvec_pairs[i]
-            bit_f = Extract(j, j, vec_x)
-            bit_g = Extract(j, j, vec_y)
-            assert gc in table
-            if gc == "-":
-                s.add(bit_f == bit_g)
-                continue
-            elif gc == "x":
-                s.add(bit_f != bit_g)
-                continue
-            possibilities = table[gc]
-            if len(possibilities) == 1:
-                p_f, p_g = possibilities[0]
-                s.add(And(bit_f == p_f, bit_g == p_g))
-            else:
-                s.add(
-                    Or(
-                        [
-                            And([bit_f == p_f, bit_g == p_g])
-                            for p_f, p_g in possibilities
-                        ]
-                    )
-                )
-
-    s.add(sum_ == constant)
-
-    solutions = []
-    while s.check() == sat:
-        model = s.model()
-        # print(model)
-        solutions.append(model)
-
-        # Block it
-        # block = []
-        # for var in model:
-        #     block.append(var() != model[var])
-        # s.add(Or(block))
-
-        block = []
-        for x, y in bitvec_pairs:
-            for i in range(n):
-                bit_x, bit_y = Extract(i, i, x), Extract(i, i, y)
-                values = model.eval(bit_x), model.eval(bit_y)
-                # if values[0] == values[1]:
-                #     block.append(bit_x - bit_y == )
-                #     continue
-                # block.append(bit_x - bit_y != values[0] - values[1])
-                block.append(bit_x - bit_y != model.eval(bit_x - bit_y))
-                # block.append(And([bit_x != values[0], bit_y != values[1]]))
-                # block.append(bit_x != values[0])
-                # block.append(bit_y != values[1])
-        s.add(Or(block))
-
-        # for word_index, (x, y) in enumerate(bitvec_pairs):
-        #     x_value, y_value = model[x].as_long(), model[y].as_long()
-        #     word = []
-        #     for i in range(n - 1, -1, -1):
-        #         pair = (x_value >> i & 1, y_value >> i & 1)
-        #         word.append(
-        #             "0"
-        #             if pair == (0, 0)
-        #             else "1"
-        #             if pair == (1, 1)
-        #             else "u"
-        #             if pair == (1, 0)
-        #             else "n"
-        #         )
-        #     print("".join(word))
-        # print()
-
-        # block = []
-        # for x, y in bitvec_pairs:
-        #     x_value, y_value = model[x].as_long(), model[y].as_long()
-        #     d = x_value - y_value
-        #     block.append(x - y != d)
-        # s.add(Or(block))
-    else:
-        cases = [[set() for _ in range(n)] for _ in range(m)]
-        for solution in solutions:
-            for word_index, (x, y) in enumerate(bitvec_pairs):
-                x_value, y_value = solution[x].as_long(), solution[y].as_long()
-                word = []
-                for i in range(n - 1, -1, -1):
-                    pair = (x_value >> i & 1, y_value >> i & 1)
-                    word.append(
-                        "0"
-                        if pair == (0, 0)
-                        else "1"
-                        if pair == (1, 1)
-                        else "u"
-                        if pair == (1, 0)
-                        else "n"
-                    )
-                for i, gc in enumerate(word):
-                    cases[word_index][i].add(gc)
-        words = []
-        for case in cases:
-            word = []
-            for i, gcs in enumerate(case):
-                for symbol in symbols:
-                    if gcs == set(symbols[symbol]):
-                        word.append(symbol)
-            word = "".join(word)
-            words.append(word)
-
-        # print("Fail" if len(solutions) == 0 else f"Done: {len(solutions)}")
-
-        return words
+    # for eq in finalized_equations:
+    #     print(eq)
+    return finalized_equations
 
 
 def add(addends):
@@ -380,7 +189,7 @@ def load_table(path):
 
     da, de, dw = {}, {}, {}
     ds0, ds1, dsigma0, dsigma1 = {}, {}, {}, {}
-    dch, dmaj, dt = {}, {}, {}
+    dch, dmaj, ds = {}, {}, {}
     with open(path, "r") as characteristics_file:
         lines = characteristics_file.readlines()
         for line in lines:
@@ -396,8 +205,8 @@ def load_table(path):
                 dsigma1[i] = unknown_diff
                 dch[i] = unknown_diff
                 dmaj[i] = unknown_diff
-                dt[i] = unknown_diff
-    return Table(da, de, dw, ds0, ds1, dsigma0, dsigma1, dch, dmaj, dt)
+                ds[i] = unknown_diff
+    return Table(da, de, dw, ds0, ds1, dsigma0, dsigma1, dch, dmaj, ds)
 
 
 def print_table(table):
@@ -418,15 +227,15 @@ def print_table(table):
             print()
 
 
-def _int_diff(word):
-    n = len(word)
-    value = 0
-    for i in range(n):
-        gc_bit = word[n - 1 - i]
-        if gc_bit not in ["u", "n", "-", "1", "0"]:
-            return value, True
-        value += (1 if gc_bit == "u" else -1 if gc_bit == "n" else 0) * pow(2, i)
-    return value % pow(2, n), False
+# def _int_diff(word):
+#     n = len(word)
+#     value = 0
+#     for i in range(n):
+#         gc_bit = word[n - 1 - i]
+#         if gc_bit not in ["u", "n", "-", "1", "0"]:
+#             return value, True
+#         value += (1 if gc_bit == "u" else -1 if gc_bit == "n" else 0) * pow(2, i)
+#     return value % pow(2, n), False
 
 
 def derive_words_step(word_x, word_y, constant):
@@ -666,70 +475,26 @@ def propagate(table, rules):
         ]
         propagate_addition(table, i, "add_a", add_a_vars)
 
-        # dk = "".join([str(k[i] >> (32 - x) & 1) for x in range(32)])
-        # # E_i
-        # prop_inputs, prop_output = otf_prop_add_words(
-        #     [
-        #         table.da[i - 4],
-        #         table.de[i - 4],
-        #         table.dsigma1[i],
-        #         table.dch[i],
-        #         dk,
-        #         table.dw[i],
-        #     ],
-        #     table.de[i],
-        # )
-        # # print(f"i = {i}")
-        # # for word in prop_inputs:
-        # #     print(word)
-        # # print(prop_output)
-        # table.da[i - 4] = prop_inputs[0]
-        # table.de[i - 4] = prop_inputs[1]
-        # table.dsigma1[i] = prop_inputs[2]
-        # table.dch[i] = prop_inputs[3]
-        # table.dw[i] = prop_inputs[5]
-        # table.de[i] = prop_output
-
-        # # A_i + A_{i - 4}
-        # _, prop_output = otf_prop_add_words(
-        #     [
-        #         table.da[i],
-        #         table.da[i - 4],
-        #     ],
-        #     "?" * 32,
-        # )
-        # prop_inputs, prop_output = otf_prop_add_words(
-        #     [
-        #         table.de[i],
-        #         table.dsigma0[i],
-        #         table.dmaj[i],
-        #     ],
-        #     prop_output,
-        # )
-        # table.de[i] = prop_inputs[0]
-        # table.dsigma0[i] = prop_inputs[1]
-        # table.dmaj[i] = prop_inputs[2]
-
-        # A_i
-        # prop_inputs, prop_output = otf_prop_add_words(
-        #     [
-        #         table.de[i - 4],
-        #         table.dsigma1[i],
-        #         table.dch[i],
-        #         dk,
-        #         table.dw[i],
-        #         table.dsigma0[i],
-        #         table.dmaj[i],
-        #     ],
-        #     table.da[i],
-        # )
-        # table.da[i] = prop_output
-        # table.de[i - 4] = prop_inputs[0]
-        # table.dsigma1[i] = prop_inputs[1]
-        # table.dch[i] = prop_inputs[2]
-        # table.dw[i] = prop_inputs[4]
-        # table.dsigma0[i] = prop_inputs[5]
-        # table.dmaj[i] = prop_inputs[6]
+        # Propagate modular addition
+        # _, ds, _ = otf_prop_add_words([
+        #     table.dsigma1[i],
+        #     table.dch[i],
+        #     "".join([str(k[i] >> i & 1) for i in range(32, -1, -1)]),
+        # ], "?" * 32)
+        # table.ds[i] = ds
+        # otf_prop_add_words([
+        #     table.da[i - 4],
+        #     table.de[i - 4],
+        #     s,
+        #     table.dw[i],
+        # ], table.de[i])
+        # otf_prop_add_words([
+        #     table.de[i - 4],
+        #     s,
+        #     table.dw[i],
+        #     table.dsigma0[i],
+        #     table.dmaj[i],
+        # ], table.da[i])
 
 
 def otf_prop(func, vars):
@@ -826,6 +591,7 @@ def otf_prop_add_words(words, sum, n=32):
     for i in range(m):
         prop_words[i] = [None] * n
     output_prop = [None] * n
+    steps = []
     for i in range(n):
         gcs = [words[j][n - i - 1] for j in range(m)]
         if i > 0:
@@ -835,9 +601,9 @@ def otf_prop_add_words(words, sum, n=32):
         inputs_prop, outputs_prop = otf_prop(
             add, (gcs, ("??" if m >= 3 else "?") + f"{sum[n - i - 1]}")
         )
-        print(i, inputs_prop, outputs_prop)
+        assert len(outputs_prop) > 0
+        steps.append((inputs_prop, outputs_prop))
         if m >= 3:
-            sys.stdout.flush()
             high_carries[i] = outputs_prop[0]
         low_carries[i] = outputs_prop[1] if m >= 3 else outputs_prop[0]
         for k, gc in enumerate(inputs_prop[:m]):
@@ -847,7 +613,7 @@ def otf_prop_add_words(words, sum, n=32):
     # print()
     for i in range(m):
         prop_words[i] = "".join(prop_words[i])
-    return prop_words, "".join(output_prop)
+    return prop_words, "".join(output_prop), steps
 
 
 def set_iv(table):
@@ -886,6 +652,74 @@ def get_equations(rel_matrix, var_names):
 def derive_equations(table, rules):
     equations = []
     for i in table.dw:
+        k_ = "".join([str(k[i] >> j & 1) for j in range(31, -1, -1)])
+        # _, ds, _ = otf_prop_add_words(
+        #     [
+        #         table.dsigma1[i],
+        #         # table.dch[i],
+        #         k_,
+        #     ],
+        #     "?" * 32,
+        # )
+
+        # print(f"Addition {i}")
+        # _, _, steps = otf_prop_add_words(
+        #     [
+        #         table.da[i - 4],
+        #         table.de[i - 4],
+        #         ds,
+        #         # table.dsigma1[i],
+        #         # k_,
+        #         table.dch[i],
+        #         table.dw[i],
+        #     ],
+        #     table.de[i],
+        # )
+        _, _, steps = otf_prop_add_words(
+            [
+                table.da[i - 4],
+                table.de[i - 4],
+                table.dsigma1[i],
+                table.dch[i],
+                k_,
+                table.dw[i],
+            ],
+            table.de[i],
+        )
+        for x, (inputs, outputs) in enumerate(steps):
+            if (
+                sum(
+                    [
+                        1 if c not in ["1", "0", "n", "u"] else 0
+                        for c in inputs + outputs
+                    ]
+                )
+                > 4
+            ):
+                continue
+            # print(x, inputs, outputs)
+            if len(inputs) != 8:
+                inputs += "0" * (8 - len(inputs))
+            eqs = otf_2bit_eqs(
+                add,
+                inputs,
+                outputs,
+                names=[
+                    f"A_{i-4},{x}",
+                    f"E_{i-4},{x}",
+                    f"?_{i},{x}",
+                    f"?_{i},{x}",
+                    f"?_{i},{x}",
+                    f"W_{i},{x}",
+                    f"?_{i},{x}",
+                    f"?_{i},{x}",
+                    f"?_{i},{x}",
+                    f"?_{i},{x}",
+                    f"E_{i},{x}",
+                ],
+            )
+            equations.extend(eqs)
+
         for j in range(32):
             if i >= 16:
                 # s0
@@ -1165,9 +999,9 @@ def derive(order):
     propagate(table, prop_rules)
     print_table(table)
     # print_steps(table)
-    equations = derive_equations(table, two_bit_rules)
     print()
     print("2-bit cnds: {:.2f} seconds".format(time() - start_time), "\n")
+    equations = derive_equations(table, two_bit_rules)
     summarize_2bit_cnds(equations)
     print()
 

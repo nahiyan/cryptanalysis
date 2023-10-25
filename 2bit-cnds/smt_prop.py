@@ -58,8 +58,8 @@ def derive_words(word_x, word_y, constant):
 
                         # Sanity check
                         (int_diff1, err1), (int_diff2, err2) = _int_diff(
-                            "".join(solution[0]), n=n
-                        ), _int_diff("".join(solution[1]), n=n)
+                            "".join(solution[0])
+                        ), _int_diff("".join(solution[1]))
                         assert (not err1 and not err2) and (
                             (int_diff1 + int_diff2) % pow(2, n)
                         ) == constant
@@ -173,6 +173,9 @@ def derive_words_new(words, constant, n=32):
 
     s.add(sum_ == constant)
 
+    print(s)
+    # exit(0)
+
     solutions = []
     while s.check() == sat:
         model = s.model()
@@ -180,17 +183,49 @@ def derive_words_new(words, constant, n=32):
         solutions.append(model)
 
         # Block it
-        block = []
-        for var in model:
-            block.append(var() != model[var])
-        s.add(Or(block))
+        # block = []
+        # for var in model:
+        #     block.append(var() != model[var])
+        # s.add(Or(block))
 
         block = []
         for x, y in bitvec_pairs:
-            x_value, y_value = model[x].as_long(), model[y].as_long()
-            d = x_value - y_value
-            block.append(x - y != d)
+            for i in range(n):
+                bit_x, bit_y = Extract(i, i, x), Extract(i, i, y)
+                values = model.eval(bit_x), model.eval(bit_y)
+                # if values[0] == values[1]:
+                #     block.append(bit_x - bit_y == )
+                #     continue
+                # block.append(bit_x - bit_y != values[0] - values[1])
+                block.append(bit_x - bit_y != model.eval(bit_x - bit_y))
+                # block.append(And([bit_x != values[0], bit_y != values[1]]))
+                # block.append(bit_x != values[0])
+                # block.append(bit_y != values[1])
         s.add(Or(block))
+
+        for word_index, (x, y) in enumerate(bitvec_pairs):
+            x_value, y_value = model[x].as_long(), model[y].as_long()
+            word = []
+            for i in range(n - 1, -1, -1):
+                pair = (x_value >> i & 1, y_value >> i & 1)
+                word.append(
+                    "0"
+                    if pair == (0, 0)
+                    else "1"
+                    if pair == (1, 1)
+                    else "u"
+                    if pair == (1, 0)
+                    else "n"
+                )
+            print("".join(word))
+        print()
+
+        # block = []
+        # for x, y in bitvec_pairs:
+        #     x_value, y_value = model[x].as_long(), model[y].as_long()
+        #     d = x_value - y_value
+        #     block.append(x - y != d)
+        # s.add(Or(block))
     else:
         cases = [[set() for _ in range(n)] for _ in range(m)]
         for solution in solutions:
@@ -210,8 +245,6 @@ def derive_words_new(words, constant, n=32):
                     )
                 for i, gc in enumerate(word):
                     cases[word_index][i].add(gc)
-                # word = "".join(word)
-                # print(word)
         words = []
         for case in cases:
             word = []
@@ -232,11 +265,29 @@ if __name__ == "__main__":
     # print(words[0], words[1], sep="\n")
     # words = derive_words_new(["xxxxxxx----x-xxxxx-x-", "DDDDD-D-nn--B-----D-B"], 0b001010110011100010111)
     # print(words[0], words[1], sep="\n")
-    words = derive_words_new(
-        ["--xxxx-xx--x-", "--B--D-BBBB--"], 0b0100011110110
-    )
-    print(words[0], words[1], sep="\n")
-    words = derive_words_new(
-        ["----x-xx---x--x--xx", "DDDD-DD-nn-Du-----D"], 0b1000000000110101110
-    )
-    print(words[0], words[1], sep="\n")
+    # words = derive_words_new(["--xxxx-xx--x-", "--B--D-BBBB--"], 0b0100011110110)
+    # print(words[0], words[1], sep="\n")
+    # words = derive_words_new(
+    #     ["----x-xx---x--x--xx", "DDDD-DD-nn-Du-----D"], 0b1000000000110101110
+    # )
+    # print(words[0], words[1], sep="\n")
+    # words = derive_words_new(
+    #     ["----x-xx---x--x--xx--xxxx-xx--x-", "DDDD-DD-nn-Du-----D--B--D-BBBB--"], 0b10000000001101011100100011110110
+    # )
+    # print(words[0], words[1], sep="\n")
+    # words = derive_words_new(
+    #     ["x-x-xx-xxx-x-x--xxxxx-x---x-x---", "-------BBD--B------D---DD-BBBB--"], 0b01010100000111001110100100100000
+    # )
+    # print(words[0], words[1], sep="\n")
+    # words = derive_words_new(
+    #     ["-uxxu-xx1u---x-00x-u", "--?0-?0--u?A-???5-u-"], 0b01010101100010001111
+    # )
+    # print(words[0], words[1], sep="\n")
+    # words = derive_words_new(
+    #     ["-u-?-----uu-uu-u0u1?-u-0-n?--n0-"], 1080902588
+    # )
+    # print(words[0])
+    # print(words[0], words[1], sep="\n")
+
+    x, y = derive_words('-n-x--n--------', '1n-x0nn110-0nu1', 0b011101111111110)
+    print(x, y, sep="\n")
