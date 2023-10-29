@@ -1,3 +1,5 @@
+<!-- TODO: Instruct people to use the root Makefile to build all the dependencies along with the cryptanalysis tool -->
+
 # MD4, MD5, and SHA-256 Cryptanalysis
 
 This repository houses a cryptanalysis tool aimed at (pre-image and collision) attacks on hash functions, namely MD4, MD5, and SHA-256, using SAT solvers. Techniques such as the [Dobbertin's attack](https://link.springer.com/content/pdf/10.1007/3-540-69710-1_19.pdf) and [Cube and Conquer using a Lookahead Solver](https://www.cs.utexas.edu/~marijn/publications/cube.pdf) are used to exploit the weakness of hash functions and increase feasibility of the attacks.
@@ -16,7 +18,7 @@ To use the cryptanalysis tool, the following executables may be required (depend
 - [NejatiEncoder](https://github.com/nahiyan/cryptanalysis/tree/master/encoders/nejati) as `nejati_encoder`
 - [xnfSAT](https://github.com/Vtec234/xnfsat) as `xnfsat`
 
-Other 3rd party dependencies may be required on use-case, such as `lstech_maple`, `kissat_cf`, `yalsat`, `palsat`, etc. 
+Other 3rd party dependencies may be required on use-case, such as `lstech_maple`, `kissat_cf`, `yalsat`, `palsat, etc.
 
 # Building
 
@@ -107,7 +109,7 @@ The operations of the above pipeline are as follows:
 - Encode a 43-step MD4 using Transalg with all-one target hash and including the Dobbertin's constraints
 - Simplify the instance with CaDiCaL till 100 conflicts
 - Cube till reaching cubesets of 10M cubes while only keeping cubesets of at least 500 refuted leaves
-- Select 1000 cubes from each cubeset in random order with a seed of 1 (you can exclude the quantity to select all the cubes)
+- Select 100 cubes from each cubeset in random order with a seed of 1 (you can exclude the quantity to select all the cubes)
 - Solve the instances with Kissat (with a 10000s timeout) in 16 workers (16 processes of Kissat will be spawned at a time)
 
 You can explore all the possible parameters and pipe types in the [internal/pipeline/main.go](https://github.com/nahiyan/cryptanalysis/blob/33dee9ed742b0afd39ced66f341a0fd0c90bd568/internal/pipeline/main.go) file.

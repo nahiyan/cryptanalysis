@@ -1,6 +1,0 @@
-*.out
-*.sh
-*.toml
-*.db
-/benchmark
-*.cubes

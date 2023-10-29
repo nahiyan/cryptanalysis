@@ -1,0 +1,5 @@
+*.cnf
+*.log
+*.db
+logs
+encodings

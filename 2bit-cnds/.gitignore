@@ -1,0 +1,5 @@
+*.table
+*.db
+*.txt
+*.log
+playground.py

@@ -1,0 +1,11 @@
+maplesat_static
+*.or
+.cache
+compile_commands.json
+simp/depend.mk
+build
+*.cnf
+*.log
+*.db
+lib
+ntl
