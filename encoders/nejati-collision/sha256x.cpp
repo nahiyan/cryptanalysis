@@ -7,7 +7,7 @@ SHA256::SHA256(int rnds, bool initBlock) {
 
 void SHA256::encode() {
   for (int i = 0; i < rounds; i++)
-    cnf.newVars(w[i], 32, "w" + to_string(i));
+    cnf.newVars(w[i], 32, "W_" + to_string(i));
 
   for (int i = 0; i < 8; i++)
     cnf.newVars(in[i], 32);
