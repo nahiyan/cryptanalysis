@@ -229,17 +229,6 @@ def print_table(table):
             print()
 
 
-# def _int_diff(word):
-#     n = len(word)
-#     value = 0
-#     for i in range(n):
-#         gc_bit = word[n - 1 - i]
-#         if gc_bit not in ["u", "n", "-", "1", "0"]:
-#             return value, True
-#         value += (1 if gc_bit == "u" else -1 if gc_bit == "n" else 0) * pow(2, i)
-#     return value % pow(2, n), False
-
-
 def derive_words_step(word_x, word_y, constant):
     table = {
         "?": ["n", "u", "-"],
