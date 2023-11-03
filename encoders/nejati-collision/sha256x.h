@@ -39,8 +39,8 @@ class SHA256 {
 
         xFormula cnf;
 
-        void Sigma0(int *z, int *x, std::string prefix = "");
-        void Sigma1(int *z, int *x, std::string prefix = "");
+        void Sigma0(int *z, int *x);
+        void Sigma1(int *z, int *x);
 };
 
 #endif
