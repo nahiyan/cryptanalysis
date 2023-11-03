@@ -231,10 +231,7 @@ def apply_grounding(words, vars_colwise, values):
                         if current_col_uniq_values[0] == 1
                         else "n"
                     )
-                elif (
-                    len(next_col_uniq_values) == 1
-                    and next_col_uniq_values[0] == 1
-                ):
+                elif len(next_col_uniq_values) == 1 and next_col_uniq_values[0] == 1:
                     words_[j][i] = "u"
             # print(current_col_uniq_values, next_col_uniq_values)
 
@@ -246,7 +243,7 @@ def apply_grounding(words, vars_colwise, values):
     return derived_words
 
 
-def derive_words(words, adj_constant):
+def derive_words(words, adj_constant, adjusted=True):
     derived_words, err = words, False
     n, m = len(words[0]), len(words)
 
@@ -263,6 +260,10 @@ def derive_words(words, adj_constant):
     # Generate variables
     vars_colwise = gen_variables(words)
 
+    if not adjusted:
+        for word in words:
+            adj_constant = adjust_gcs(word, adj_constant)
+
     # print("Adjustment", words, format(adj_constant, "0b"))
     # for entry in vars_colwise[::-1]:
     #     print(entry)
@@ -271,7 +272,8 @@ def derive_words(words, adj_constant):
     # Linear scan
     segments = []
     stash = {"vars": [], "bits": []}
-    last_does_overflow = False
+    # last_does_overflow = False
+    overflow_brute_force_indices = []
     for i in range(n - 1, -1, -1):
         # Skip if there's nothing in the stash and there's no variable either
         if len(stash["vars"]) == 0 and len(vars_colwise[i]) == 0:
@@ -288,6 +290,11 @@ def derive_words(words, adj_constant):
         # print(i, bit, vars_colwise[i], does_overflow)
         segment_ends = False
 
+        if bit == 0 and all([word[i] in ["1", "0", "-"] for word in words]):
+            segment_ends = True
+            if does_overflow:
+                overflow_brute_force_indices.append(len(segments))
+
         # If it doesn't overflow, cut it off
         if not does_overflow:
             segment_ends = True
@@ -297,7 +304,9 @@ def derive_words(words, adj_constant):
             segment_ends = True
             # If it can overflow, brute force should search for solutions with sum > highest possible value
             if does_overflow:
-                last_does_overflow = True
+                if does_overflow:
+                    overflow_brute_force_indices.append(len(segments))
+                # last_does_overflow = True
 
         if segment_ends:
             segments.append((stash["vars"], stash["bits"]))
@@ -308,11 +317,9 @@ def derive_words(words, adj_constant):
     var_index = 0
     for s_i, (vars_colwise_, bits) in enumerate(segments):
         sum_ = sum([bit * pow(2, i) for i, bit in enumerate(bits)])
-        is_last = s_i == len(segments) - 1
+        # is_last = s_i == len(segments) - 1
 
-        # print(vars_colwise_, sum_)
-
-        if is_last and last_does_overflow:
+        if s_i in overflow_brute_force_indices:
             min_gt = sum([pow(2, i) for i in range(len(bits))])
             propagated_vars = brute_force(vars_colwise_, -1, min_gt=min_gt)
         else:
@@ -397,9 +404,7 @@ assert False == _does_overflow(
 )
 
 # Generation of variables
-assert gen_variables(
-    ["-uxxu-xx1u---x-00x", "--?0-?0--u?A-???5-"]
-) == [
+assert gen_variables(["-uxxu-xx1u---x-00x", "--?0-?0--u?A-???5-"]) == [
     [],
     [[0, 1], [0, 1], [1]],
     [[0, 1], [0, 1]],
