@@ -628,7 +628,7 @@ void Formula::espresso(const vector<int>& lhs, const vector<int>& rhs)
     }
 }
 
-void Formula::dimacs(string fileName, bool header)
+void Formula::dimacs(int rounds, string fileName, bool header)
 {
     FILE* out = fileName == "" ? stdout : fopen(fileName.c_str(), "w");
     if (out == NULL) {
@@ -649,6 +649,8 @@ void Formula::dimacs(string fileName, bool header)
 
     for (auto e : varNames)
         fprintf(out, "c %s %d\n", e.first.c_str(), e.second);
+
+    printf("c order %d\n", rounds);
 
     fclose(out);
 }

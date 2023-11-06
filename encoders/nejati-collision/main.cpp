@@ -266,7 +266,7 @@ void collision(int rounds)
             g.cnf.eq(f.out[i], g.out[i]);
     }
 
-    g.cnf.dimacs();
+    g.cnf.dimacs(rounds);
 }
 
 void display_usage()
