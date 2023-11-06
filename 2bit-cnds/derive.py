@@ -876,7 +876,7 @@ def derive_equations(table, rules):
                 s0 = table.ds0[i][31 - j]
                 key = (
                     f"{TWO_BIT_CONSTRAINT_XOR3_ID}{s0_i1}{s0_i2}{s0_i3}{s0}"
-                    if j <= 29
+                    if j <= 28
                     else f"{TWO_BIT_CONSTRAINT_XOR2_ID}{s0_i1}{s0_i2}{s0}"
                 )
                 if key in rules:
@@ -890,7 +890,7 @@ def derive_equations(table, rules):
                                 f"W_{word_index},{indices[2]}",
                                 f"s0_{i},{j}",
                             ]
-                            if j <= 29
+                            if j <= 28
                             else [
                                 f"W_{word_index},{indices[0]}",
                                 f"W_{word_index},{indices[1]}",
@@ -922,7 +922,7 @@ def derive_equations(table, rules):
                                 f"W_{word_index},{indices[2]}",
                                 f"s1_{i},{j}",
                             ]
-                            if j <= 29
+                            if j <= 21
                             else [
                                 f"W_{word_index},{indices[0]}",
                                 f"W_{word_index},{indices[1]}",
