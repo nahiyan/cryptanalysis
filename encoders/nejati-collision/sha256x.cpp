@@ -47,8 +47,8 @@ void SHA256::encode() {
     cnf.xor2(s1[i] + 22, r1 + 22, r2 + 22, 10);
 
     // Addition: w[i]
-    cnf.newVars(wCarry[i], 32, "add.W.r2_" + to_string(i));
-    cnf.newVars(wcarry[i], 32, "add.W.r1_" + to_string(i));
+    cnf.newVars(wCarry[i], 32, "add.W.r1_" + to_string(i));
+    cnf.newVars(wcarry[i], 32, "add.W.r0_" + to_string(i));
     cnf.add(w[i], w[i - 16], s0[i], wcarry[i], wCarry[i], w[i - 7], s1[i]);
   }
 
@@ -68,7 +68,7 @@ void SHA256::encode() {
 
   int k[64][32];
   for (int i = 0; i < rounds; i++) {
-    cnf.newVars(k[i]);
+    cnf.newVars(k[i], 32, "K_" + to_string(i));
     cnf.fixedValue(k[i], rnd_const[i]);
   }
 
@@ -116,18 +116,18 @@ void SHA256::encode() {
     cnf.maj3(f2[i], A[i + 3], A[i + 2], A[i + 1]);
 
     // Addition: T[i]
-    cnf.newVars(r0Carry[i], 32, "add.T.r2" + to_string(i));
-    cnf.newVars(r0carry[i], 32, "add.T.r1" + to_string(i));
-    cnf.newVars(T[i], 32, "add.T_" + to_string(i));
+    cnf.newVars(r0Carry[i], 32, "add.T.r1" + to_string(i));
+    cnf.newVars(r0carry[i], 32, "add.T.r0" + to_string(i));
+    cnf.newVars(T[i], 32, "T_" + to_string(i));
     cnf.add(T[i], E[i], sigma1[i], r0carry[i], r0Carry[i], f1[i], k[i], w[i]);
 
     // Addition: E[i + 4]
-    cnf.newVars(r1carry[i], 32, "add.E.r1_" + to_string(i + 4));
+    cnf.newVars(r1carry[i], 32, "add.E.r0_" + to_string(i + 4));
     cnf.add(E[i + 4], A[i], T[i], r1carry[i]);
 
     // Addition: A[i + 4]
-    cnf.newVars(r2Carry[i], 32, "add.A.r2_" + to_string(i + 4));
-    cnf.newVars(r2carry[i], 32, "add.A.r1_" + to_string(i + 4));
+    cnf.newVars(r2Carry[i], 32, "add.A.r1_" + to_string(i + 4));
+    cnf.newVars(r2carry[i], 32, "add.A.r0_" + to_string(i + 4));
     cnf.add(A[i + 4], T[i], sigma0[i], r2carry[i], r2Carry[i], f2[i]);
   }
 
