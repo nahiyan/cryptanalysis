@@ -15,7 +15,7 @@ using namespace std;
 int cfg_use_xor_clauses;
 Formula::MultiAdderType cfg_multi_adder_type;
 int cfg_diff_desc;
-int cfg_diff_impl;
+int cfg_free_start;
 int cfg_rand_inp_diff;
 string cfg_diff_const_file;
 
@@ -72,6 +72,10 @@ void collision(int rounds)
     if (cfg_multi_adder_type != Formula::MAT_NONE) {
         f.cnf.setMultiAdderType(cfg_multi_adder_type);
         g.cnf.setMultiAdderType(cfg_multi_adder_type);
+    }
+    if (cfg_free_start) {
+        f.initialBlock = false;
+        g.initialBlock = false;
     }
 
     f.encode();
@@ -255,7 +259,7 @@ void display_usage()
            "function\n"
            "  --diff_desc                              Adds differential "
            "description\n"
-           "  --diff_impl                              Adds differential "
+           "  --free_start                             Free up the chaining value"
            "implication for MAJ, IF, XOR2, and XOR3\n"
            "  --diff_const_file or -d {file_path}      Path to the differential "
            "constraints file\n"
@@ -271,7 +275,7 @@ int main(int argc, char** argv)
     cfg_use_xor_clauses = 0;
     cfg_multi_adder_type = Formula::MAT_NONE;
     cfg_diff_desc = 0;
-    cfg_diff_impl = 0;
+    cfg_free_start = 0;
     cfg_rand_inp_diff = 0;
     cfg_diff_const_file = "";
     int rounds = -1;
@@ -280,7 +284,7 @@ int main(int argc, char** argv)
         /* flag options */
         { "xor", no_argument, &cfg_use_xor_clauses, 1 },
         { "diff_desc", no_argument, &cfg_diff_desc, 1 },
-        { "diff_impl", no_argument, &cfg_diff_impl, 1 },
+        { "free_start", no_argument, &cfg_free_start, 1 },
         { "rand_input_diff", no_argument, &cfg_rand_inp_diff, 1 },
         /* valued options */
         { "rounds", required_argument, 0, 'r' },

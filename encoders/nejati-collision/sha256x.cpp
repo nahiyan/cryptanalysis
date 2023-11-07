@@ -11,7 +11,7 @@ void SHA256::encode() {
 
   for (int i = 0; i < 8; i++)
     cnf.newVars(in[i], 32);
-  cnf.varName(in[0], "iv");
+  cnf.varName(in[0], "cv");
 
   for (int i = 0; i < 8; i++)
     cnf.newVars(out[i], 32, "hash" + to_string(i));
