@@ -116,18 +116,18 @@ void SHA256::encode() {
     cnf.maj3(f2[i], A[i + 3], A[i + 2], A[i + 1]);
 
     // Addition: T[i]
-    cnf.newVars(r0Carry[i], 32, "add.T.r1" + to_string(i));
-    cnf.newVars(r0carry[i], 32, "add.T.r0" + to_string(i));
+    cnf.newVars(r0Carry[i], 32, "add.T.r1_" + to_string(i));
+    cnf.newVars(r0carry[i], 32, "add.T.r0_" + to_string(i));
     cnf.newVars(T[i], 32, "T_" + to_string(i));
     cnf.add(T[i], E[i], sigma1[i], r0carry[i], r0Carry[i], f1[i], k[i], w[i]);
 
     // Addition: E[i + 4]
-    cnf.newVars(r1carry[i], 32, "add.E.r0_" + to_string(i + 4));
+    cnf.newVars(r1carry[i], 32, "add.E.r0_" + to_string(i));
     cnf.add(E[i + 4], A[i], T[i], r1carry[i]);
 
     // Addition: A[i + 4]
-    cnf.newVars(r2Carry[i], 32, "add.A.r1_" + to_string(i + 4));
-    cnf.newVars(r2carry[i], 32, "add.A.r0_" + to_string(i + 4));
+    cnf.newVars(r2Carry[i], 32, "add.A.r1_" + to_string(i));
+    cnf.newVars(r2carry[i], 32, "add.A.r0_" + to_string(i));
     cnf.add(A[i + 4], T[i], sigma0[i], r2carry[i], r2Carry[i], f2[i]);
   }
 
