@@ -1,4 +1,6 @@
-from sha256 import check
+from sha256 import _hash
+
+# TODO: Make the script dynamic - take the input from a file or stdin
 
 msg_str = """
 10000111101001110001100110110001
@@ -83,5 +85,6 @@ assert len(cv) == 8
 # print(msg_g)
 # print(cv)
 
-is_collision = check(26, msg_f, cv) == check(26, msg_g, cv)
+order = 26
+is_collision = _hash(order, msg_f, cv) == _hash(order, msg_g, cv)
 print("Verified" if is_collision else "Failed")

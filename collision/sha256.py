@@ -167,7 +167,7 @@ class SHA256:
         return binascii.hexlify(self.digest()).decode("ascii")
 
 
-def check(order, msg, h=None):
+def _hash(order, msg, h=None):
     msg = bytes.fromhex(msg)
     m = SHA256(msg, order) if h == None else SHA256(msg, order, h)
     # m.update(msg.encode('ascii'))
