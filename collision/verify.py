@@ -83,5 +83,5 @@ assert len(cv) == 8
 # print(msg_g)
 # print(cv)
 
-is_collision =  check(26, msg_f, cv) == check(26, msg_g, cv)
+is_collision = check(26, msg_f, cv) == check(26, msg_g, cv)
 print("Verified" if is_collision else "Failed")
