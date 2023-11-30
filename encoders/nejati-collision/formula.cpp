@@ -74,24 +74,6 @@ void Formula::rotl(int* z, int* x, int p, int n)
         z[i] = x[(i + n - p) % n];
 }
 
-void Formula::and2(int* z, int* x, int* y, int n)
-{
-    for (int i = 0; i < n; i++) {
-        addClause({ z[i], -x[i], -y[i] });
-        addClause({ -z[i], x[i] });
-        addClause({ -z[i], y[i] });
-    }
-}
-
-void Formula::or2(int* z, int* x, int* y, int n)
-{
-    for (int i = 0; i < n; i++) {
-        addClause({ -z[i], x[i], y[i] });
-        addClause({ z[i], -x[i] });
-        addClause({ z[i], -y[i] });
-    }
-}
-
 void Formula::eq(int* z, int* x, int n)
 {
     for (int i = 0; i < n; i++) {
