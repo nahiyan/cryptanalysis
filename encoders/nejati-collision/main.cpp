@@ -1,13 +1,15 @@
 #include "diff-parser.h"
 #include "retrieve_table.h"
 #include "sha256x.h"
-#include "util.h"
 #include <assert.h>
 #include <ctime>
+#include <fstream>
 #include <getopt.h>
+#include <sstream>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <unordered_map>
 
 using namespace std;
 
@@ -18,50 +20,94 @@ int cfg_diff_desc;
 int cfg_free_start;
 int cfg_rand_inp_diff;
 string cfg_diff_const_file;
+unordered_map<string, string> ch_rules, maj_rules, xor3_rules;
 
-void fix_starting_point(SHA256& block, char& diff, int* target, int* alt_target1, int* alt_target2)
+void load_rules(string filePath)
+{
+    // Open the file
+    ifstream inputFile(filePath);
+
+    // Check if the file is opened successfully
+    if (!inputFile.is_open()) {
+        printf("Error opening the rules file\n");
+        exit(1);
+    }
+
+    // Read the file line by line
+    string line;
+    while (getline(inputFile, line)) {
+        istringstream iss(line);
+        string id, input, output;
+        iss >> id >> input >> output;
+        unordered_map<string, string>* rules;
+        if (id == "ch")
+            rules = &ch_rules;
+        else if (id == "maj")
+            rules = &maj_rules;
+        else if (id == "xor3")
+            rules = &xor3_rules;
+        rules->insert({ input, output });
+    }
+
+    // Close the file
+    inputFile.close();
+}
+
+void fix_starting_point(SHA256& block, char& diff, int* dx, int* x, int* x_)
 {
     auto& formula = block.cnf;
     switch (diff) {
     case '-':
-        formula.fixedValue(target, 0, 1);
+        formula.fixedValue(dx + 0, 1, 1);
+        formula.fixedValue(dx + 1, 0, 1);
+        formula.fixedValue(dx + 2, 0, 1);
+        formula.fixedValue(dx + 3, 1, 1);
         break;
     case 'x':
-        formula.fixedValue(target, 1, 1);
+        formula.fixedValue(dx + 0, 0, 1);
+        formula.fixedValue(dx + 1, 1, 1);
+        formula.fixedValue(dx + 2, 1, 1);
+        formula.fixedValue(dx + 3, 0, 1);
         break;
     case 'u':
-        formula.fixedValue(target, 1, 1);
-        formula.fixedValue(alt_target1, 1, 1);
-        formula.fixedValue(alt_target2, 0, 1);
+        formula.fixedValue(x, 1, 1);
+        formula.fixedValue(x_, 0, 1);
+        formula.fixedValue(dx + 0, 0, 1);
+        formula.fixedValue(dx + 1, 1, 1);
+        formula.fixedValue(dx + 2, 1, 1);
+        formula.fixedValue(dx + 3, 0, 1);
         break;
     case 'n':
-        formula.fixedValue(target, 1, 1);
-        formula.fixedValue(alt_target1, 0, 1);
-        formula.fixedValue(alt_target2, 1, 1);
+        formula.fixedValue(dx, 1, 1);
+        formula.fixedValue(x, 0, 1);
+        formula.fixedValue(dx + 0, 0, 1);
+        formula.fixedValue(dx + 1, 1, 1);
+        formula.fixedValue(dx + 2, 1, 1);
+        formula.fixedValue(dx + 3, 0, 1);
         break;
     case '1':
-        formula.fixedValue(target, 0, 1);
-        formula.fixedValue(alt_target1, 1, 1);
-        formula.fixedValue(alt_target2, 1, 1);
+        formula.fixedValue(x, 1, 1);
+        formula.fixedValue(x_, 1, 1);
+        formula.fixedValue(dx + 0, 1, 1);
+        formula.fixedValue(dx + 1, 0, 1);
+        formula.fixedValue(dx + 2, 0, 1);
+        formula.fixedValue(dx + 3, 1, 1);
         break;
     case '0':
-        formula.fixedValue(target, 0, 1);
-        formula.fixedValue(alt_target1, 0, 1);
-        formula.fixedValue(alt_target2, 0, 1);
+        formula.fixedValue(x, 0, 1);
+        formula.fixedValue(x_, 0, 1);
+        formula.fixedValue(dx + 0, 1, 1);
+        formula.fixedValue(dx + 1, 0, 1);
+        formula.fixedValue(dx + 2, 0, 1);
+        formula.fixedValue(dx + 3, 1, 1);
         break;
     }
-}
-
-void enforce_difference(SHA256& block, int* target) {
-    vector<int> clause;
-    for (int i = 0; i < 32; i++) {
-        clause.push_back(target[i]);
-    }
-    block.cnf.addClause(clause);
 }
 
 void collision(int rounds)
 {
+    load_rules("prop_rules.db");
+
     SHA256 f(rounds), g(rounds);
     f.cnf.formulaName = "f";
     g.cnf.formulaName = "g";
@@ -84,162 +130,181 @@ void collision(int rounds)
     g.encode();
     g.cnf.AddFormula(f.cnf);
 
-    if (cfg_diff_desc) {
-        /* Differential Path Variables */
-        int DA[70][32], DE[70][32], DW[70][32];
-        int Ds0[64][32], Ds1[64][32];
-        int Dwcarry[64][32], DwCarry[64][32];
-        int Dsigma0[64][32], Dsigma1[64][32];
-        int Df1[64][32], Df2[64][32];
-        int DT[70][32];
-        int Dr0carry[64][32], Dr0Carry[64][32];
-        int DK[64][32];
-        int Dr1carry[64][32];
-        int Dr2carry[64][32], Dr2Carry[64][32];
-        for (int i = 0; i < rounds + 4; i++) {
-            g.cnf.newVars(DA[i], 32, "DA_" + to_string(i));
-            g.cnf.newVars(DE[i], 32, "DE_" + to_string(i));
-            g.cnf.xor2(DA[i], f.A[i], g.A[i], 32);
-            g.cnf.xor2(DE[i], f.E[i], g.E[i], 32);
-            if (i < rounds) {
-                g.cnf.newVars(DW[i], 32, "DW_" + to_string(i));
-                g.cnf.xor2(DW[i], f.w[i], g.w[i], 32);
-            }
+    assert(cfg_diff_desc);
+    /* Differential Path Variables */
+    int DA[70][32][4], DE[70][32][4], DW[70][32][4];
+    int Ds0[64][32][4], Ds1[64][32][4];
+    int Dwcarry[64][32][4], DwCarry[64][32][4];
+    int Dsigma0[64][32][4], Dsigma1[64][32][4];
+    int Df1[64][32][4], Df2[64][32][4];
+    int DT[70][32][4];
+    int Dr0carry[64][32][4], Dr0Carry[64][32][4];
+    int DK[64][32][4];
+    int Dr1carry[64][32][4];
+    int Dr2carry[64][32][4], Dr2Carry[64][32][4];
+    for (int i = 0; i < rounds + 4; i++) {
+        g.cnf.newDiff(DA[i], "DA_" + to_string(i));
+        g.cnf.newDiff(DE[i], "DE_" + to_string(i));
+        g.cnf.basic_rules(DA[i], f.A[i], g.A[i]);
+        g.cnf.basic_rules(DE[i], f.E[i], g.E[i]);
+        if (i < rounds) {
+            g.cnf.newDiff(DW[i], "DW_" + to_string(i));
+            g.cnf.basic_rules(DW[i], f.w[i], g.w[i]);
         }
+    }
 
-        // Support for built-in differential characters
-        vector<string> A, E, W;
-        if (cfg_diff_const_file == "HARD_CODED") {
-            retrieve_table(rounds, A, E, W);
-        } else {
-            FILE* diff_const_file = fopen(cfg_diff_const_file.c_str(), "r");
-            parse_diff_path(rounds, diff_const_file, A, E, W);
-            fclose(diff_const_file);
-        }
-
-        /* Fixing the differences from the initial path */
-        for (int i = -4; i < rounds; i++) {
-            if (i >= 0) 
-                for (int j = 0; j < 32; j++)
-                    fix_starting_point(g, W[i][31 - j], &DW[i][j], &f.w[i][j], &g.w[i][j]);
-
-            for (int j = 0; j < 32; j++) {
-                fix_starting_point(g, A[i + 4][31 - j], &DA[i + 4][j], &f.A[i + 4][j], &g.A[i + 4][j]);
-                fix_starting_point(g, E[i + 4][31 - j], &DE[i + 4][j], &f.E[i + 4][j], &g.E[i + 4][j]);
-            }
-        }
-
-        /* Differential propagation over message expansion */
-        for (int i = 16; i < rounds; i++) {
-            g.cnf.newVars(Ds0[i], 32, "Ds0_" + to_string(i));
-            g.cnf.newVars(Ds1[i], 32, "Ds1_" + to_string(i));
-            g.cnf.xor2(Ds0[i], f.s0[i], g.s0[i], 32);
-            g.cnf.xor2(Ds1[i], f.s1[i], g.s1[i], 32);
-
-            // s0 = (w[i-15] >>> 7) XOR (w[i-15] >>> 18) XOR (w[i-15] >> 3)
-            int r1[32], r2[32];
-            g.cnf.rotr(r1, DW[i - 15], 7);
-            g.cnf.rotr(r2, DW[i - 15], 18);
-            g.cnf.xor2(Ds0[i] + 29, r1 + 29, r2 + 29, 3);
-
-            g.cnf.xor3(Ds0[i], r1, r2, DW[i - 15] + 3, 29);
-            g.cnf.xor3Rules(Ds0[i], r1, r2, DW[i - 15] + 3, 29);
-
-            // s1 = (w[i-2] >>> 17) XOR (w[i-2] >>> 19) XOR (w[i-2] >> 10)
-            g.cnf.rotr(r1, DW[i - 2], 17);
-            g.cnf.rotr(r2, DW[i - 2], 19);
-            g.cnf.xor2(Ds1[i] + 22, r1 + 22, r2 + 22, 10);
-
-            g.cnf.xor3(Ds1[i], r1, r2, DW[i - 2] + 10, 22);
-            g.cnf.xor3Rules(Ds1[i], r1, r2, DW[i - 2] + 10, 22);
-
-            // Addition: w[i] = w[i-16] + s0 + w[i-7] + s1
-            g.cnf.newVars(DwCarry[i], 32, "Dadd.W.r1_" + to_string(i));
-            g.cnf.newVars(Dwcarry[i], 32, "Dadd.W.r0_" + to_string(i));
-            g.cnf.xor2(Dwcarry[i], f.wcarry[i], g.wcarry[i], 32);
-            g.cnf.xor2(DwCarry[i], f.wCarry[i], g.wCarry[i], 32);
-            g.cnf.diff_add(DW[i], DW[i - 16], Ds0[i], Dwcarry[i], DwCarry[i],
-                DW[i - 7], Ds1[i]);
-        }
-
-        /* Differential propagation for round function */
-        for (int i = 0; i < rounds; i++) {
-            // sigma0 = Sigma0(A[i+3])
-            // sigma1 = Sigma1(E[i+3])
-            g.cnf.newVars(Dsigma0[i], 32, "Dsigma0_" + to_string(i));
-            g.cnf.newVars(Dsigma1[i], 32, "Dsigma1_" + to_string(i));
-            g.cnf.xor2(Dsigma0[i], f.sigma0[i], g.sigma0[i], 32);
-            g.cnf.xor2(Dsigma1[i], f.sigma1[i], g.sigma1[i], 32);
-
-            g.Sigma0(Dsigma0[i], DA[i + 3]);
-            g.Sigma1(Dsigma1[i], DE[i + 3]);
-
-            // f1 = IF(E[i+3], E[i+2], E[i+1])
-            // f2 = MAJ(A[i+3], A[i+2], A[i+1])
-            g.cnf.newVars(Df1[i], 32, "Dif_" + to_string(i));
-            g.cnf.xor2(Df1[i], f.f1[i], g.f1[i], 32);
-
-            g.cnf.newVars(Df2[i], 32, "Dmaj_" + to_string(i));
-            g.cnf.xor2(Df2[i], f.f2[i], g.f2[i], 32);
-
-            for (int j = 0; j < 32; j++) {
-                g.cnf.addClause(
-                    { -DA[i + 3][j], -DA[i + 2][j], -DA[i + 1][j], Df2[i][j] }); // MAJ: xxx -> x
-                g.cnf.addClause(
-                    { DA[i + 3][j], DA[i + 2][j], DA[i + 1][j], -Df2[i][j] }); // MAJ: --- -> -
-                g.cnf.addClause(
-                    { DE[i + 3][j], -DE[i + 2][j], -DE[i + 1][j], Df1[i][j] }); // IF: -xx -> x
-                g.cnf.addClause(
-                    { DE[i + 3][j], DE[i + 2][j], DE[i + 1][j], -Df1[i][j] }); // IF: --- -> -
-            }
-            // Addition: T = E[i] + sigma1 + f1 + k[i] + w[i]
-            g.cnf.newVars(Dr0Carry[i], 32, "Dadd.T.r1_" + to_string(i));
-            g.cnf.newVars(Dr0carry[i], 32, "Dadd.T.r0_" + to_string(i));
-            g.cnf.newVars(DT[i], 32, "DT_" + to_string(i));
-            g.cnf.xor2(DT[i], f.T[i], g.T[i], 32);
-            g.cnf.xor2(Dr0carry[i], f.r0carry[i], g.r0carry[i], 32);
-            g.cnf.xor2(Dr0Carry[i], f.r0Carry[i], g.r0Carry[i], 32);
-            g.cnf.newVars(DK[i], 32, "DK_" + to_string(i));
-            g.cnf.fixedValue(DK[i], 0, 32);
-            g.cnf.diff_add(DT[i], DE[i], Dsigma1[i], Dr0carry[i], Dr0Carry[i], Df1[i], DK[i], DW[i]);
-
-            // Addition: E[i+4] = A[i] + T
-            g.cnf.newVars(Dr1carry[i], 32, "Dadd.E.r0_" + to_string(i));
-            g.cnf.xor2(Dr1carry[i], f.r1carry[i], g.r1carry[i], 32);
-            g.cnf.diff_add(DE[i + 4], DA[i], DT[i], Dr1carry[i]);
-
-            // Addition: A[i+4] = T + sigma0 + f2
-            g.cnf.newVars(Dr2Carry[i], 32, "Dadd.A.r1_" + to_string(i));
-            g.cnf.newVars(Dr2carry[i], 32, "Dadd.A.r0_" + to_string(i));
-            g.cnf.xor2(Dr2carry[i], f.r2carry[i], g.r2carry[i], 32);
-            g.cnf.xor2(Dr2Carry[i], f.r2Carry[i], g.r2Carry[i], 32);
-            g.cnf.diff_add(DA[i + 4], DT[i], Dsigma0[i], Dr2carry[i], Dr2Carry[i], Df2[i]);
-        }
+    // Support for built-in differential characters
+    vector<string> A, E, W;
+    if (cfg_diff_const_file == "HARD_CODED") {
+        retrieve_table(rounds, A, E, W);
     } else {
-        /* Inputs should be different */
-        if (cfg_rand_inp_diff) {
-            /* Force the inputs to differ at a random bit */
-            int idx = rand() % 512;
-            int r = idx / 32;
-            int s = idx % 32;
-            g.cnf.neq(&f.w[r][s], &g.w[r][s], 1);
-        } else {
-            /* Force the inputs to be different */
-            int tmp[16][32];
-            for (int i = 0; i < 16; i++) {
-                g.cnf.newVars(tmp[i], 32);
-                g.cnf.xor2(tmp[i], f.w[i], g.w[i]);
+        FILE* diff_const_file = fopen(cfg_diff_const_file.c_str(), "r");
+        parse_diff_path(rounds, diff_const_file, A, E, W);
+        fclose(diff_const_file);
+    }
+
+    /* Fixing the differences from the initial path */
+    for (int i = -4; i < rounds; i++) {
+        if (i >= 0)
+            for (int j = 0; j < 32; j++)
+                fix_starting_point(g, W[i][31 - j], DW[i][j], &f.w[i][j], &g.w[i][j]);
+
+        for (int j = 0; j < 32; j++) {
+            fix_starting_point(g, A[i + 4][31 - j], DA[i + 4][j], &f.A[i + 4][j], &g.A[i + 4][j]);
+            fix_starting_point(g, E[i + 4][31 - j], DE[i + 4][j], &f.E[i + 4][j], &g.E[i + 4][j]);
+        }
+    }
+
+    /* Differential propagation over message expansion */
+    for (int i = 16; i < rounds; i++) {
+        g.cnf.newDiff(Ds0[i], "Ds0_" + to_string(i));
+        g.cnf.newDiff(Ds1[i], "Ds1_" + to_string(i));
+        g.cnf.basic_rules(Ds0[i], f.s0[i], g.s0[i]);
+        g.cnf.basic_rules(Ds1[i], f.s1[i], g.s1[i]);
+
+        int xnor_diff[4]; // Equivalent to '-'
+        g.cnf.newVars(xnor_diff, 4, "xnor_diff");
+        g.cnf.fixedValue(&xnor_diff[0], 1, 1);
+        g.cnf.fixedValue(&xnor_diff[1], 0, 1);
+        g.cnf.fixedValue(&xnor_diff[1], 0, 1);
+        g.cnf.fixedValue(&xnor_diff[1], 1, 1);
+
+        // s0 = (w[i-15] >>> 7) XOR (w[i-15] >>> 18) XOR (w[i-15] >> 3)
+        {
+            int inputs[3][32][4];
+            for (int j = 0; j < 32; j++) {
+                // Perform rotations and shifts
+                for (int k = 0; k < 4; k++) {
+                    inputs[0][j][k] = DW[i - 15][(j + 7) % 32][k];
+                    inputs[1][j][k] = DW[i - 15][(j + 18) % 32][k];
+                    if (j < 29)
+                        inputs[2][j][k] = DW[i - 15][(j + 3) % 32][k];
+                    else
+                        inputs[2][j][k] = xnor_diff[k];
+                }
             }
-            vector<int> v;
-            for (int i = 0; i < 16; i++)
-                for (int j = 0; j < 32; j++)
-                    v.push_back(tmp[i][j]);
-            g.cnf.addClause(v);
+            // Add XOR3 difference rules
+            for (auto& entry : xor3_rules)
+                g.cnf.impose_rule({ &inputs[0], &inputs[1], &inputs[1] }, { &Ds0[i] }, entry);
+        }
+        // int r1[32], r2[32];
+        // g.cnf.rotr(r1, DW[i - 15], 7);
+        // g.cnf.rotr(r2, DW[i - 15], 18);
+        // g.cnf.xor2(Ds0[i] + 29, r1 + 29, r2 + 29, 3);
+
+        // g.cnf.xor3(Ds0[i], r1, r2, DW[i - 15] + 3, 29);
+        // g.cnf.xor3Rules(Ds0[i], r1, r2, DW[i - 15] + 3, 29);
+
+        // s1 = (w[i-2] >>> 17) XOR (w[i-2] >>> 19) XOR (w[i-2] >> 10)
+        {
+            int inputs[3][32][4];
+            for (int j = 0; j < 32; j++) {
+                // Perform rotations and shifts
+                for (int k = 0; k < 4; k++) {
+                    inputs[0][j][k] = DW[i - 2][(j + 17) % 32][k];
+                    inputs[1][j][k] = DW[i - 2][(j + 19) % 32][k];
+                    if (j < 22)
+                        inputs[2][j][k] = DW[i - 2][(j + 10) % 32][k];
+                    else
+                        inputs[2][j][k] = xnor_diff[k];
+                }
+            }
+            // Add XOR3 difference rules
+            for (auto& entry : xor3_rules)
+                g.cnf.impose_rule({ &inputs[0], &inputs[1], &inputs[1] }, { &Ds1[i] }, entry);
         }
 
-        /* Outputs should be the same */
-        for (int i = 0; i < 8; i++)
-            g.cnf.eq(f.out[i], g.out[i]);
+        // g.cnf.rotr(r1, DW[i - 2], 17);
+        // g.cnf.rotr(r2, DW[i - 2], 19);
+        // g.cnf.xor2(Ds1[i] + 22, r1 + 22, r2 + 22, 10);
+
+        // g.cnf.xor3(Ds1[i], r1, r2, DW[i - 2] + 10, 22);
+        // g.cnf.xor3Rules(Ds1[i], r1, r2, DW[i - 2] + 10, 22);
+
+        // Addition: w[i] = w[i-16] + s0 + w[i-7] + s1
+        g.cnf.newDiff(DwCarry[i], "Dadd.W.r1_" + to_string(i));
+        g.cnf.newDiff(Dwcarry[i], "Dadd.W.r0_" + to_string(i));
+        g.cnf.basic_rules(Dwcarry[i], f.wcarry[i], g.wcarry[i]);
+        g.cnf.basic_rules(DwCarry[i], f.wCarry[i], g.wCarry[i]);
+        // TODO: Add addition difference rules
+        // g.cnf.diff_add(DW[i], DW[i - 16], Ds0[i], Dwcarry[i], DwCarry[i],
+        // DW[i - 7], Ds1[i]);
+    }
+
+    /* Differential propagation for round function */
+    for (int i = 0; i < rounds; i++) {
+        // sigma0 = Sigma0(A[i+3])
+        // sigma1 = Sigma1(E[i+3])
+        g.cnf.newDiff(Dsigma0[i], "Dsigma0_" + to_string(i));
+        g.cnf.newDiff(Dsigma1[i], "Dsigma1_" + to_string(i));
+        g.cnf.basic_rules(Dsigma0[i], f.sigma0[i], g.sigma0[i]);
+        g.cnf.basic_rules(Dsigma1[i], f.sigma1[i], g.sigma1[i]);
+
+        // g.Sigma0(Dsigma0[i], DA[i + 3]);
+        // g.Sigma1(Dsigma1[i], DE[i + 3]);
+        // TODO: Encode involution; f(f(x)) = x, where x is a 4-bit difference
+
+        // f1 = IF(E[i+3], E[i+2], E[i+1])
+        // f2 = MAJ(A[i+3], A[i+2], A[i+1])
+        g.cnf.newDiff(Df1[i], "Dif_" + to_string(i));
+        g.cnf.basic_rules(Df1[i], f.f1[i], g.f1[i]);
+        // Add IF difference rules
+        for (auto& entry : ch_rules)
+            g.cnf.impose_rule({ &DE[i + 3], &DE[i + 2], &DE[i + 1] }, { &Df1[i] }, entry);
+
+        g.cnf.newDiff(Df2[i], "Dmaj_" + to_string(i));
+        g.cnf.basic_rules(Df2[i], f.f2[i], g.f2[i]);
+        // Add MAJ difference rules
+        for (auto& entry : maj_rules)
+            g.cnf.impose_rule({ &DA[i + 3], &DA[i + 2], &DA[i + 1] }, { &Df2[i] }, entry);
+
+        // Addition: T = E[i] + sigma1 + f1 + k[i] + w[i]
+        g.cnf.newDiff(Dr0Carry[i], "Dadd.T.r1_" + to_string(i));
+        g.cnf.newDiff(Dr0carry[i], "Dadd.T.r0_" + to_string(i));
+        g.cnf.newDiff(DT[i], "DT_" + to_string(i));
+        g.cnf.basic_rules(Dr0Carry[i], f.r0Carry[i], g.r0Carry[i]);
+        g.cnf.basic_rules(Dr0carry[i], f.r0carry[i], g.r0carry[i]);
+        g.cnf.basic_rules(DT[i], f.T[i], g.T[i]);
+        g.cnf.newDiff(DK[i], "DK_" + to_string(i));
+        // Fix the difference
+        g.cnf.fixedDiff(DK[i], { 1, 0, 0, 1 });
+
+        // TODO: Add addition difference rules
+        // g.cnf.diff_add(DT[i], DE[i], Dsigma1[i], Dr0carry[i], Dr0Carry[i], Df1[i], DK[i], DW[i]);
+
+        // Addition: E[i+4] = A[i] + T
+        g.cnf.newDiff(Dr1carry[i], "Dadd.E.r0_" + to_string(i));
+        g.cnf.basic_rules(Dr1carry[i], f.r1carry[i], g.r1carry[i]);
+        // TODO: Add addition difference rules
+        // g.cnf.diff_add(DE[i + 4], DA[i], DT[i], Dr1carry[i]);
+
+        // Addition: A[i+4] = T + sigma0 + f2
+        g.cnf.newDiff(Dr2Carry[i], "Dadd.A.r1_" + to_string(i));
+        g.cnf.newDiff(Dr2carry[i], "Dadd.A.r0_" + to_string(i));
+        g.cnf.basic_rules(Dr2carry[i], f.r2carry[i], g.r2carry[i]);
+        g.cnf.basic_rules(Dr2Carry[i], f.r2Carry[i], g.r2Carry[i]);
+        // TODO: Add addition difference rules
+        // g.cnf.diff_add(DA[i + 4], DT[i], Dsigma0[i], Dr2carry[i], Dr2Carry[i], Df2[i]);
     }
 
     g.cnf.dimacs(rounds);

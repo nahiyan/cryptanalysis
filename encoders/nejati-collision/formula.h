@@ -33,13 +33,14 @@ class Formula
         void varName(int *x, string name, int offset = 0);
 
         void newVars(int *x, int n = 32, string name = "");                     // Reserves new variable IDs for the bitvector 'x' of size 'n'
+        void newDiff(int x[32][4], string name = "");
         void newVarsD2(int *x, int n = 32, int m = 4, string name = "");
 
         void addClause(vector<int> v);
         void addClause(Clause c);
 
         void fixedValue(int *z, unsigned v, int n = 32);                        // Forces the bitvector 'z' to the value 'v'
-        void fixedValueD2(int *z, unsigned v, int n = 32, int m = 4);
+        void fixedDiff(int z[32][4], vector<int> value);
 
         int getVarCnt() { return varCnt; }
         int getClauseCnt() { return clauses.size(); }
@@ -80,7 +81,7 @@ class Formula
         void or2(int *z, int *x, int *y, int n = 32);                           // Two-input OR
         void eq(int *z, int *x, int n = 32);                                    // Equivalence
         void neq(int *z, int *x, int n = 32);                                   // Boolean negation
-        void diff4Bits(int* z, int* x, int* y, int n = 32);
+        void implication(vector<int> p, vector<int> q);
         void xor2(int *z, int *x, int *y, int n = 32);                          // Two-input XOR
         void xor3(int *z, int *x, int *y, int *t, int n = 32);                  // Three-input XOR
         void xor4(int *z, int *a, int *b, int *c, int *d, int n = 32);          // Four-input XOR

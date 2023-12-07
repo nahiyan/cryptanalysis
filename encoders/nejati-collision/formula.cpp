@@ -22,7 +22,8 @@ Formula::~Formula()
 {
 }
 
-void Formula::varName(int *x, string name, int offset) {
+void Formula::varName(int* x, string name, int offset)
+{
     varNames[name + "_" + formulaName] = x[0] + offset;
 }
 
@@ -34,6 +35,16 @@ void Formula::newVars(int* x, int n, string name)
     if (name != "")
         varNames[name + "_" + formulaName] = x[0];
     varCnt += n;
+}
+void Formula::newDiff(int x[32][4], string name)
+{
+    for (int i = 0; i < 32; i++)
+        for (int j = 0; j < 4; j++)
+            x[i][j] = ++varID;
+
+    if (name != "")
+        varNames[name + "_" + formulaName] = x[0][0];
+    varCnt += 32 * 4;
 }
 
 void Formula::addClause(vector<int> v)
@@ -66,6 +77,12 @@ void Formula::fixedValue(int* z, unsigned value, int n)
         int x = (value >> i) & 1 ? z[i] : -z[i];
         addClause({ x });
     }
+}
+void Formula::fixedDiff(int z[32][4], vector<int> value)
+{
+    for (int i = 0; i < 32; i++)
+        for (int j = 0; j < value.size(); j++)
+            z[i][j] = value[j];
 }
 
 void Formula::rotl(int* z, int* x, int p, int n)
@@ -102,6 +119,17 @@ void Formula::xor2(int* z, int* x, int* y, int n)
             addClause({ -z[i], x[i], y[i] });
         }
     }
+}
+
+// p -> q
+void Formula::implication(vector<int> p, vector<int> q)
+{
+    vector<int> clause;
+    for (auto& var : p)
+        clause.push_back(-var);
+    for (auto& var : q)
+        clause.push_back(var);
+    addClause(clause);
 }
 
 // TODO: Inject XOR rules if these are difference variables

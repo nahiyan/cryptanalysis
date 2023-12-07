@@ -19,7 +19,8 @@ class xFormula : public Formula {
 
     void comp(int z, int *v, int n, int t, int T = -1);
 
-    void xor3Rules(int* z, int* x, int* y, int* t, int n);
+    void impose_rule(vector<int(*)[32][4]> inputs, vector<int(*)[32][4]> outputs, pair<string, string> rule);
+    void basic_rules(int dx[32][4], int x[32], int x_[32]);
 };
 
 #endif
