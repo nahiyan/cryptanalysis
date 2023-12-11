@@ -365,7 +365,13 @@ void xFormula::xor7(int* z, int* a, int* b, int* c, int* d, int* e, int* f, int*
 void xFormula::basic_rules(int dx[32][4], int x[32], int x_[32])
 {
     for (int i = 0; i < 32; i++) {
-        // '-' -> x <-> x'
+        // Define the 4-bit differences in terms of each difference bit
+        addClause({x[i], x_[i], dx[i][0]});
+        addClause({-x[i], x_[i], dx[i][1]});
+        addClause({x[i], -x_[i], dx[i][2]});
+        addClause({-x[i], -x_[i], dx[i][3]});
+
+        // '-' -> x xnor x'
         addClause({ -dx[i][0], dx[i][1], dx[i][2], -dx[i][3], -x[i], x_[i] });
         addClause({ -dx[i][0], dx[i][1], dx[i][2], -dx[i][3], x[i], -x_[i] });
 

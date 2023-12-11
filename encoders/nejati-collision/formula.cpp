@@ -80,9 +80,12 @@ void Formula::fixedValue(int* z, unsigned value, int n)
 }
 void Formula::fixedDiff(int z[32][4], vector<int> value)
 {
-    for (int i = 0; i < 32; i++)
+    for (int i = 0; i < 32; i++) {
+        vector<int> clause;
         for (int j = 0; j < value.size(); j++)
-            z[i][j] = value[j];
+            clause.push_back((value[j] == 1 ? -1 : 1) * z[i][j]);
+        addClause(clause);
+    }
 }
 
 void Formula::rotl(int* z, int* x, int p, int n)

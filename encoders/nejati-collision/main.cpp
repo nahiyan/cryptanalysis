@@ -78,8 +78,8 @@ void fix_starting_point(SHA256& block, char& diff, int* dx, int* x, int* x_)
         formula.fixedValue(dx + 3, 0, 1);
         break;
     case 'n':
-        formula.fixedValue(dx, 1, 1);
         formula.fixedValue(x, 0, 1);
+        formula.fixedValue(x_, 1, 1);
         formula.fixedValue(dx + 0, 0, 1);
         formula.fixedValue(dx + 1, 1, 1);
         formula.fixedValue(dx + 2, 1, 1);
@@ -186,8 +186,8 @@ void collision(int rounds)
         g.cnf.newVars(xnor_diff, 4, "xnor_diff");
         g.cnf.fixedValue(&xnor_diff[0], 1, 1);
         g.cnf.fixedValue(&xnor_diff[1], 0, 1);
-        g.cnf.fixedValue(&xnor_diff[1], 0, 1);
-        g.cnf.fixedValue(&xnor_diff[1], 1, 1);
+        g.cnf.fixedValue(&xnor_diff[2], 0, 1);
+        g.cnf.fixedValue(&xnor_diff[3], 1, 1);
 
         // s0 = (w[i-15] >>> 7) XOR (w[i-15] >>> 18) XOR (w[i-15] >> 3)
         {
@@ -205,7 +205,7 @@ void collision(int rounds)
             }
             // Add XOR3 difference rules
             for (auto& entry : xor3_rules)
-                g.cnf.impose_rule({ &inputs[0], &inputs[1], &inputs[1] }, { &Ds0[i] }, entry);
+                g.cnf.impose_rule({ &inputs[0], &inputs[1], &inputs[2] }, { &Ds0[i] }, entry);
         }
         // int r1[32], r2[32];
         // g.cnf.rotr(r1, DW[i - 15], 7);
@@ -231,7 +231,7 @@ void collision(int rounds)
             }
             // Add XOR3 difference rules
             for (auto& entry : xor3_rules)
-                g.cnf.impose_rule({ &inputs[0], &inputs[1], &inputs[1] }, { &Ds1[i] }, entry);
+                g.cnf.impose_rule({ &inputs[0], &inputs[1], &inputs[2] }, { &Ds1[i] }, entry);
         }
 
         // g.cnf.rotr(r1, DW[i - 2], 17);
@@ -261,22 +261,49 @@ void collision(int rounds)
         g.cnf.basic_rules(Dsigma1[i], f.sigma1[i], g.sigma1[i]);
 
         // g.Sigma0(Dsigma0[i], DA[i + 3]);
+        {
+            int inputs[3][32][4];
+            for (int j = 0; j < 32; j++) {
+                // Perform rotations
+                for (int k = 0; k < 4; k++) {
+                    inputs[0][j][k] = DA[i + 3][(j + 2) % 32][k];
+                    inputs[1][j][k] = DA[i + 3][(j + 13) % 32][k];
+                    inputs[2][j][k] = DA[i + 3][(j + 22) % 32][k];
+                }
+            }
+            // Add XOR3 difference rules
+            for (auto& entry : xor3_rules)
+                g.cnf.impose_rule({ &inputs[0], &inputs[1], &inputs[2] }, { &Dsigma0[i] }, entry);
+        }
         // g.Sigma1(Dsigma1[i], DE[i + 3]);
-        // TODO: Encode involution; f(f(x)) = x, where x is a 4-bit difference
+        {
+            int inputs[3][32][4];
+            for (int j = 0; j < 32; j++) {
+                // Perform rotations
+                for (int k = 0; k < 4; k++) {
+                    inputs[0][j][k] = DE[i + 3][(j + 6) % 32][k];
+                    inputs[1][j][k] = DE[i + 3][(j + 11) % 32][k];
+                    inputs[2][j][k] = DE[i + 3][(j + 25) % 32][k];
+                }
+            }
+            // Add XOR3 difference rules
+            for (auto& entry : xor3_rules)
+                g.cnf.impose_rule({ &inputs[0], &inputs[1], &inputs[2] }, { &Dsigma1[i] }, entry);
+        }
 
         // f1 = IF(E[i+3], E[i+2], E[i+1])
         // f2 = MAJ(A[i+3], A[i+2], A[i+1])
         g.cnf.newDiff(Df1[i], "Dif_" + to_string(i));
         g.cnf.basic_rules(Df1[i], f.f1[i], g.f1[i]);
         // Add IF difference rules
-        for (auto& entry : ch_rules)
-            g.cnf.impose_rule({ &DE[i + 3], &DE[i + 2], &DE[i + 1] }, { &Df1[i] }, entry);
+        // for (auto& entry : ch_rules)
+        //     g.cnf.impose_rule({ &DE[i + 3], &DE[i + 2], &DE[i + 1] }, { &Df1[i] }, entry);
 
         g.cnf.newDiff(Df2[i], "Dmaj_" + to_string(i));
         g.cnf.basic_rules(Df2[i], f.f2[i], g.f2[i]);
         // Add MAJ difference rules
-        for (auto& entry : maj_rules)
-            g.cnf.impose_rule({ &DA[i + 3], &DA[i + 2], &DA[i + 1] }, { &Df2[i] }, entry);
+        // for (auto& entry : maj_rules)
+        //     g.cnf.impose_rule({ &DA[i + 3], &DA[i + 2], &DA[i + 1] }, { &Df2[i] }, entry);
 
         // Addition: T = E[i] + sigma1 + f1 + k[i] + w[i]
         g.cnf.newDiff(Dr0Carry[i], "Dadd.T.r1_" + to_string(i));
