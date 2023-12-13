@@ -147,6 +147,7 @@ def brute_force(vars_colwise, constant, min_gt=-1):
             else:
                 consts.append({"value": var[0], "order": order})
 
+
     n = len(vars)
     solutions = []
     for i in range(pow(2, n)):
@@ -259,6 +260,12 @@ def derive_words(words, adj_constant, adjusted=True):
 
     # Generate variables
     vars_colwise = gen_variables(words)
+    vars_count = 0
+    for col in vars_colwise:
+        for c in col:
+            if c != [0, 1]:
+                continue
+            vars_count += 1
 
     if not adjusted:
         for word in words:
@@ -284,6 +291,9 @@ def derive_words(words, adj_constant, adjusted=True):
         stash["bits"].append(bit)
 
         # print(stash["vars"], stash["bits"])
+
+        # if vars_count > 20:
+        #     break
 
         # Check if it overflows
         does_overflow = _does_overflow(stash)
@@ -317,8 +327,6 @@ def derive_words(words, adj_constant, adjusted=True):
     var_index = 0
     for s_i, (vars_colwise_, bits) in enumerate(segments):
         sum_ = sum([bit * pow(2, i) for i, bit in enumerate(bits)])
-        # is_last = s_i == len(segments) - 1
-
         if s_i in overflow_brute_force_indices:
             min_gt = sum([pow(2, i) for i in range(len(bits))])
             propagated_vars = brute_force(vars_colwise_, -1, min_gt=min_gt)
@@ -337,6 +345,12 @@ def derive_words(words, adj_constant, adjusted=True):
                 var_index += 1
     # print(len(vars_colwise), len(words[0]), words, adj_constant)
     # print(vars_values)
+
+    # Fill in missing values
+    for i in range(len(vars_values), vars_count):
+        vars_values[var_index] = -1
+        var_index += 1;
+    assert (len(vars_values) == vars_count);
 
     # Update the words with the derived bits
     derived_words = apply_grounding(words, vars_colwise, vars_values)
