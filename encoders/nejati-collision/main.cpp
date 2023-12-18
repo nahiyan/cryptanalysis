@@ -81,34 +81,34 @@ void fix_starting_point(SHA256& block, char& diff, int* dx, int* x, int* x_)
         formula.fixedValue(dx + 2, 1, 1);
         formula.fixedValue(dx + 3, 0, 1);
         break;
+    case '0':
+        formula.fixedValue(x, 0, 1);
+        formula.fixedValue(x_, 0, 1);
+        formula.fixedValue(dx + 0, 1, 1);
+        formula.fixedValue(dx + 1, 0, 1);
+        formula.fixedValue(dx + 2, 0, 1);
+        formula.fixedValue(dx + 3, 0, 1);
+        break;
     case 'u':
         formula.fixedValue(x, 1, 1);
         formula.fixedValue(x_, 0, 1);
         formula.fixedValue(dx + 0, 0, 1);
         formula.fixedValue(dx + 1, 1, 1);
-        formula.fixedValue(dx + 2, 1, 1);
+        formula.fixedValue(dx + 2, 0, 1);
         formula.fixedValue(dx + 3, 0, 1);
         break;
     case 'n':
         formula.fixedValue(x, 0, 1);
         formula.fixedValue(x_, 1, 1);
         formula.fixedValue(dx + 0, 0, 1);
-        formula.fixedValue(dx + 1, 1, 1);
+        formula.fixedValue(dx + 1, 0, 1);
         formula.fixedValue(dx + 2, 1, 1);
         formula.fixedValue(dx + 3, 0, 1);
         break;
     case '1':
         formula.fixedValue(x, 1, 1);
         formula.fixedValue(x_, 1, 1);
-        formula.fixedValue(dx + 0, 1, 1);
-        formula.fixedValue(dx + 1, 0, 1);
-        formula.fixedValue(dx + 2, 0, 1);
-        formula.fixedValue(dx + 3, 1, 1);
-        break;
-    case '0':
-        formula.fixedValue(x, 0, 1);
-        formula.fixedValue(x_, 0, 1);
-        formula.fixedValue(dx + 0, 1, 1);
+        formula.fixedValue(dx + 0, 0, 1);
         formula.fixedValue(dx + 1, 0, 1);
         formula.fixedValue(dx + 2, 0, 1);
         formula.fixedValue(dx + 3, 1, 1);
