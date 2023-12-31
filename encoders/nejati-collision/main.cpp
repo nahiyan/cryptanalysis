@@ -1,6 +1,7 @@
 #include "diff-parser.h"
 #include "retrieve_table.h"
 #include "sha256x.h"
+#include "xformula.h"
 #include <assert.h>
 #include <ctime>
 #include <fstream>
@@ -258,9 +259,7 @@ void collision(int rounds)
         g.cnf.newDiff(Dwcarry[i], "Dadd.W.r0_" + to_string(i));
         g.cnf.basic_rules(Dwcarry[i], f.wcarry[i], g.wcarry[i]);
         g.cnf.basic_rules(DwCarry[i], f.wCarry[i], g.wCarry[i]);
-        // TODO: Add addition difference rules
-        // g.cnf.diff_add(prop_rules, DW[i], DW[i - 16], Ds0[i], Dwcarry[i], DwCarry[i],
-        //     DW[i - 7], Ds1[i]);
+        g.cnf.diff_add(prop_rules, DW[i], DW[i - 16], Ds0[i], Dwcarry[i], DwCarry[i], DW[i - 7], Ds1[i]);
     }
 
     /* Differential propagation for round function */
@@ -356,22 +355,19 @@ void collision(int rounds)
         // Fix the difference
         g.cnf.fixedDiff(DK[i], { 1, 0, 0, 1 });
 
-        // TODO: Add addition difference rules
-        // g.cnf.diff_add(DT[i], DE[i], Dsigma1[i], Dr0carry[i], Dr0Carry[i], Df1[i], DK[i], DW[i]);
+        g.cnf.diff_add(prop_rules, DT[i], DE[i], Dsigma1[i], Dr0carry[i], Dr0Carry[i], Df1[i], DK[i], DW[i]);
 
         // Addition: E[i+4] = A[i] + T
         g.cnf.newDiff(Dr1carry[i], "Dadd.E.r0_" + to_string(i));
         g.cnf.basic_rules(Dr1carry[i], f.r1carry[i], g.r1carry[i]);
-        // TODO: Add addition difference rules
-        // g.cnf.diff_add(DE[i + 4], DA[i], DT[i], Dr1carry[i]);
+        g.cnf.diff_add(prop_rules, DE[i + 4], DA[i], DT[i], Dr1carry[i]);
 
         // Addition: A[i+4] = T + sigma0 + f2
         g.cnf.newDiff(Dr2Carry[i], "Dadd.A.r1_" + to_string(i));
         g.cnf.newDiff(Dr2carry[i], "Dadd.A.r0_" + to_string(i));
         g.cnf.basic_rules(Dr2carry[i], f.r2carry[i], g.r2carry[i]);
         g.cnf.basic_rules(Dr2Carry[i], f.r2Carry[i], g.r2Carry[i]);
-        // TODO: Add addition difference rules
-        // g.cnf.diff_add(DA[i + 4], DT[i], Dsigma0[i], Dr2carry[i], Dr2Carry[i], Df2[i]);
+        g.cnf.diff_add(prop_rules, DA[i + 4], DT[i], Dsigma0[i], Dr2carry[i], Dr2Carry[i], Df2[i]);
     }
 
     g.cnf.dimacs(rounds);

@@ -49,6 +49,7 @@ void Formula::newDiff(int x[32][4], string name)
 
 void Formula::addClause(vector<int> v)
 {
+    assert(v.size() > 0);
     if (any_of(v.begin(), v.end(), [](int x) { return x == 0; })) {
         fprintf(stderr, "bad vector clause:");
         for (int x : v)
@@ -61,6 +62,7 @@ void Formula::addClause(vector<int> v)
 
 void Formula::addClause(Clause c)
 {
+    assert(c.lits.size() > 0);
     if (any_of(c.lits.begin(), c.lits.end(), [](int x) { return x == 0; })) {
         fprintf(stderr, "bad clause:");
         for (int x : c.lits)
