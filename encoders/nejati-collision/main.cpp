@@ -12,6 +12,8 @@
 #include <unistd.h>
 #include <unordered_map>
 
+#define add_rules true
+
 using namespace std;
 
 /* config options */
@@ -195,12 +197,14 @@ void collision(int rounds)
         g.cnf.basic_rules(Ds0[i], f.s0[i], g.s0[i]);
         g.cnf.basic_rules(Ds1[i], f.s1[i], g.s1[i]);
 
-        int xnor_diff[4]; // Equivalent to '-'
-        g.cnf.newVars(xnor_diff, 4, "xnor_diff");
-        g.cnf.fixedValue(&xnor_diff[0], 1, 1);
-        g.cnf.fixedValue(&xnor_diff[1], 0, 1);
-        g.cnf.fixedValue(&xnor_diff[2], 0, 1);
-        g.cnf.fixedValue(&xnor_diff[3], 1, 1);
+        int zero[6]; // GC '0'
+        g.cnf.newVars(zero, 6, "zero");
+        g.cnf.fixedValue(&zero[0], 0, 1);
+        g.cnf.fixedValue(&zero[1], 0, 1);
+        g.cnf.fixedValue(&zero[2], 1, 1);
+        g.cnf.fixedValue(&zero[3], 0, 1);
+        g.cnf.fixedValue(&zero[4], 0, 1);
+        g.cnf.fixedValue(&zero[5], 0, 1);
 
         // s0 = (w[i-15] >>> 7) XOR (w[i-15] >>> 18) XOR (w[i-15] >> 3)
         {
@@ -213,7 +217,7 @@ void collision(int rounds)
                     if (j < 29)
                         inputs[2][j][k] = DW[i - 15][(j + 3) % 32][k];
                     else
-                        inputs[2][j][k] = xnor_diff[k];
+                        inputs[2][j][k] = zero[2 + k];
                 }
             }
             // Add XOR3 difference rules
@@ -239,7 +243,7 @@ void collision(int rounds)
                     if (j < 22)
                         inputs[2][j][k] = DW[i - 2][(j + 10) % 32][k];
                     else
-                        inputs[2][j][k] = xnor_diff[k];
+                        inputs[2][j][k] = zero[2 + k];
                 }
             }
             // Add XOR3 difference rules
@@ -354,7 +358,6 @@ void collision(int rounds)
         g.cnf.newDiff(DK[i], "DK_" + to_string(i));
         // Fix the difference
         g.cnf.fixedDiff(DK[i], { 1, 0, 0, 1 });
-
         g.cnf.diff_add(prop_rules, DT[i], DE[i], Dsigma1[i], Dr0carry[i], Dr0Carry[i], Df1[i], DK[i], DW[i]);
 
         // Addition: E[i+4] = A[i] + T
