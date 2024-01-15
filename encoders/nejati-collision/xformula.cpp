@@ -122,14 +122,10 @@ void xFormula::comp(Rules& rules, int z[4], int v[10][4], int n, int t[4], int T
         for (char& c : lhs) {
             assert(c == '-' || c == 'x');
             if (c == '-') {
-                // antecedent.push_back(-v[i][0]);
                 antecedent.push_back(v[i][1]);
                 antecedent.push_back(v[i][2]);
-                // antecedent.push_back(-v[i][3]);
             } else if (c == 'x') {
                 antecedent.push_back(v[i][0]);
-                // antecedent.push_back(-v[i][1]);
-                // antecedent.push_back(-v[i][2]);
                 antecedent.push_back(v[i][3]);
             }
             i++;
@@ -247,18 +243,10 @@ void xFormula::basic_rules(int dx[32][4], int x[32], int x_[32])
         addClause({ -x_[i], -dx[i][1] });
 
         // * '-' -> x xnor x'
-        // addClause({ -dx[i][0], dx[i][1], dx[i][2], -dx[i][3], -x[i], x_[i] });
-        // addClause({ -dx[i][0], dx[i][1], dx[i][2], -dx[i][3], x[i], -x_[i] });
-
-        // If it can't be 'x' -> x xnor x'
         addClause({ dx[i][1], dx[i][2], -x[i], x_[i] });
         addClause({ dx[i][1], dx[i][2], x[i], -x_[i] });
 
         // * 'x' -> x xor x'
-        // addClause({ dx[i][0], -dx[i][1], -dx[i][2], dx[i][3], -x[i], -x_[i] });
-        // addClause({ dx[i][0], -dx[i][1], -dx[i][2], dx[i][3], x[i], x_[i] });
-
-        // If it can't be '-' -> x xor x'
         addClause({ dx[i][0], dx[i][3], -x[i], -x_[i] });
         addClause({ dx[i][0], dx[i][3], x[i], x_[i] });
 
@@ -279,25 +267,17 @@ void xFormula::basic_rules(int dx[32][4], int x[32], int x_[32])
         addClause({ dx[i][0], dx[i][1], dx[i][2], x_[i] });
 
         // * '3' -> ~x'
-        // addClause({ -dx[i][0], -dx[i][1], dx[i][2], dx[i][3], -x_[i] });
-
         // If it can't be 'n' and '1' -> ~x'
         addClause({ dx[i][2], dx[i][3], -x_[i] });
 
         // * '5' -> ~x
-        // addClause({ -dx[i][0], dx[i][1], -dx[i][2], dx[i][3], -x[i] });
-
         // If it can't be 'u' and '1' -> ~x
         addClause({ dx[i][1], dx[i][3], -x[i] });
 
         // * '7' -> ~x or ~x'
-        // addClause({ -dx[i][0], -dx[i][1], -dx[i][2], dx[i][3], -x[i], -x_[i] });
-
         addClause({ dx[i][3], -x[i], -x_[i] });
 
         // * 'A' -> x
-        // addClause({ dx[i][0], -dx[i][1], dx[i][2], -dx[i][3], x[i] });
-
         // If it can't be '0' and 'n' -> x
         addClause({ dx[i][0], dx[i][1], x[i] });
 
@@ -305,8 +285,6 @@ void xFormula::basic_rules(int dx[32][4], int x[32], int x_[32])
         addClause({ dx[i][2], x[i], -x_[i] });
 
         // * 'C' -> x'
-        // addClause({ dx[i][0], dx[i][1], -dx[i][2], -dx[i][3], x_[i] });
-
         // If it can't be '0' and 'u' -> x'
         addClause({ dx[i][0], dx[i][1], x_[i] });
 
