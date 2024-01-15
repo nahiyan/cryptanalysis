@@ -370,7 +370,7 @@ void collision(int rounds)
         g.cnf.basic_rules(Dr0carry[i], f.r0carry[i], g.r0carry[i]);
         g.cnf.basic_rules(DT[i], f.T[i], g.T[i]);
         g.cnf.newDiff(DK[i], "DK_" + to_string(i));
-        // Fix the difference
+        // Fix the differences
         for (int j = 0; j < 32; j++) {
             bool is_true = rnd_const[i] >> j & 1;
             if (is_true) {

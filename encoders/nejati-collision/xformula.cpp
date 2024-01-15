@@ -122,10 +122,10 @@ void xFormula::comp(Rules& rules, int z[4], int v[10][4], int n, int t[4], int T
         for (char& c : lhs) {
             assert(c == '-' || c == 'x');
             if (c == '-') {
-                // antecedent.push_back(-v[i][0]);
-                antecedent.push_back(v[i][1]);
-                antecedent.push_back(v[i][2]);
-                // antecedent.push_back(-v[i][3]);
+                antecedent.push_back(-v[i][0]);
+                // antecedent.push_back(v[i][1]);
+                // antecedent.push_back(v[i][2]);
+                antecedent.push_back(-v[i][3]);
             } else if (c == 'x') {
                 // antecedent.push_back(v[i][0]);
                 antecedent.push_back(-v[i][1]);
