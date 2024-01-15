@@ -155,8 +155,8 @@ void xFormula::comp(Rules& rules, int z[4], int v[10][4], int n, int t[4], int T
 
             for (int j = 0; j < 4; j++) {
                 vector<int> clause(antecedent);
-                // if (values[j] == 1)
-                //     continue;
+                if (values[j] == 1)
+                    continue;
                 clause.push_back((values[j] == 1 ? 1 : -1) * diff[j]);
                 addClause(clause);
             }
@@ -205,68 +205,123 @@ void xFormula::diff_add(Rules& rules, int z[32][4], int a[32][4], int b[32][4], 
 void xFormula::basic_rules(int dx[32][4], int x[32], int x_[32])
 {
     for (int i = 0; i < 32; i++) {
-        // Define the 4-bit differences in terms of each difference bit
-        addClause({ x[i], x_[i], dx[i][0] }); // (0, 0); '0'
-        addClause({ -x[i], x_[i], dx[i][1] }); // (1, 0); 'u'
-        addClause({ x[i], -x_[i], dx[i][2] }); // (0, 1); 'n'
-        addClause({ -x[i], -x_[i], dx[i][3] }); // (1, 1); '1'
+        // * (0, 0) -> '0'
+        addClause({ x[i], x_[i], dx[i][0] });
+        addClause({ x[i], x_[i], -dx[i][1] });
+        addClause({ x[i], x_[i], -dx[i][2] });
+        addClause({ x[i], x_[i], -dx[i][3] });
 
-        // '-' -> x xnor x'
+        // * (1, 0) -> 'u'
+        addClause({ -x[i], x_[i], -dx[i][0] });
+        addClause({ -x[i], x_[i], dx[i][1] });
+        addClause({ -x[i], x_[i], -dx[i][2] });
+        addClause({ -x[i], x_[i], -dx[i][3] });
+
+        // * (0, 1) -> 'n'
+        addClause({ x[i], -x_[i], -dx[i][0] });
+        addClause({ x[i], -x_[i], -dx[i][1] });
+        addClause({ x[i], -x_[i], dx[i][2] });
+        addClause({ x[i], -x_[i], -dx[i][3] });
+
+        // * (1, 1) -> '1'
+        addClause({ -x[i], -x_[i], -dx[i][0] });
+        addClause({ -x[i], -x_[i], -dx[i][1] });
+        addClause({ -x[i], -x_[i], -dx[i][2] });
+        addClause({ -x[i], -x_[i], dx[i][3] });
+
+        // * (0, ?) -> can't be 'u' or '1'
+        addClause({ x[i], -dx[i][1] });
+        addClause({ x[i], -dx[i][3] });
+
+        // * (1, ?) -> can't be '0' or 'n'
+        addClause({ -x[i], -dx[i][0] });
+        addClause({ -x[i], -dx[i][2] });
+
+        // * (?, 0) -> can't be 'n' or '1'
+        addClause({ x_[i], -dx[i][2] });
+        addClause({ x_[i], -dx[i][3] });
+
+        // * (?, 1) -> can't be '0' or 'u'
+        addClause({ -x_[i], -dx[i][0] });
+        addClause({ -x_[i], -dx[i][1] });
+
+        // * '-' -> x xnor x'
         addClause({ -dx[i][0], dx[i][1], dx[i][2], -dx[i][3], -x[i], x_[i] });
         addClause({ -dx[i][0], dx[i][1], dx[i][2], -dx[i][3], x[i], -x_[i] });
 
-        // 'x' -> x xor x'
+        // If it can't be 'x' -> x xnor x'
+        addClause({ dx[i][1], dx[i][2], -x[i], x_[i] });
+        addClause({ dx[i][1], dx[i][2], x[i], -x_[i] });
+
+        // * 'x' -> x xor x'
         addClause({ dx[i][0], -dx[i][1], -dx[i][2], dx[i][3], -x[i], -x_[i] });
         addClause({ dx[i][0], -dx[i][1], -dx[i][2], dx[i][3], x[i], x_[i] });
 
-        // '0' -> ~x and ~x'
+        // If it can't be '-' -> x xor x'
+        addClause({ dx[i][0], dx[i][3], -x[i], -x_[i] });
+        addClause({ dx[i][0], dx[i][3], x[i], x_[i] });
+
+        // * '0' -> ~x and ~x'
         addClause({ -dx[i][0], dx[i][1], dx[i][2], dx[i][3], -x[i] });
         addClause({ -dx[i][0], dx[i][1], dx[i][2], dx[i][3], -x_[i] });
 
-        // 'u' -> x and ~x'
+        // * 'u' -> x and ~x'
         addClause({ dx[i][0], -dx[i][1], dx[i][2], dx[i][3], x[i] });
         addClause({ dx[i][0], -dx[i][1], dx[i][2], dx[i][3], -x_[i] });
 
-        // 'n' -> ~x and x'
+        // * 'n' -> ~x and x'
         addClause({ dx[i][0], dx[i][1], -dx[i][2], dx[i][3], -x[i] });
         addClause({ dx[i][0], dx[i][1], -dx[i][2], dx[i][3], x_[i] });
 
-        // '1' -> x and x'
+        // * '1' -> x and x'
         addClause({ dx[i][0], dx[i][1], dx[i][2], -dx[i][3], x[i] });
         addClause({ dx[i][0], dx[i][1], dx[i][2], -dx[i][3], x_[i] });
 
-        // '3' -> ~x'
-        addClause({ -dx[i][0], -dx[i][1], dx[i][2], dx[i][3], -x_[i] });
+        // * '3' -> ~x'
+        // addClause({ -dx[i][0], -dx[i][1], dx[i][2], dx[i][3], -x_[i] });
 
-        // '5 -> ~x
-        addClause({ -dx[i][0], dx[i][1], -dx[i][2], dx[i][3], -x[i] });
+        // If it can't be 'n' and '1' -> ~x'
+        addClause({ dx[i][2], dx[i][3], -x_[i] });
 
-        // 'A' -> x
+        // * '5' -> ~x
+        // addClause({ -dx[i][0], dx[i][1], -dx[i][2], dx[i][3], -x[i] });
+
+        // If it can't be 'u' and '1' -> ~x
+        addClause({ dx[i][1], dx[i][3], -x[i] });
+
+        // * '7' -> ~x or ~x'
+        // addClause({ -dx[i][0], -dx[i][1], -dx[i][2], dx[i][3], -x[i], -x_[i] });
+
+        addClause({ dx[i][3], -x[i], -x_[i] });
+
+        // * 'A' -> x
         addClause({ dx[i][0], -dx[i][1], dx[i][2], -dx[i][3], x[i] });
 
-        // 'C' -> x'
-        addClause({ dx[i][0], dx[i][1], -dx[i][2], -dx[i][3], x_[i] });
+        // If it can't be '0' and 'n' -> x
+        addClause({ dx[i][0], dx[i][1], x[i] });
 
-        // '7' -> ~x or ~x'
-        addClause({ -dx[i][0], -dx[i][1], -dx[i][2], dx[i][3], -x[i], -x_[i] });
-
-        // 'B' -> x or ~x'
+        // * 'B' -> x or ~x'
         addClause({ -dx[i][0], -dx[i][1], dx[i][2], -dx[i][3], x[i], -x_[i] });
 
-        // 'D' -> ~x or x'
+        // * 'C' -> x'
+        addClause({ dx[i][0], dx[i][1], -dx[i][2], -dx[i][3], x_[i] });
+
+        // If it can't be '0' and 'u' -> x'
+        addClause({ dx[i][0], dx[i][1], x_[i] });
+
+        // * 'D' -> ~x or x'
         addClause({ -dx[i][0], dx[i][1], -dx[i][2], -dx[i][3], -x[i], x_[i] });
 
-        // 'E' -> x or x'
+        // * 'E' -> x or x'
         addClause({ dx[i][0], -dx[i][1], -dx[i][2], -dx[i][3], x[i], x_[i] });
 
-        // Can't be a '#'
+        // * Can't be a '#'
         addClause({ dx[i][0], dx[i][1], dx[i][2], dx[i][3] });
     }
 }
 
 void xFormula::impose_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32][4]> outputs, pair<string, string> rule)
 {
-
     string inputs_diff = rule.first, outputs_diff = rule.second;
 
     for (int i = 0; i < 32; i++) {
@@ -277,22 +332,18 @@ void xFormula::impose_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32][4]>
                 antecedent.push_back((values[k] == 1 ? -1 : 1) * (*inputs[x])[i][k]);
         }
 
-        vector<vector<int>> clauses;
         for (int x = 0; x < outputs.size(); x++) {
             vector<int> values = get_values(outputs_diff[x]);
             if (values.size() == 0)
                 continue;
 
             for (int k = 0; k < 4; k++) {
-                // if (values[k] == 1)
-                //     continue;
+                if (values[k] == 1)
+                    continue;
                 vector<int> clause(antecedent);
                 clause.push_back((values[k] == 1 ? 1 : -1) * (*outputs[x])[i][k]);
-                clauses.push_back(clause);
+                addClause(clause);
             }
         }
-
-        for (auto& clause : clauses)
-            addClause(clause);
     }
 }
