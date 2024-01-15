@@ -98,21 +98,21 @@ void xFormula::comp(Rules& rules, int z[4], int v[10][4], int n, int t[4], int T
     if (n > 3)
         assert(T != NULL);
 
-    unordered_map<string, string>* rules_;
+    unordered_map<string, string>* add_rules;
     if (n == 2)
-        rules_ = &rules.add2;
+        add_rules = &rules.add2;
     else if (n == 3)
-        rules_ = &rules.add3;
+        add_rules = &rules.add3;
     else if (n == 4)
-        rules_ = &rules.add4;
+        add_rules = &rules.add4;
     else if (n == 5)
-        rules_ = &rules.add5;
+        add_rules = &rules.add5;
     else if (n == 6)
-        rules_ = &rules.add6;
+        add_rules = &rules.add6;
     else if (n == 7)
-        rules_ = &rules.add7;
+        add_rules = &rules.add7;
 
-    for (auto& differential : *rules_) {
+    for (auto& differential : *add_rules) {
         string lhs = differential.first, rhs = differential.second;
         vector<int> antecedent;
         int i = 0;
