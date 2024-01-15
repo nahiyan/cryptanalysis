@@ -8,7 +8,6 @@ inline vector<int> get_values(char diff)
     case '?':
         // ! IMPORTANT: It may be beneficial to not enforce '?'
         return {};
-        // return { 1, 1, 1, 1 };
         break;
     case '-':
         return { 1, 0, 0, 1 };
@@ -52,8 +51,6 @@ inline vector<int> get_values(char diff)
     case 'E':
         return { 0, 1, 1, 1 };
         break;
-    default:
-        return { 0, 0, 0, 0 };
     }
 };
 
