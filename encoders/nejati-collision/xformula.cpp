@@ -276,7 +276,7 @@ void xFormula::basic_rules(int dx[32][4], int x[32], int x_[32])
 
         // * 'A' -> x
         // If it can't be '0' and 'n' -> x
-        addClause({ dx[i][0], dx[i][1], x[i] });
+        addClause({ dx[i][0], dx[i][2], x[i] });
 
         // * 'B' -> x or ~x'
         addClause({ dx[i][2], x[i], -x_[i] });
