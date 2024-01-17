@@ -51,6 +51,8 @@ inline vector<int> get_values(char diff)
     case 'E':
         return { 0, 1, 1, 1 };
         break;
+    default:
+        return {};
     }
 };
 
@@ -114,6 +116,10 @@ void xFormula::comp(Rules& rules, int z[4], int v[10][4], int n, int t[4], int T
 
     for (auto& differential : *add_rules) {
         string lhs = differential.first, rhs = differential.second;
+        // cout << lhs << " " << rhs << endl;
+        assert(lhs.size() == n);
+        assert(rhs.size() == 3);
+
         vector<int> antecedent;
         int i = 0;
         for (char& c : lhs) {
@@ -133,6 +139,9 @@ void xFormula::comp(Rules& rules, int z[4], int v[10][4], int n, int t[4], int T
 
             if (i == 0 && (n <= 3 || T == NULL))
                 continue;
+
+            assert(n <= 3 ? i != 0 : true);
+            assert(T == NULL ? i != 0 : true);
 
             vector<int> values = get_values(c);
             if (values.size() == 0)
