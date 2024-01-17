@@ -79,4 +79,4 @@ for line in lines:
     elif line.startswith("Asked for reason of"):
         p_lit = int(line.split(" ")[4])
 
-print(antecedents_count)
+print(antecedents_count, "reason clauses")
