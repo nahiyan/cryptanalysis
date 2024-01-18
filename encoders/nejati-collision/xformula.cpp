@@ -210,39 +210,39 @@ void xFormula::basic_rules(int dx[32][4], int x[32], int x_[32])
     for (int i = 0; i < 32; i++) {
         // * (0, 0) -> '0'
         addClause({ x[i], x_[i], dx[i][0] });
-        addClause({ x[i], x_[i], -dx[i][1] });
-        addClause({ x[i], x_[i], -dx[i][2] });
-        addClause({ x[i], x_[i], -dx[i][3] });
+        // addClause({ x[i], x_[i], -dx[i][1] });
+        // addClause({ x[i], x_[i], -dx[i][2] });
+        // addClause({ x[i], x_[i], -dx[i][3] });
 
         // * (1, 0) -> 'u'
-        addClause({ -x[i], x_[i], -dx[i][0] });
+        // addClause({ -x[i], x_[i], -dx[i][0] });
         addClause({ -x[i], x_[i], dx[i][1] });
-        addClause({ -x[i], x_[i], -dx[i][2] });
-        addClause({ -x[i], x_[i], -dx[i][3] });
+        // addClause({ -x[i], x_[i], -dx[i][2] });
+        // addClause({ -x[i], x_[i], -dx[i][3] });
 
         // * (0, 1) -> 'n'
-        addClause({ x[i], -x_[i], -dx[i][0] });
-        addClause({ x[i], -x_[i], -dx[i][1] });
+        // addClause({ x[i], -x_[i], -dx[i][0] });
+        // addClause({ x[i], -x_[i], -dx[i][1] });
         addClause({ x[i], -x_[i], dx[i][2] });
-        addClause({ x[i], -x_[i], -dx[i][3] });
+        // addClause({ x[i], -x_[i], -dx[i][3] });
 
         // * (1, 1) -> '1'
-        addClause({ -x[i], -x_[i], -dx[i][0] });
-        addClause({ -x[i], -x_[i], -dx[i][1] });
-        addClause({ -x[i], -x_[i], -dx[i][2] });
+        // addClause({ -x[i], -x_[i], -dx[i][0] });
+        // addClause({ -x[i], -x_[i], -dx[i][1] });
+        // addClause({ -x[i], -x_[i], -dx[i][2] });
         addClause({ -x[i], -x_[i], dx[i][3] });
 
         // * (0, ?) -> can't be 'u' or '1'
         addClause({ x[i], -dx[i][1] });
         addClause({ x[i], -dx[i][3] });
 
-        // * (1, ?) -> can't be '0' or 'n'
-        addClause({ -x[i], -dx[i][0] });
-        addClause({ -x[i], -dx[i][2] });
-
         // * (?, 0) -> can't be 'n' or '1'
         addClause({ x_[i], -dx[i][2] });
         addClause({ x_[i], -dx[i][3] });
+
+        // * (1, ?) -> can't be '0' or 'n'
+        addClause({ -x[i], -dx[i][0] });
+        addClause({ -x[i], -dx[i][2] });
 
         // * (?, 1) -> can't be '0' or 'u'
         addClause({ -x_[i], -dx[i][0] });
