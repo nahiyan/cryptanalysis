@@ -210,26 +210,14 @@ void xFormula::basic_rules(int dx[32][4], int x[32], int x_[32])
     for (int i = 0; i < 32; i++) {
         // * (0, 0) -> '0'
         addClause({ x[i], x_[i], dx[i][0] });
-        // addClause({ x[i], x_[i], -dx[i][1] });
-        // addClause({ x[i], x_[i], -dx[i][2] });
-        // addClause({ x[i], x_[i], -dx[i][3] });
 
         // * (1, 0) -> 'u'
-        // addClause({ -x[i], x_[i], -dx[i][0] });
         addClause({ -x[i], x_[i], dx[i][1] });
-        // addClause({ -x[i], x_[i], -dx[i][2] });
-        // addClause({ -x[i], x_[i], -dx[i][3] });
 
         // * (0, 1) -> 'n'
-        // addClause({ x[i], -x_[i], -dx[i][0] });
-        // addClause({ x[i], -x_[i], -dx[i][1] });
         addClause({ x[i], -x_[i], dx[i][2] });
-        // addClause({ x[i], -x_[i], -dx[i][3] });
 
         // * (1, 1) -> '1'
-        // addClause({ -x[i], -x_[i], -dx[i][0] });
-        // addClause({ -x[i], -x_[i], -dx[i][1] });
-        // addClause({ -x[i], -x_[i], -dx[i][2] });
         addClause({ -x[i], -x_[i], dx[i][3] });
 
         // * (0, ?) -> can't be 'u' or '1'
@@ -313,6 +301,7 @@ void xFormula::impose_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32][4]>
         vector<int> antecedent;
         for (int x = 0; x < inputs.size(); x++) {
             vector<int> values = get_values(inputs_diff[x]);
+            // TODO: Avoid adding zero constants to the antecedent
             for (int k = 0; k < 4; k++) {
                 if (values[k] == 1)
                     continue;
