@@ -22,7 +22,8 @@ Formula::~Formula()
 {
 }
 
-void Formula::varName(int *x, string name, int offset) {
+void Formula::varName(int* x, string name, int offset)
+{
     varNames[name + "_" + formulaName] = x[0] + offset;
 }
 
@@ -35,21 +36,20 @@ void Formula::newVars(int* x, int n, string name)
         varNames[name + "_" + formulaName] = x[0];
     varCnt += n;
 }
-
-void Formula::newVarsD2(int* x, int n, int m, string name)
+void Formula::newDiff(int x[32][4], string name)
 {
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < m; j++)
-            *(x + i * m + j) = ++varID;
-    }
+    for (int i = 0; i < 32; i++)
+        for (int j = 0; j < 4; j++)
+            x[i][j] = ++varID;
 
     if (name != "")
-        varNames[name + "_" + formulaName] = *x;
-    varCnt += n * m;
+        varNames[name + "_" + formulaName] = x[0][0];
+    varCnt += 32 * 4;
 }
 
 void Formula::addClause(vector<int> v)
 {
+    assert(v.size() > 0);
     if (any_of(v.begin(), v.end(), [](int x) { return x == 0; })) {
         fprintf(stderr, "bad vector clause:");
         for (int x : v)
@@ -62,6 +62,7 @@ void Formula::addClause(vector<int> v)
 
 void Formula::addClause(Clause c)
 {
+    assert(c.lits.size() > 0);
     if (any_of(c.lits.begin(), c.lits.end(), [](int x) { return x == 0; })) {
         fprintf(stderr, "bad clause:");
         for (int x : c.lits)
@@ -79,38 +80,11 @@ void Formula::fixedValue(int* z, unsigned value, int n)
         addClause({ x });
     }
 }
-void Formula::fixedValueD2(int* z, unsigned value, int n, int m)
-{
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < m; j++) {
-            int x = (value >> i) & 1 ? *(z + i * m + j) : -*(z + i * m + j);
-            addClause({ x });
-        }
-    }
-}
 
 void Formula::rotl(int* z, int* x, int p, int n)
 {
     for (int i = 0; i < n; i++)
         z[i] = x[(i + n - p) % n];
-}
-
-void Formula::and2(int* z, int* x, int* y, int n)
-{
-    for (int i = 0; i < n; i++) {
-        addClause({ z[i], -x[i], -y[i] });
-        addClause({ -z[i], x[i] });
-        addClause({ -z[i], y[i] });
-    }
-}
-
-void Formula::or2(int* z, int* x, int* y, int n)
-{
-    for (int i = 0; i < n; i++) {
-        addClause({ -z[i], x[i], y[i] });
-        addClause({ z[i], -x[i] });
-        addClause({ z[i], -y[i] });
-    }
 }
 
 void Formula::eq(int* z, int* x, int n)
@@ -129,19 +103,6 @@ void Formula::neq(int* z, int* x, int n)
     }
 }
 
-// Specific to SHA-256 differential collision attack with generalized conditions
-void Formula::diff4Bits(int* z, int* x, int* y, int n)
-{
-    for (int i = 0; i < n; i++) {
-        int* d = z + i * 4;
-        addClause({ -d[0], d[1], d[2], -d[3], -x[i], y[i] });
-        addClause({ -d[0], d[1], d[2], -d[3], x[i], -y[i] });
-        addClause({ d[0], -d[1], -d[2], d[3], x[i], y[i] });
-        addClause({ d[0], -d[1], -d[2], d[3], -x[i], -y[i] });
-        addClause({ d[0], d[1], d[2], d[3] }); // not #
-    }
-}
-
 void Formula::xor2(int* z, int* x, int* y, int n)
 {
     for (int i = 0; i < n; i++) {
@@ -154,6 +115,17 @@ void Formula::xor2(int* z, int* x, int* y, int n)
             addClause({ -z[i], x[i], y[i] });
         }
     }
+}
+
+// p -> q
+void Formula::implication(vector<int> p, vector<int> q)
+{
+    vector<int> clause;
+    for (auto& var : p)
+        clause.push_back(-var);
+    for (auto& var : q)
+        clause.push_back(var);
+    addClause(clause);
 }
 
 // TODO: Inject XOR rules if these are difference variables
@@ -220,274 +192,6 @@ void Formula::maj3(int* z, int* x, int* y, int* t, int n)
         addClause({ z[i], -y[i], -t[i] });
         addClause({ z[i], -x[i], -t[i] });
         addClause({ z[i], -x[i], -y[i] });
-    }
-}
-
-void Formula::halfadder(int* c, int* s, int* x, int* y, int n)
-{
-    xor2(s, x, y, n);
-    and2(c, x, y, n);
-}
-
-void Formula::fulladder(int* c, int* s, int* x, int* y, int* t, int n)
-{
-    xor3(s, x, y, t, n);
-    maj3(c, x, y, t, n);
-}
-
-void Formula::counter(int* z, int* x, int n)
-{
-    assert(n <= 7);
-
-    int t[2], c[3];
-    if (n == 2) {
-        halfadder(z + 1, z, x, x + 1, 1);
-    } else if (n == 3) {
-        fulladder(z + 1, z, x, x + 1, x + 2, 1);
-    } else if (n == 4) {
-        newVars(t, 1);
-        newVars(c, 2);
-        fulladder(c, t, x, x + 1, x + 2, 1);
-        halfadder(c + 1, z, x + 3, t, 1);
-        halfadder(z + 2, z + 1, c + 1, c, 1);
-    } else if (n == 5) {
-        newVars(t, 1);
-        newVars(c, 2);
-        fulladder(c, t, x, x + 1, x + 2, 1);
-        fulladder(c + 1, z, t, x + 3, x + 4, 1);
-        halfadder(z + 2, z + 1, c + 1, c, 1);
-    } else if (n == 6) {
-        newVars(t, 2);
-        newVars(c, 3);
-        fulladder(c, t, x, x + 1, x + 2, 1);
-        fulladder(c + 1, t + 1, x + 3, x + 4, x + 5, 1);
-        halfadder(c + 2, z, t, t + 1, 1);
-        fulladder(z + 2, z + 1, c + 2, c + 1, c, 1);
-    } else if (n == 7) {
-        newVars(t, 2);
-        newVars(c, 3);
-        fulladder(c, t, x, x + 1, x + 2, 1);
-        fulladder(c + 1, t + 1, x + 3, x + 4, x + 5, 1);
-        fulladder(c + 2, z, t, t + 1, x + 6, 1);
-        fulladder(z + 2, z + 1, c + 2, c + 1, c, 1);
-    }
-}
-
-void Formula::add2(int* z, int* x, int* y, int n)
-{
-    if (multiAdderType == TWO_OPERAND || multiAdderType == DOT_MATRIX) {
-        int c[n - 1];
-        newVars(c, n - 1);
-
-        // xor2(z, x, y, 1);
-        // and2(c, x, y, 1);
-        halfadder(c, z, x, y, 1);
-
-        // xor3(z+1, x+1, y+1, c, n-1);
-        // maj3(c+1, x+1, y+1, c, n-2);
-        fulladder(c + 1, z + 1, x + 1, y + 1, c, n - 2);
-        xor3(z + n - 1, x + n - 1, y + n - 1, c + n - 2, 1);
-    } else {
-        vector<int> addends[n + 5];
-        for (int i = 0; i < n; i++) {
-            addends[i].push_back(x[i]);
-            addends[i].push_back(y[i]);
-
-            unsigned int m = floor(log2(addends[i].size()));
-            std::vector<int> sum(1 + m);
-            sum[0] = z[i];
-            newVars(&sum[1], m);
-
-            for (int j = 1; j < 1 + m; j++)
-                addends[i + j].push_back(sum[j]);
-
-            if (multiAdderType == COUNTER_CHAIN)
-                counter(&sum[0], &addends[i][0], addends[i].size());
-            else if (multiAdderType == ESPRESSO)
-                espresso(addends[i], sum);
-            else {
-                printf("INVALID MULTI OPERAND ADDER TYPE in add2!\n");
-                exit(1);
-            }
-        }
-    }
-}
-
-void Formula::add3(int* z, int* a, int* b, int* c, int n)
-{
-    if (multiAdderType == TWO_OPERAND) {
-        int t0[n];
-        newVars(t0, n);
-        add2(t0, a, b, n);
-
-        int t1[n];
-        newVars(t1, n);
-        add2(z, c, t0, n);
-    } else if (multiAdderType == DOT_MATRIX) {
-        int t0[n - 1];
-        int c0[n - 1];
-        newVars(t0, n - 1);
-        newVars(c0, n - 1);
-        xor3(z, a, b, c, 1);
-        xor3(t0, a + 1, b + 1, c + 1, n - 1);
-        maj3(c0, a, b, c, n - 1);
-
-        add2(z + 1, t0, c0, n - 1);
-    } else {
-        vector<int> addends[n + 5];
-        for (int i = 0; i < n; i++) {
-            addends[i].push_back(a[i]);
-            addends[i].push_back(b[i]);
-            addends[i].push_back(c[i]);
-
-            unsigned int m = floor(log2(addends[i].size()));
-            std::vector<int> sum(1 + m);
-            sum[0] = z[i];
-            newVars(&sum[1], m);
-
-            for (int j = 1; j < 1 + m; j++)
-                addends[i + j].push_back(sum[j]);
-
-            if (multiAdderType == COUNTER_CHAIN)
-                counter(&sum[0], &addends[i][0], addends[i].size());
-            else if (multiAdderType == ESPRESSO)
-                espresso(addends[i], sum);
-            else {
-                printf("INVALID MULTI OPERAND ADDER TYPE in add3!\n");
-                exit(1);
-            }
-        }
-    }
-}
-
-void Formula::add4(int* z, int* a, int* b, int* c, int* d, int n)
-{
-    if (multiAdderType == TWO_OPERAND) {
-        int t0[n];
-        newVars(t0, n);
-        add2(t0, a, b, n);
-
-        int t1[n];
-        newVars(t1, n);
-        add2(t1, c, d, n);
-
-        add2(z, t0, t1, n);
-    } else if (multiAdderType == DOT_MATRIX) {
-        int t0[n];
-        int c0[n - 1];
-        newVars(t0, n);
-        newVars(c0, n - 1);
-        xor3(t0, a, b, c, n);
-        maj3(c0, a, b, c, n - 1);
-
-        int t1[n - 1];
-        int c1[n - 1];
-        newVars(t1, n - 1);
-        newVars(c1, n - 1);
-        xor2(z, t0, d, 1);
-        and2(c1, t0, d, 1);
-        xor3(t1, t0 + 1, c0, d + 1, n - 1);
-        maj3(c1 + 1, t0 + 1, c0, d + 1, n - 2);
-
-        add2(z + 1, t1, c1, n - 1);
-
-    } else {
-        vector<int> addends[n + 5];
-        for (int i = 0; i < n; i++) {
-            addends[i].push_back(a[i]);
-            addends[i].push_back(b[i]);
-            addends[i].push_back(c[i]);
-            addends[i].push_back(d[i]);
-
-            unsigned int m = floor(log2(addends[i].size()));
-            std::vector<int> sum(1 + m);
-            sum[0] = z[i];
-            newVars(&sum[1], m);
-
-            for (int j = 1; j < 1 + m; j++)
-                addends[i + j].push_back(sum[j]);
-
-            if (multiAdderType == COUNTER_CHAIN)
-                counter(&sum[0], &addends[i][0], addends[i].size());
-            else if (multiAdderType == ESPRESSO)
-                espresso(addends[i], sum);
-            else {
-                printf("INVALID MULTI OPERAND ADDER TYPE in add4!\n");
-                exit(1);
-            }
-        }
-    }
-}
-
-void Formula::add5(int* z, int* a, int* b, int* c, int* d, int* e, int n)
-{
-    if (multiAdderType == TWO_OPERAND) {
-        int t0[n];
-        newVars(t0, n);
-        add2(t0, a, b, n);
-
-        int t1[n];
-        newVars(t1, n);
-        add2(t1, c, d, n);
-
-        int t2[n];
-        newVars(t2, n);
-        add2(t2, t0, t1, n);
-
-        add2(z, t2, e, n);
-    } else if (multiAdderType == DOT_MATRIX) {
-        int t0[n];
-        int c0[n - 1];
-        newVars(t0, n);
-        newVars(c0, n - 1);
-        xor3(t0, a, b, c, n);
-        maj3(c0, a, b, c, n - 1);
-
-        int t1[n - 1];
-        int c1[n - 1];
-        newVars(t1, n - 1);
-        newVars(c1, n - 1);
-        xor3(z, t0, d, e, 1);
-        maj3(c1, t0, d, e, 1);
-        xor3(t1, t0 + 1, c0, d + 1, n - 1);
-        maj3(c1 + 1, t0 + 1, c0, d + 1, n - 2);
-
-        int t2[n - 2];
-        int c2[n - 2];
-        newVars(t2, n - 2);
-        newVars(c2, n - 2);
-        xor3(z + 1, t1, c1, e + 1, 1);
-        maj3(c2, t1, c1, e + 1, 1);
-        xor3(t2, t1 + 1, c1 + 1, e + 2, n - 2);
-        maj3(c2 + 1, t1 + 1, c1 + 1, e + 2, n - 3);
-
-        add2(z + 2, t2, c2, n - 2);
-    } else {
-        vector<int> addends[n + 5];
-        for (int i = 0; i < n; i++) {
-            addends[i].push_back(a[i]);
-            addends[i].push_back(b[i]);
-            addends[i].push_back(c[i]);
-            addends[i].push_back(d[i]);
-            addends[i].push_back(e[i]);
-
-            unsigned int m = floor(log2(addends[i].size()));
-            std::vector<int> sum(1 + m);
-            sum[0] = z[i];
-            newVars(&sum[1], m);
-
-            for (int j = 1; j < 1 + m; j++)
-                addends[i + j].push_back(sum[j]);
-
-            if (multiAdderType == COUNTER_CHAIN)
-                counter(&sum[0], &addends[i][0], addends[i].size());
-            else if (multiAdderType == ESPRESSO)
-                espresso(addends[i], sum);
-            else {
-                printf("INVALID MULTI OPERAND ADDER TYPE in add5!\n");
-                exit(1);
-            }
-        }
     }
 }
 
@@ -628,7 +332,7 @@ void Formula::espresso(const vector<int>& lhs, const vector<int>& rhs)
     }
 }
 
-void Formula::dimacs(string fileName, bool header)
+void Formula::dimacs(int rounds, string fileName, bool header)
 {
     FILE* out = fileName == "" ? stdout : fopen(fileName.c_str(), "w");
     if (out == NULL) {
@@ -650,6 +354,8 @@ void Formula::dimacs(string fileName, bool header)
     for (auto e : varNames)
         fprintf(out, "c %s %d\n", e.first.c_str(), e.second);
 
+    printf("c order %d\n", rounds);
+
     fclose(out);
 }
 
@@ -668,154 +374,6 @@ int Formula::clauseCheck()
         }
     }
     return 0;
-}
-
-void Formula::cardinality_fulladder(int* vars, int n, unsigned cardinalValue)
-{
-    unsigned int size = 1 + floor(log2(n));
-    vector<queue<int>> m(size);
-    for (int i = 0; i < n; i++)
-        m[0].push(vars[i]);
-
-    bool oneDeep = false;
-    while (!oneDeep) {
-        oneDeep = true;
-        for (int i = 0; i < m.size(); i++) {
-            if (m[i].size() >= 3) {
-                int x = m[i].front();
-                m[i].pop();
-                int y = m[i].front();
-                m[i].pop();
-                int z = m[i].front();
-                m[i].pop();
-
-                int sum;
-                newVars(&sum, 1);
-                xor3(&sum, &x, &y, &z, 1);
-                m[i].push(sum);
-
-                if (i + 1 < m.size()) {
-                    int carry;
-                    newVars(&carry, 1);
-                    maj3(&carry, &x, &y, &z, 1);
-                    m[i + 1].push(carry);
-                }
-            } else if (m[i].size() >= 2) {
-                int x = m[i].front();
-                m[i].pop();
-                int y = m[i].front();
-                m[i].pop();
-
-                int sum;
-                newVars(&sum, 1);
-                xor2(&sum, &x, &y, 1);
-                m[i].push(sum);
-
-                if (i + 1 < m.size()) {
-                    int carry;
-                    newVars(&carry, 1);
-                    and2(&carry, &x, &y, 1);
-                    m[i + 1].push(carry);
-                }
-            }
-
-            if (m[i].size() > 1)
-                oneDeep = false;
-        }
-    }
-    for (int i = 0; i < m.size(); i++) {
-        int var = m[i].front();
-        unsigned val = (cardinalValue >> i) & 1;
-        fixedValue(&var, val, 1);
-    }
-}
-
-void Formula::cardinality_espresso(int* vars, int n, unsigned cardinalValue)
-{
-    unsigned int size = 1 + floor(log2(n));
-    vector<queue<int>> m(size);
-    for (int i = 0; i < n; i++)
-        m[0].push(vars[i]);
-
-    bool oneDeep = false;
-    while (!oneDeep) {
-        oneDeep = true;
-        for (int i = 0; i < m.size(); i++) {
-            if (m[i].size() >= 2) {
-                int inpSize = m[i].size() > 10 ? 10 : m[i].size();
-                vector<int> addends;
-                for (int j = 0; j < inpSize; j++) {
-                    int x = m[i].front();
-                    m[i].pop();
-                    addends.push_back(x);
-                }
-                unsigned int slen = floor(log2(addends.size()));
-                vector<int> sum(slen + 1);
-                newVars(&sum[0], slen + 1);
-                espresso(addends, sum);
-
-                for (int j = 0; j < slen + 1 && i + j < m.size(); j++)
-                    m[i + j].push(sum[j]);
-            }
-
-            if (m[i].size() > 1)
-                oneDeep = false;
-        }
-    }
-
-    for (int i = 0; i < m.size(); i++) {
-        int var = m[i].front();
-        unsigned val = (cardinalValue >> i) & 1;
-        fixedValue(&var, val, 1);
-    }
-}
-
-void Formula::atMostK(int* x, int n, unsigned k)
-{
-    int R[n - 1][k];
-    for (int i = 0; i < n - 1; i++)
-        newVars(R[i], k);
-
-    for (int i = 0; i < n - 1; i++)
-        addClause({ -x[i], R[i][0] });
-
-    for (int j = 1; j < k; j++)
-        addClause({ -R[0][j] });
-
-    for (int i = 1; i < n - 1; i++)
-        for (int j = 0; j < k; j++)
-            addClause({ -R[i - 1][j], R[i][j] });
-
-    for (int i = 1; i < n - 1; i++)
-        for (int j = 1; j < k; j++)
-            addClause({ -x[i], -R[i - 1][j - 1], R[i][j] });
-
-    for (int i = 1; i < n; i++)
-        addClause({ -x[i], -R[i - 1][k - 1] });
-}
-
-void Formula::atLeastK(int* x, int n, unsigned k)
-{
-    if (k == 1) {
-        addClause(vector<int>(x, x + n));
-        return;
-    }
-    int y[n];
-    for (int i = 0; i < n; i++)
-        y[i] = -x[i];
-    atMostK(y, n, n - k);
-}
-
-void Formula::exactlyK(int* x, int n, unsigned k)
-{
-    if (pbMethod == ADDER_NETWORK_FA)
-        cardinality_fulladder(x, n, k);
-    else if (pbMethod == ADDER_NETWORK_ESPRESSO)
-        cardinality_espresso(x, n, k);
-    else {
-        atMostK(x, n, k);
-        atLeastK(x, n, k);
-    }
 }
 
 vector<Clause> Formula::getClauses()

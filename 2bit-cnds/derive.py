@@ -3,7 +3,7 @@ from itertools import product
 from time import time
 import re
 import sys
-from propagator import derive_words_w, _int_diff
+from propagator import adjust_gcs, derive_words, derive_words_w, _int_diff
 
 TWO_BIT_CONSTRAINT_XOR2_ID = 0
 TWO_BIT_CONSTRAINT_IF_ID = 1
@@ -111,6 +111,8 @@ def otf_2bit_eqs(func, inputs, outputs, names=[]):
             positions.append(i)
     # print(positions)
     n = len(positions)
+    if sum([1 if i in ["x", "-"] else 0 for i in inputs]) > 2:
+        return []
     # print(n)
     selection = []
     for i in range(pow(2, n)):
@@ -127,20 +129,46 @@ def otf_2bit_eqs(func, inputs, outputs, names=[]):
         candidate_inputs = "".join(candidate[:in_length])
         candidate_outputs = "".join(candidate[in_length:])
         prop_inputs, prop_outputs = otf_prop(add, (candidate_inputs, candidate_outputs))
-        # print(prop_inputs, prop_outputs)
         if len(prop_outputs) == 0:
             continue
         selection.append((candidate_inputs, candidate_outputs))
-    equations = []
+        # print(candidate_inputs, candidate_outputs)
+    pairs_count = 0
+    n = len(inputs + outputs)
+    for i in range(n):
+        selector = i + 1
+        for j in range(selector, n):
+            pairs_count += 1
+
+    diff_pairs = []
+    for _ in range(pairs_count):
+        diff_pairs.append(set())
+    break_gc = lambda gc: 1 if gc == "u" or gc == "1" else 0
     for s in selection:
         combined = s[0] + s[1]
-        # print(s[0], s[1])
+        x = 0
         for i in range(len(combined)):
             selector = i + 1
             for j in range(selector, len(combined)):
-                eq = Equation(
-                    names[i], names[j], 1 if combined[i] != combined[j] else 0
-                )
+                c1 = break_gc(combined[i])
+                c2 = break_gc(combined[j])
+                diff_pairs[x].add(c1 ^ c2)
+                # print(diff_pairs[x], x, combined[i], combined[j])
+                x += 1
+
+    equations = []
+    for s in selection:
+        combined = inputs + outputs
+        x = -1
+        for i in range(len(combined)):
+            selector = i + 1
+            for j in range(selector, len(combined)):
+                x += 1
+                if combined[i] not in ["-", "x"] or combined[j] not in ["-", "x"]:
+                    continue
+                if len(diff_pairs[x]) != 1:
+                    continue
+                eq = Equation(names[i], names[j], list(diff_pairs[x])[0])
                 eq_alt = Equation(eq.y, eq.x, eq.diff)
 
                 if eq.x[0] == "?" or eq.y[0] == "?":
@@ -149,20 +177,7 @@ def otf_2bit_eqs(func, inputs, outputs, names=[]):
                 if eq in equations or eq_alt in equations:
                     continue
                 equations.append(eq)
-    finalized_equations = []
-    for eq in equations:
-        inv_eq = Equation(eq.x, eq.y, 0 if eq.diff == 1 else 1)
-        inv_eq_alt = Equation(inv_eq.y, inv_eq.x, inv_eq.diff)
-
-        # Remove contradicting equations
-        if inv_eq in equations or inv_eq_alt in equations:
-            continue
-
-        finalized_equations.append(eq)
-
-    # for eq in finalized_equations:
-    #     print(eq)
-    return finalized_equations
+    return equations
 
 
 def add(addends):
@@ -227,17 +242,6 @@ def print_table(table):
             )
         else:
             print()
-
-
-# def _int_diff(word):
-#     n = len(word)
-#     value = 0
-#     for i in range(n):
-#         gc_bit = word[n - 1 - i]
-#         if gc_bit not in ["u", "n", "-", "1", "0"]:
-#             return value, True
-#         value += (1 if gc_bit == "u" else -1 if gc_bit == "n" else 0) * pow(2, i)
-#     return value % pow(2, n), False
 
 
 def derive_words_step(word_x, word_y, constant):
@@ -679,168 +683,60 @@ def get_equations(rel_matrix, var_names):
 
 
 def derive_equations(table, rules):
+    # print(
+    #     "Debug",
+    #     otf_2bit_eqs(
+    #         add,
+    #         "--11111",
+    #         "?0?",
+    #         names=["a", "b", "c", "d", "e", "f", "g", "?", "?", "o"],
+    #     ),
+    # )
+
     equations = []
     for i in table.dw:
+        print(f"Addition {i}")
         k_ = "".join([str(k[i] >> j & 1) for j in range(31, -1, -1)])
-        _, dt, (dt_steps, _) = otf_prop_add_words(
-            [table.de[i - 4], table.dsigma1[i], table.dch[i], k_, table.dw[i]],
-            "?" * 32,
-        )
-
-        # print(f"Addition {i}")
-        _, _, (de_steps, _) = otf_prop_add_words(
-            [
-                table.da[i - 4],
-                dt,
-                # table.de[i - 4],
-                # table.dsigma1[i],
-                # table.dch[i],
-                # k_,
-                # table.dw[i],
-            ],
-            table.de[i],
-        )
-
-        #!Debug
+        # _, dt, (dt_steps, _) = otf_prop_add_words(
+        #     [table.de[i - 4], table.dsigma1[i], table.dch[i], k_, table.dw[i]],
+        #     "?" * 32,
+        # )
+        # print("T", dt)
         # _, _, (de_steps, _) = otf_prop_add_words(
         #     [
         #         table.da[i - 4],
-        #         table.de[i - 4],
-        #         table.dsigma1[i],
-        #         table.dch[i],
-        #         k_,
-        #         table.dw[i],
+        #         dt,
         #     ],
-        #     "?" * 32
-        #     # table.de[i],
+        #     table.de[i],
         # )
 
-        for x, (inputs, outputs) in enumerate(de_steps):
-            if (
-                sum(
-                    [
-                        1 if c not in ["1", "0", "n", "u"] else 0
-                        for c in inputs + outputs
-                    ]
-                )
-                > 4
-            ):
-                continue
-            if len(inputs) != 3:
-                inputs += "0" * (3 - len(inputs))
-            eqs = otf_2bit_eqs(
-                add,
-                inputs,
-                outputs,
-                names=[
-                    f"A_{i-4},{x}",
-                    # f"E_{i-4},{x}",
-                    f"T_{i},{x}",
-                    f"?_{i},{x}",
-                    # f"?_{i},{x}",
-                    # f"W_{i},{x}",
-                    # f"?_{i},{x}",
-                    # f"?_{i},{x}",
-                    # f"?_{i},{x}",
-                    f"?_{i},{x}",
-                    f"E_{i},{x}",
-                ],
-            )
-
-            # t = {}
-            # for eq in eqs:
-            #     x = eq.x[0]
-            #     y = eq.y[0]
-            #     if x == "T":
-            #         t[eq.x] = set()
-            #     if y == "T":
-            #         t[eq.y] = set()
-            # for eq in eqs:
-            #     x = eq.x[0]
-            #     y = eq.y[0]
-            #     if x == "T":
-            #         t[eq.x].add((eq.y, eq.diff))
-            #     if y == "T":
-            #         t[eq.y].add((eq.x, eq.diff))
-            # for key in t:
-            #     value = t[key]
-            #     if len(value) > 1:
-            #         print(value)
-            equations.extend(eqs)
-
-        for x, (inputs, outputs) in enumerate(dt_steps):
-            if (
-                sum(
-                    [
-                        1 if c not in ["1", "0", "n", "u"] else 0
-                        for c in inputs + outputs
-                    ]
-                )
-                > 4
-            ):
-                continue
-            if len(inputs) != 7:
-                inputs += "0" * (7 - len(inputs))
-            eqs = otf_2bit_eqs(
-                add,
-                inputs,
-                outputs,
-                names=[
-                    f"E_{i-4},{x}",
-                    f"?_{i},{x}",
-                    f"?_{i},{x}",
-                    f"?_{i},{x}",
-                    f"W_{i},{x}",
-                    f"?_{i},{x}",
-                    f"?_{i},{x}",
-                    f"?_{i},{x}",
-                    f"?_{i},{x}",
-                    f"T_{i},{x}",
-                ],
-            )
-            equations.extend(eqs)
-
-            # t = {}
-            # for eq in eqs:
-            #     x = eq.x[0]
-            #     y = eq.y[0]
-            #     if x == "T":
-            #         t[eq.x] = set()
-            #     if y == "T":
-            #         t[eq.y] = set()
-            # for eq in eqs:
-            #     x = eq.x[0]
-            #     y = eq.y[0]
-            #     if x == "T":
-            #         t[eq.x].add((eq.y, eq.diff))
-            #     if y == "T":
-            #         t[eq.y].add((eq.x, eq.diff))
-            # for key in t:
-            #     value = t[key]
-            #     if len(value) > 1:
-            #         print(value)
-            equations.extend(eqs)
-
-        # !Debug
         # for x, (inputs, outputs) in enumerate(de_steps):
-        #     if (
-        #         sum(
-        #             [
-        #                 1 if c not in ["1", "0", "n", "u"] else 0
-        #                 for c in inputs + outputs
-        #             ]
-        #         )
-        #         > 4
-        #     ):
-        #         continue
-        #     if len(inputs) != 8:
-        #         inputs += "0" * (8 - len(inputs))
+        #     # print(x, inputs, outputs)
+        #     if len(inputs) != 3:
+        #         inputs += "0" * (3 - len(inputs))
         #     eqs = otf_2bit_eqs(
         #         add,
         #         inputs,
         #         outputs,
         #         names=[
         #             f"A_{i-4},{x}",
+        #             f"T_{i},{x}",
+        #             f"?_{i},{x}",
+        #             f"?_{i},{x}",
+        #             f"E_{i},{x}",
+        #         ],
+        #     )
+        #     equations.extend(eqs)
+
+        # for x, (inputs, outputs) in enumerate(dt_steps):
+        #     print(x, inputs, outputs)
+        #     if len(inputs) != 7:
+        #         inputs += "0" * (7 - len(inputs))
+        #     eqs = otf_2bit_eqs(
+        #         add,
+        #         inputs,
+        #         outputs,
+        #         names=[
         #             f"E_{i-4},{x}",
         #             f"?_{i},{x}",
         #             f"?_{i},{x}",
@@ -850,31 +746,45 @@ def derive_equations(table, rules):
         #             f"?_{i},{x}",
         #             f"?_{i},{x}",
         #             f"?_{i},{x}",
-        #             f"E_{i},{x}",
+        #             f"T_{i},{x}",
         #         ],
         #     )
         #     equations.extend(eqs)
 
-        #     # t = {}
-        #     # for eq in eqs:
-        #     #     x = eq.x[0]
-        #     #     y = eq.y[0]
-        #     #     if x == "T":
-        #     #         t[eq.x] = set()
-        #     #     if y == "T":
-        #     #         t[eq.y] = set()
-        #     # for eq in eqs:
-        #     #     x = eq.x[0]
-        #     #     y = eq.y[0]
-        #     #     if x == "T":
-        #     #         t[eq.x].add((eq.y, eq.diff))
-        #     #     if y == "T":
-        #     #         t[eq.y].add((eq.x, eq.diff))
-        #     # for key in t:
-        #     #     value = t[key]
-        #     #     if len(value) > 1:
-        #     #         print(value)
-        #     # equations.extend(eqs)
+        _, _, (de_steps, _) = otf_prop_add_words(
+            [
+                table.da[i - 4],
+                table.de[i - 4],
+                table.dsigma1[i],
+                table.dch[i],
+                k_,
+                table.dw[i],
+            ],
+            table.de[i],
+        )
+        for x, (inputs, outputs) in enumerate(de_steps):
+            print(x, inputs, outputs)
+            if len(inputs) != 8:
+                inputs += "0" * (8 - len(inputs))
+            eqs = otf_2bit_eqs(
+                add,
+                inputs,
+                outputs,
+                names=[
+                    f"A_{i - 4},{x}",
+                    f"E_{i - 4},{x}",
+                    f"?_{i},{x}",
+                    f"?_{i},{x}",
+                    f"?_{i},{x}",
+                    f"W_{i},{x}",
+                    f"?_{i},{x}",
+                    f"?_{i},{x}",
+                    f"?_{i},{x}",
+                    f"?_{i},{x}",
+                    f"E_{i},{x}",
+                ],
+            )
+            equations.extend(eqs)
 
         for j in range(32):
             if i >= 16:
@@ -887,7 +797,7 @@ def derive_equations(table, rules):
                 s0 = table.ds0[i][31 - j]
                 key = (
                     f"{TWO_BIT_CONSTRAINT_XOR3_ID}{s0_i1}{s0_i2}{s0_i3}{s0}"
-                    if j <= 29
+                    if j <= 28
                     else f"{TWO_BIT_CONSTRAINT_XOR2_ID}{s0_i1}{s0_i2}{s0}"
                 )
                 if key in rules:
@@ -901,7 +811,7 @@ def derive_equations(table, rules):
                                 f"W_{word_index},{indices[2]}",
                                 f"s0_{i},{j}",
                             ]
-                            if j <= 29
+                            if j <= 28
                             else [
                                 f"W_{word_index},{indices[0]}",
                                 f"W_{word_index},{indices[1]}",
@@ -933,7 +843,7 @@ def derive_equations(table, rules):
                                 f"W_{word_index},{indices[2]}",
                                 f"s1_{i},{j}",
                             ]
-                            if j <= 29
+                            if j <= 21
                             else [
                                 f"W_{word_index},{indices[0]}",
                                 f"W_{word_index},{indices[1]}",
