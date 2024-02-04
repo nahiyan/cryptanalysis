@@ -1,5 +1,6 @@
 #include "xformula.h"
 #include <assert.h>
+#include <cstddef>
 
 inline vector<int> get_values(char diff)
 {
@@ -52,6 +53,7 @@ inline vector<int> get_values(char diff)
         return { 0, 1, 1, 1 };
         break;
     default:
+        assert(false);
         return {};
     }
 };
@@ -94,7 +96,7 @@ void xFormula::add(int* z, int* a, int* b, int* t, int* T, int* c, int* d, int* 
     }
 }
 
-void xFormula::comp(Rules& rules, int z[4], int v[10][4], int n, int t[4], int T[4])
+void xFormula::comp_4bit(Rules& rules, int z[4], int v[10][4], int n, int t[4], int T[4])
 {
     assert(n >= 2 && n <= 7);
     if (n > 3)
@@ -167,7 +169,7 @@ void xFormula::comp(Rules& rules, int z[4], int v[10][4], int n, int t[4], int T
     }
 }
 
-void xFormula::diff_add(Rules& rules, int z[32][4], int a[32][4], int b[32][4], int t[32][4], int T[32][4], int c[32][4], int d[32][4], int e[32][4])
+void xFormula::diff_4bit_add(Rules& rules, int z[32][4], int a[32][4], int b[32][4], int t[32][4], int T[32][4], int c[32][4], int d[32][4], int e[32][4])
 {
     auto set = [](int x[4], int y[4]) {
         for (int i = 0; i < 4; i++)
@@ -199,13 +201,91 @@ void xFormula::diff_add(Rules& rules, int z[32][4], int a[32][4], int b[32][4], 
             set(v[k++], T[j - 2]);
 
         if (m == 2)
-            comp(rules, z[j], v, k, t[j]);
+            comp_4bit(rules, z[j], v, k, t[j]);
         else
-            comp(rules, z[j], v, k, t[j], T[j]);
+            comp_4bit(rules, z[j], v, k, t[j], T[j]);
     }
 }
 
-void xFormula::basic_rules(int dx[32][4], int x[32], int x_[32])
+void xFormula::comp_1bit(int z, int* v, int n, int t, int T)
+{
+    assert(n >= 2 && n <= 7);
+    if (n > 3)
+        assert(T != -1);
+
+    if (n == 2) {
+        xor2(&z, v, v + 1, 1);
+        addClause({ v[0], v[1], -t });
+    } else if (n == 3) {
+        xor3(&z, v, v + 1, v + 2, 1);
+        addClause({ v[0], v[1], v[2], -t });
+        addClause({ -v[0], -v[1], -v[2], t });
+    } else if (n == 4) {
+        xor4(&z, v, v + 1, v + 2, v + 3, 1);
+        addClause({ v[0], v[1], v[2], v[3], -t });
+        addClause({ v[0], v[1], v[2], v[3], -T });
+    } else if (n == 5) {
+        xor5(&z, v, v + 1, v + 2, v + 3, v + 4, 1);
+        addClause({ v[0], v[1], v[2], v[3], v[4], -t });
+        addClause({ v[0], v[1], v[2], v[3], v[4], -T });
+        addClause({ -v[0], -v[1], -v[2], -v[3], -v[4], -t });
+    } else if (n == 6) {
+        xor6(&z, v, v + 1, v + 2, v + 3, v + 4, v + 5, 1);
+        addClause({ v[0], v[1], v[2], v[3], v[4], v[5], -t });
+        addClause({ v[0], v[1], v[2], v[3], v[4], v[5], -T });
+    } else if (n == 7) {
+        xor7(&z, v, v + 1, v + 2, v + 3, v + 4, v + 5, v + 6, 1);
+        addClause({ v[0], v[1], v[2], v[3], v[4], v[5], v[6], -t });
+        addClause({ v[0], v[1], v[2], v[3], v[4], v[5], v[6], -T });
+        addClause({ -v[0], -v[1], -v[2], -v[3], -v[4], -v[5], -v[6], t });
+        addClause({ -v[0], -v[1], -v[2], -v[3], -v[4], -v[5], -v[6], T });
+    }
+}
+
+void xFormula::diff_1bit_add(Rules& rules, int z[32][4], int a[32][4], int b[32][4], int t[32][4], int T[32][4], int c[32][4], int d[32][4], int e[32][4])
+{
+    int n = 32;
+    int m = 2;
+    if (c)
+        m++;
+    if (d)
+        m++;
+    if (e)
+        m++;
+    int v[10], k;
+    for (int j = 0; j < 32; j++) {
+        k = 0;
+        v[k++] = a[j][0];
+        v[k++] = b[j][0];
+        if (c)
+            v[k++] = c[j][0];
+        if (d)
+            v[k++] = d[j][0];
+        if (e)
+            v[k++] = e[j][0];
+        if (j > 0)
+            v[k++] = t[j - 1][0];
+        if (j > 1)
+            if ((m == 3 && j >= 3) || (m > 3))
+                v[k++] = T[j - 2][0];
+
+        if (m == 2)
+            comp_1bit(z[j][0], v, k, t[j][0]);
+        else
+            comp_1bit(z[j][0], v, k, t[j][0], T[j][0]);
+    }
+}
+
+void xFormula::diff_add(Rules& rules, int z[32][4], int a[32][4], int b[32][4], int t[32][4], int T[32][4], int c[32][4], int d[32][4], int e[32][4])
+{
+#if IS_4bit
+    diff_4bit_add(rules, z, a, b, t, T, c, d, e);
+#else
+    diff_1bit_add(rules, z, a, b, t, T, c, d, e);
+#endif
+}
+
+void xFormula::basic_4bit_rules(int dx[32][4], int x[32], int x_[32])
 {
     for (int i = 0; i < 32; i++) {
         // * (0, 0) -> '0'
@@ -293,13 +373,32 @@ void xFormula::basic_rules(int dx[32][4], int x[32], int x_[32])
     }
 }
 
-void xFormula::impose_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32][4]> outputs, pair<string, string> rule)
+void xFormula::basic_1bit_rules(int dx[32][4], int x[32], int x_[32])
+{
+    int dx_[32];
+    for (int i = 0; i < 32; i++)
+        dx_[i] = dx[i][0];
+    xor2(dx_, x, x_, 32);
+}
+
+void xFormula::basic_rules(int dx[32][4], int x[32], int x_[32])
+{
+#if IS_4bit
+    basic_4bit_rules(dx, x, x_);
+#else
+    basic_1bit_rules(dx, x, x_);
+#endif
+}
+
+void xFormula::impose_4bit_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32][4]> outputs, pair<string, string> rule)
 {
     string inputs_diff = rule.first, outputs_diff = rule.second;
 
     for (int i = 0; i < 32; i++) {
         vector<int> antecedent;
         for (int x = 0; x < inputs.size(); x++) {
+            if (inputs_diff[x] == '?')
+                continue;
             vector<int> values = get_values(inputs_diff[x]);
             // TODO: Avoid adding zero constants to the antecedent
             for (int k = 0; k < 4; k++) {
@@ -310,6 +409,8 @@ void xFormula::impose_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32][4]>
         }
 
         for (int x = 0; x < outputs.size(); x++) {
+            if (outputs_diff[x] == '?')
+                continue;
             vector<int> values = get_values(outputs_diff[x]);
             if (values.size() == 0)
                 continue;
@@ -321,6 +422,294 @@ void xFormula::impose_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32][4]>
                 clause.push_back((values[k] == 1 ? 1 : -1) * (*outputs[x])[i][k]);
                 addClause(clause);
             }
+        }
+    }
+}
+
+void xFormula::impose_1bit_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32][4]> outputs, pair<string, string> rule)
+{
+    string inputs_diff = rule.first, outputs_diff = rule.second;
+
+    for (int i = 0; i < 32; i++) {
+        vector<int> antecedent;
+        for (int x = 0; x < inputs.size(); x++) {
+            if (inputs_diff[x] == '?')
+                continue;
+            assert(inputs_diff[x] == '-' || inputs_diff[x] == 'x');
+            antecedent.push_back((inputs_diff[x] == '-' ? 1 : -1) * (*inputs[x])[i][0]);
+        }
+
+        for (int x = 0; x < outputs.size(); x++) {
+            if (outputs_diff[x] == '?')
+                continue;
+            assert(outputs_diff[x] == '-' || outputs_diff[x] == 'x');
+            vector<int> clause(antecedent);
+            clause.push_back((outputs_diff[x] == '-' ? -1 : 1) * (*outputs[x])[i][0]);
+            addClause(clause);
+        }
+    }
+}
+
+void xFormula::impose_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32][4]> outputs, pair<string, string> rule)
+{
+    return;
+#if IS_4bit
+    impose_4bit_rule(inputs, outputs, rule);
+#else
+    impose_1bit_rule(inputs, outputs, rule);
+#endif
+}
+
+void xFormula::xor5(int* z, int* a, int* b, int* c, int* d, int* e, int n)
+{
+    for (int i = 0; i < n; i++) {
+        if (useXORClauses) {
+            addClause(Clause({ -z[i], a[i], b[i], c[i], d[i], e[i] }, true));
+        } else {
+            addClause({ -z[i], -a[i], -b[i], -c[i], -d[i], e[i] });
+            addClause({ z[i], -a[i], -b[i], -c[i], d[i], e[i] });
+            addClause({ z[i], -a[i], -b[i], c[i], -d[i], e[i] });
+            addClause({ -z[i], -a[i], -b[i], c[i], d[i], e[i] });
+            addClause({ z[i], -a[i], b[i], -c[i], -d[i], e[i] });
+            addClause({ -z[i], -a[i], b[i], -c[i], d[i], e[i] });
+            addClause({ -z[i], -a[i], b[i], c[i], -d[i], e[i] });
+            addClause({ z[i], -a[i], b[i], c[i], d[i], e[i] });
+            addClause({ z[i], a[i], -b[i], -c[i], -d[i], e[i] });
+            addClause({ -z[i], a[i], -b[i], -c[i], d[i], e[i] });
+            addClause({ -z[i], a[i], -b[i], c[i], -d[i], e[i] });
+            addClause({ z[i], a[i], -b[i], c[i], d[i], e[i] });
+            addClause({ -z[i], a[i], b[i], -c[i], -d[i], e[i] });
+            addClause({ z[i], a[i], b[i], -c[i], d[i], e[i] });
+            addClause({ z[i], a[i], b[i], c[i], -d[i], e[i] });
+            addClause({ -z[i], a[i], b[i], c[i], d[i], e[i] });
+            addClause({ z[i], -a[i], -b[i], -c[i], -d[i], -e[i] });
+            addClause({ -z[i], -a[i], -b[i], -c[i], d[i], -e[i] });
+            addClause({ -z[i], -a[i], -b[i], c[i], -d[i], -e[i] });
+            addClause({ z[i], -a[i], -b[i], c[i], d[i], -e[i] });
+            addClause({ -z[i], -a[i], b[i], -c[i], -d[i], -e[i] });
+            addClause({ z[i], -a[i], b[i], -c[i], d[i], -e[i] });
+            addClause({ z[i], -a[i], b[i], c[i], -d[i], -e[i] });
+            addClause({ -z[i], -a[i], b[i], c[i], d[i], -e[i] });
+            addClause({ -z[i], a[i], -b[i], -c[i], -d[i], -e[i] });
+            addClause({ z[i], a[i], -b[i], -c[i], d[i], -e[i] });
+            addClause({ z[i], a[i], -b[i], c[i], -d[i], -e[i] });
+            addClause({ -z[i], a[i], -b[i], c[i], d[i], -e[i] });
+            addClause({ z[i], a[i], b[i], -c[i], -d[i], -e[i] });
+            addClause({ -z[i], a[i], b[i], -c[i], d[i], -e[i] });
+            addClause({ -z[i], a[i], b[i], c[i], -d[i], -e[i] });
+            addClause({ z[i], a[i], b[i], c[i], d[i], -e[i] });
+        }
+    }
+}
+
+void xFormula::xor6(int* z, int* a, int* b, int* c, int* d, int* e, int* f, int n)
+{
+    for (int i = 0; i < n; i++) {
+        if (useXORClauses) {
+            addClause(Clause({ -z[i], a[i], b[i], c[i], d[i], e[i], f[i] }, true));
+        } else {
+            addClause({ -z[i], -a[i], -b[i], -c[i], -d[i], e[i], f[i] });
+            addClause({ z[i], -a[i], -b[i], -c[i], d[i], e[i], f[i] });
+            addClause({ z[i], -a[i], -b[i], c[i], -d[i], e[i], f[i] });
+            addClause({ -z[i], -a[i], -b[i], c[i], d[i], e[i], f[i] });
+            addClause({ z[i], -a[i], b[i], -c[i], -d[i], e[i], f[i] });
+            addClause({ -z[i], -a[i], b[i], -c[i], d[i], e[i], f[i] });
+            addClause({ -z[i], -a[i], b[i], c[i], -d[i], e[i], f[i] });
+            addClause({ z[i], -a[i], b[i], c[i], d[i], e[i], f[i] });
+            addClause({ z[i], a[i], -b[i], -c[i], -d[i], e[i], f[i] });
+            addClause({ -z[i], a[i], -b[i], -c[i], d[i], e[i], f[i] });
+            addClause({ -z[i], a[i], -b[i], c[i], -d[i], e[i], f[i] });
+            addClause({ z[i], a[i], -b[i], c[i], d[i], e[i], f[i] });
+            addClause({ -z[i], a[i], b[i], -c[i], -d[i], e[i], f[i] });
+            addClause({ z[i], a[i], b[i], -c[i], d[i], e[i], f[i] });
+            addClause({ z[i], a[i], b[i], c[i], -d[i], e[i], f[i] });
+            addClause({ -z[i], a[i], b[i], c[i], d[i], e[i], f[i] });
+            addClause({ z[i], -a[i], -b[i], -c[i], -d[i], -e[i], f[i] });
+            addClause({ -z[i], -a[i], -b[i], -c[i], d[i], -e[i], f[i] });
+            addClause({ -z[i], -a[i], -b[i], c[i], -d[i], -e[i], f[i] });
+            addClause({ z[i], -a[i], -b[i], c[i], d[i], -e[i], f[i] });
+            addClause({ -z[i], -a[i], b[i], -c[i], -d[i], -e[i], f[i] });
+            addClause({ z[i], -a[i], b[i], -c[i], d[i], -e[i], f[i] });
+            addClause({ z[i], -a[i], b[i], c[i], -d[i], -e[i], f[i] });
+            addClause({ -z[i], -a[i], b[i], c[i], d[i], -e[i], f[i] });
+            addClause({ -z[i], a[i], -b[i], -c[i], -d[i], -e[i], f[i] });
+            addClause({ z[i], a[i], -b[i], -c[i], d[i], -e[i], f[i] });
+            addClause({ z[i], a[i], -b[i], c[i], -d[i], -e[i], f[i] });
+            addClause({ -z[i], a[i], -b[i], c[i], d[i], -e[i], f[i] });
+            addClause({ z[i], a[i], b[i], -c[i], -d[i], -e[i], f[i] });
+            addClause({ -z[i], a[i], b[i], -c[i], d[i], -e[i], f[i] });
+            addClause({ -z[i], a[i], b[i], c[i], -d[i], -e[i], f[i] });
+            addClause({ z[i], a[i], b[i], c[i], d[i], -e[i], f[i] });
+            addClause({ z[i], -a[i], -b[i], -c[i], -d[i], e[i], -f[i] });
+            addClause({ -z[i], -a[i], -b[i], -c[i], d[i], e[i], -f[i] });
+            addClause({ -z[i], -a[i], -b[i], c[i], -d[i], e[i], -f[i] });
+            addClause({ z[i], -a[i], -b[i], c[i], d[i], e[i], -f[i] });
+            addClause({ -z[i], -a[i], b[i], -c[i], -d[i], e[i], -f[i] });
+            addClause({ z[i], -a[i], b[i], -c[i], d[i], e[i], -f[i] });
+            addClause({ z[i], -a[i], b[i], c[i], -d[i], e[i], -f[i] });
+            addClause({ -z[i], -a[i], b[i], c[i], d[i], e[i], -f[i] });
+            addClause({ -z[i], a[i], -b[i], -c[i], -d[i], e[i], -f[i] });
+            addClause({ z[i], a[i], -b[i], -c[i], d[i], e[i], -f[i] });
+            addClause({ z[i], a[i], -b[i], c[i], -d[i], e[i], -f[i] });
+            addClause({ -z[i], a[i], -b[i], c[i], d[i], e[i], -f[i] });
+            addClause({ z[i], a[i], b[i], -c[i], -d[i], e[i], -f[i] });
+            addClause({ -z[i], a[i], b[i], -c[i], d[i], e[i], -f[i] });
+            addClause({ -z[i], a[i], b[i], c[i], -d[i], e[i], -f[i] });
+            addClause({ z[i], a[i], b[i], c[i], d[i], e[i], -f[i] });
+            addClause({ -z[i], -a[i], -b[i], -c[i], -d[i], -e[i], -f[i] });
+            addClause({ z[i], -a[i], -b[i], -c[i], d[i], -e[i], -f[i] });
+            addClause({ z[i], -a[i], -b[i], c[i], -d[i], -e[i], -f[i] });
+            addClause({ -z[i], -a[i], -b[i], c[i], d[i], -e[i], -f[i] });
+            addClause({ z[i], -a[i], b[i], -c[i], -d[i], -e[i], -f[i] });
+            addClause({ -z[i], -a[i], b[i], -c[i], d[i], -e[i], -f[i] });
+            addClause({ -z[i], -a[i], b[i], c[i], -d[i], -e[i], -f[i] });
+            addClause({ z[i], -a[i], b[i], c[i], d[i], -e[i], -f[i] });
+            addClause({ z[i], a[i], -b[i], -c[i], -d[i], -e[i], -f[i] });
+            addClause({ -z[i], a[i], -b[i], -c[i], d[i], -e[i], -f[i] });
+            addClause({ -z[i], a[i], -b[i], c[i], -d[i], -e[i], -f[i] });
+            addClause({ z[i], a[i], -b[i], c[i], d[i], -e[i], -f[i] });
+            addClause({ -z[i], a[i], b[i], -c[i], -d[i], -e[i], -f[i] });
+            addClause({ z[i], a[i], b[i], -c[i], d[i], -e[i], -f[i] });
+            addClause({ z[i], a[i], b[i], c[i], -d[i], -e[i], -f[i] });
+            addClause({ -z[i], a[i], b[i], c[i], d[i], -e[i], -f[i] });
+        }
+    }
+}
+
+void xFormula::xor7(int* z, int* a, int* b, int* c, int* d, int* e, int* f, int* g, int n)
+{
+    for (int i = 0; i < n; i++) {
+        if (useXORClauses) {
+            addClause(Clause({ -z[i], a[i], b[i], c[i], d[i], e[i], f[i], g[i] }, true));
+        } else {
+            addClause({ -z[i], -a[i], -b[i], -c[i], -d[i], e[i], f[i], g[i] });
+            addClause({ z[i], -a[i], -b[i], -c[i], d[i], e[i], f[i], g[i] });
+            addClause({ z[i], -a[i], -b[i], c[i], -d[i], e[i], f[i], g[i] });
+            addClause({ -z[i], -a[i], -b[i], c[i], d[i], e[i], f[i], g[i] });
+            addClause({ z[i], -a[i], b[i], -c[i], -d[i], e[i], f[i], g[i] });
+            addClause({ -z[i], -a[i], b[i], -c[i], d[i], e[i], f[i], g[i] });
+            addClause({ -z[i], -a[i], b[i], c[i], -d[i], e[i], f[i], g[i] });
+            addClause({ z[i], -a[i], b[i], c[i], d[i], e[i], f[i], g[i] });
+            addClause({ z[i], a[i], -b[i], -c[i], -d[i], e[i], f[i], g[i] });
+            addClause({ -z[i], a[i], -b[i], -c[i], d[i], e[i], f[i], g[i] });
+            addClause({ -z[i], a[i], -b[i], c[i], -d[i], e[i], f[i], g[i] });
+            addClause({ z[i], a[i], -b[i], c[i], d[i], e[i], f[i], g[i] });
+            addClause({ -z[i], a[i], b[i], -c[i], -d[i], e[i], f[i], g[i] });
+            addClause({ z[i], a[i], b[i], -c[i], d[i], e[i], f[i], g[i] });
+            addClause({ z[i], a[i], b[i], c[i], -d[i], e[i], f[i], g[i] });
+            addClause({ -z[i], a[i], b[i], c[i], d[i], e[i], f[i], g[i] });
+            addClause({ z[i], -a[i], -b[i], -c[i], -d[i], -e[i], f[i], g[i] });
+            addClause({ -z[i], -a[i], -b[i], -c[i], d[i], -e[i], f[i], g[i] });
+            addClause({ -z[i], -a[i], -b[i], c[i], -d[i], -e[i], f[i], g[i] });
+            addClause({ z[i], -a[i], -b[i], c[i], d[i], -e[i], f[i], g[i] });
+            addClause({ -z[i], -a[i], b[i], -c[i], -d[i], -e[i], f[i], g[i] });
+            addClause({ z[i], -a[i], b[i], -c[i], d[i], -e[i], f[i], g[i] });
+            addClause({ z[i], -a[i], b[i], c[i], -d[i], -e[i], f[i], g[i] });
+            addClause({ -z[i], -a[i], b[i], c[i], d[i], -e[i], f[i], g[i] });
+            addClause({ -z[i], a[i], -b[i], -c[i], -d[i], -e[i], f[i], g[i] });
+            addClause({ z[i], a[i], -b[i], -c[i], d[i], -e[i], f[i], g[i] });
+            addClause({ z[i], a[i], -b[i], c[i], -d[i], -e[i], f[i], g[i] });
+            addClause({ -z[i], a[i], -b[i], c[i], d[i], -e[i], f[i], g[i] });
+            addClause({ z[i], a[i], b[i], -c[i], -d[i], -e[i], f[i], g[i] });
+            addClause({ -z[i], a[i], b[i], -c[i], d[i], -e[i], f[i], g[i] });
+            addClause({ -z[i], a[i], b[i], c[i], -d[i], -e[i], f[i], g[i] });
+            addClause({ z[i], a[i], b[i], c[i], d[i], -e[i], f[i], g[i] });
+            addClause({ z[i], -a[i], -b[i], -c[i], -d[i], e[i], -f[i], g[i] });
+            addClause({ -z[i], -a[i], -b[i], -c[i], d[i], e[i], -f[i], g[i] });
+            addClause({ -z[i], -a[i], -b[i], c[i], -d[i], e[i], -f[i], g[i] });
+            addClause({ z[i], -a[i], -b[i], c[i], d[i], e[i], -f[i], g[i] });
+            addClause({ -z[i], -a[i], b[i], -c[i], -d[i], e[i], -f[i], g[i] });
+            addClause({ z[i], -a[i], b[i], -c[i], d[i], e[i], -f[i], g[i] });
+            addClause({ z[i], -a[i], b[i], c[i], -d[i], e[i], -f[i], g[i] });
+            addClause({ -z[i], -a[i], b[i], c[i], d[i], e[i], -f[i], g[i] });
+            addClause({ -z[i], a[i], -b[i], -c[i], -d[i], e[i], -f[i], g[i] });
+            addClause({ z[i], a[i], -b[i], -c[i], d[i], e[i], -f[i], g[i] });
+            addClause({ z[i], a[i], -b[i], c[i], -d[i], e[i], -f[i], g[i] });
+            addClause({ -z[i], a[i], -b[i], c[i], d[i], e[i], -f[i], g[i] });
+            addClause({ z[i], a[i], b[i], -c[i], -d[i], e[i], -f[i], g[i] });
+            addClause({ -z[i], a[i], b[i], -c[i], d[i], e[i], -f[i], g[i] });
+            addClause({ -z[i], a[i], b[i], c[i], -d[i], e[i], -f[i], g[i] });
+            addClause({ z[i], a[i], b[i], c[i], d[i], e[i], -f[i], g[i] });
+            addClause({ -z[i], -a[i], -b[i], -c[i], -d[i], -e[i], -f[i], g[i] });
+            addClause({ z[i], -a[i], -b[i], -c[i], d[i], -e[i], -f[i], g[i] });
+            addClause({ z[i], -a[i], -b[i], c[i], -d[i], -e[i], -f[i], g[i] });
+            addClause({ -z[i], -a[i], -b[i], c[i], d[i], -e[i], -f[i], g[i] });
+            addClause({ z[i], -a[i], b[i], -c[i], -d[i], -e[i], -f[i], g[i] });
+            addClause({ -z[i], -a[i], b[i], -c[i], d[i], -e[i], -f[i], g[i] });
+            addClause({ -z[i], -a[i], b[i], c[i], -d[i], -e[i], -f[i], g[i] });
+            addClause({ z[i], -a[i], b[i], c[i], d[i], -e[i], -f[i], g[i] });
+            addClause({ z[i], a[i], -b[i], -c[i], -d[i], -e[i], -f[i], g[i] });
+            addClause({ -z[i], a[i], -b[i], -c[i], d[i], -e[i], -f[i], g[i] });
+            addClause({ -z[i], a[i], -b[i], c[i], -d[i], -e[i], -f[i], g[i] });
+            addClause({ z[i], a[i], -b[i], c[i], d[i], -e[i], -f[i], g[i] });
+            addClause({ -z[i], a[i], b[i], -c[i], -d[i], -e[i], -f[i], g[i] });
+            addClause({ z[i], a[i], b[i], -c[i], d[i], -e[i], -f[i], g[i] });
+            addClause({ z[i], a[i], b[i], c[i], -d[i], -e[i], -f[i], g[i] });
+            addClause({ -z[i], a[i], b[i], c[i], d[i], -e[i], -f[i], g[i] });
+            addClause({ z[i], -a[i], -b[i], -c[i], -d[i], e[i], f[i], -g[i] });
+            addClause({ -z[i], -a[i], -b[i], -c[i], d[i], e[i], f[i], -g[i] });
+            addClause({ -z[i], -a[i], -b[i], c[i], -d[i], e[i], f[i], -g[i] });
+            addClause({ z[i], -a[i], -b[i], c[i], d[i], e[i], f[i], -g[i] });
+            addClause({ -z[i], -a[i], b[i], -c[i], -d[i], e[i], f[i], -g[i] });
+            addClause({ z[i], -a[i], b[i], -c[i], d[i], e[i], f[i], -g[i] });
+            addClause({ z[i], -a[i], b[i], c[i], -d[i], e[i], f[i], -g[i] });
+            addClause({ -z[i], -a[i], b[i], c[i], d[i], e[i], f[i], -g[i] });
+            addClause({ -z[i], a[i], -b[i], -c[i], -d[i], e[i], f[i], -g[i] });
+            addClause({ z[i], a[i], -b[i], -c[i], d[i], e[i], f[i], -g[i] });
+            addClause({ z[i], a[i], -b[i], c[i], -d[i], e[i], f[i], -g[i] });
+            addClause({ -z[i], a[i], -b[i], c[i], d[i], e[i], f[i], -g[i] });
+            addClause({ z[i], a[i], b[i], -c[i], -d[i], e[i], f[i], -g[i] });
+            addClause({ -z[i], a[i], b[i], -c[i], d[i], e[i], f[i], -g[i] });
+            addClause({ -z[i], a[i], b[i], c[i], -d[i], e[i], f[i], -g[i] });
+            addClause({ z[i], a[i], b[i], c[i], d[i], e[i], f[i], -g[i] });
+            addClause({ -z[i], -a[i], -b[i], -c[i], -d[i], -e[i], f[i], -g[i] });
+            addClause({ z[i], -a[i], -b[i], -c[i], d[i], -e[i], f[i], -g[i] });
+            addClause({ z[i], -a[i], -b[i], c[i], -d[i], -e[i], f[i], -g[i] });
+            addClause({ -z[i], -a[i], -b[i], c[i], d[i], -e[i], f[i], -g[i] });
+            addClause({ z[i], -a[i], b[i], -c[i], -d[i], -e[i], f[i], -g[i] });
+            addClause({ -z[i], -a[i], b[i], -c[i], d[i], -e[i], f[i], -g[i] });
+            addClause({ -z[i], -a[i], b[i], c[i], -d[i], -e[i], f[i], -g[i] });
+            addClause({ z[i], -a[i], b[i], c[i], d[i], -e[i], f[i], -g[i] });
+            addClause({ z[i], a[i], -b[i], -c[i], -d[i], -e[i], f[i], -g[i] });
+            addClause({ -z[i], a[i], -b[i], -c[i], d[i], -e[i], f[i], -g[i] });
+            addClause({ -z[i], a[i], -b[i], c[i], -d[i], -e[i], f[i], -g[i] });
+            addClause({ z[i], a[i], -b[i], c[i], d[i], -e[i], f[i], -g[i] });
+            addClause({ -z[i], a[i], b[i], -c[i], -d[i], -e[i], f[i], -g[i] });
+            addClause({ z[i], a[i], b[i], -c[i], d[i], -e[i], f[i], -g[i] });
+            addClause({ z[i], a[i], b[i], c[i], -d[i], -e[i], f[i], -g[i] });
+            addClause({ -z[i], a[i], b[i], c[i], d[i], -e[i], f[i], -g[i] });
+            addClause({ -z[i], -a[i], -b[i], -c[i], -d[i], e[i], -f[i], -g[i] });
+            addClause({ z[i], -a[i], -b[i], -c[i], d[i], e[i], -f[i], -g[i] });
+            addClause({ z[i], -a[i], -b[i], c[i], -d[i], e[i], -f[i], -g[i] });
+            addClause({ -z[i], -a[i], -b[i], c[i], d[i], e[i], -f[i], -g[i] });
+            addClause({ z[i], -a[i], b[i], -c[i], -d[i], e[i], -f[i], -g[i] });
+            addClause({ -z[i], -a[i], b[i], -c[i], d[i], e[i], -f[i], -g[i] });
+            addClause({ -z[i], -a[i], b[i], c[i], -d[i], e[i], -f[i], -g[i] });
+            addClause({ z[i], -a[i], b[i], c[i], d[i], e[i], -f[i], -g[i] });
+            addClause({ z[i], a[i], -b[i], -c[i], -d[i], e[i], -f[i], -g[i] });
+            addClause({ -z[i], a[i], -b[i], -c[i], d[i], e[i], -f[i], -g[i] });
+            addClause({ -z[i], a[i], -b[i], c[i], -d[i], e[i], -f[i], -g[i] });
+            addClause({ z[i], a[i], -b[i], c[i], d[i], e[i], -f[i], -g[i] });
+            addClause({ -z[i], a[i], b[i], -c[i], -d[i], e[i], -f[i], -g[i] });
+            addClause({ z[i], a[i], b[i], -c[i], d[i], e[i], -f[i], -g[i] });
+            addClause({ z[i], a[i], b[i], c[i], -d[i], e[i], -f[i], -g[i] });
+            addClause({ -z[i], a[i], b[i], c[i], d[i], e[i], -f[i], -g[i] });
+            addClause({ z[i], -a[i], -b[i], -c[i], -d[i], -e[i], -f[i], -g[i] });
+            addClause({ -z[i], -a[i], -b[i], -c[i], d[i], -e[i], -f[i], -g[i] });
+            addClause({ -z[i], -a[i], -b[i], c[i], -d[i], -e[i], -f[i], -g[i] });
+            addClause({ z[i], -a[i], -b[i], c[i], d[i], -e[i], -f[i], -g[i] });
+            addClause({ -z[i], -a[i], b[i], -c[i], -d[i], -e[i], -f[i], -g[i] });
+            addClause({ z[i], -a[i], b[i], -c[i], d[i], -e[i], -f[i], -g[i] });
+            addClause({ z[i], -a[i], b[i], c[i], -d[i], -e[i], -f[i], -g[i] });
+            addClause({ -z[i], -a[i], b[i], c[i], d[i], -e[i], -f[i], -g[i] });
+            addClause({ -z[i], a[i], -b[i], -c[i], -d[i], -e[i], -f[i], -g[i] });
+            addClause({ z[i], a[i], -b[i], -c[i], d[i], -e[i], -f[i], -g[i] });
+            addClause({ z[i], a[i], -b[i], c[i], -d[i], -e[i], -f[i], -g[i] });
+            addClause({ -z[i], a[i], -b[i], c[i], d[i], -e[i], -f[i], -g[i] });
+            addClause({ z[i], a[i], b[i], -c[i], -d[i], -e[i], -f[i], -g[i] });
+            addClause({ -z[i], a[i], b[i], -c[i], d[i], -e[i], -f[i], -g[i] });
+            addClause({ -z[i], a[i], b[i], c[i], -d[i], -e[i], -f[i], -g[i] });
+            addClause({ z[i], a[i], b[i], c[i], d[i], -e[i], -f[i], -g[i] });
         }
     }
 }

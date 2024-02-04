@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#define IS_4bit false
+
 using namespace std;
 
 struct Clause {
@@ -31,6 +33,8 @@ public:
     void varName(int* x, string name, int offset = 0);
 
     void newVars(int* x, int n = 32, string name = ""); // Reserves new variable IDs for the bitvector 'x' of size 'n'
+    void new_4bit_diff(int x[32][4], string name = "");
+    void new_1bit_diff(int x[32][4], string name = "");
     void newDiff(int x[32][4], string name = "");
     void newVarsD2(int* x, int n = 32, int m = 4, string name = "");
 

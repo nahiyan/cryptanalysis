@@ -12,8 +12,6 @@
 #include <unistd.h>
 #include <unordered_map>
 
-#define add_rules true
-
 using namespace std;
 
 /* config options */
@@ -82,20 +80,16 @@ void load_rules(string filePath)
     inputFile.close();
 }
 
-void fix_starting_point(SHA256& block, char& diff, int* dx, int* x, int* x_)
+void fix_4bit_starting_point(SHA256& block, char& diff, int* dx, int* x, int* x_)
 {
     auto& formula = block.cnf;
     switch (diff) {
     case '-':
-        // formula.fixedValue(dx + 0, 1, 1);
         formula.fixedValue(dx + 1, 0, 1);
         formula.fixedValue(dx + 2, 0, 1);
-        // formula.fixedValue(dx + 3, 1, 1);
         break;
     case 'x':
         formula.fixedValue(dx + 0, 0, 1);
-        // formula.fixedValue(dx + 1, 1, 1);
-        // formula.fixedValue(dx + 2, 1, 1);
         formula.fixedValue(dx + 3, 0, 1);
         break;
     case '0':
@@ -131,6 +125,48 @@ void fix_starting_point(SHA256& block, char& diff, int* dx, int* x, int* x_)
         formula.fixedValue(dx + 3, 1, 1);
         break;
     }
+}
+
+void fix_1bit_starting_point(SHA256& block, char& diff, int* dx, int* x, int* x_)
+{
+    auto& formula = block.cnf;
+    switch (diff) {
+    case '-':
+        formula.fixedValue(dx, 0, 1);
+        break;
+    case 'x':
+        formula.fixedValue(dx, 1, 1);
+        break;
+    case 'u':
+        formula.fixedValue(x, 1, 1);
+        formula.fixedValue(x_, 0, 1);
+        formula.fixedValue(dx, 1, 1);
+        break;
+    case 'n':
+        formula.fixedValue(x, 0, 1);
+        formula.fixedValue(x_, 1, 1);
+        formula.fixedValue(dx, 1, 1);
+        break;
+    case '1':
+        formula.fixedValue(x, 1, 1);
+        formula.fixedValue(x_, 1, 1);
+        formula.fixedValue(dx, 0, 1);
+        break;
+    case '0':
+        formula.fixedValue(x, 0, 1);
+        formula.fixedValue(x_, 0, 1);
+        formula.fixedValue(dx, 0, 1);
+        break;
+    }
+}
+
+void fix_starting_point(SHA256& block, char& diff, int* dx, int* x, int* x_)
+{
+#if IS_4bit
+    fix_4bit_starting_point(block, diff, dx, x, x_);
+#else
+    fix_1bit_starting_point(block, diff, dx, x, x_);
+#endif
 }
 
 void collision(int rounds)
@@ -181,6 +217,14 @@ void collision(int rounds)
             g.cnf.basic_rules(DW[i], f.w[i], g.w[i]);
         }
     }
+    int zero[6]; // GC '0'
+    g.cnf.newVars(zero, 6, "zero");
+    g.cnf.fixedValue(&zero[0], 0, 1);
+    g.cnf.fixedValue(&zero[1], 0, 1);
+    g.cnf.fixedValue(&zero[2], 1, 1);
+    g.cnf.fixedValue(&zero[3], 0, 1);
+    g.cnf.fixedValue(&zero[4], 0, 1);
+    g.cnf.fixedValue(&zero[5], 0, 1);
 
     // Support for built-in differential characters
     vector<string> A, E, W;
@@ -211,15 +255,6 @@ void collision(int rounds)
         g.cnf.basic_rules(Ds0[i], f.s0[i], g.s0[i]);
         g.cnf.basic_rules(Ds1[i], f.s1[i], g.s1[i]);
 
-        int zero[6]; // GC '0'
-        g.cnf.newVars(zero, 6, "zero");
-        g.cnf.fixedValue(&zero[0], 0, 1);
-        g.cnf.fixedValue(&zero[1], 0, 1);
-        g.cnf.fixedValue(&zero[2], 1, 1);
-        g.cnf.fixedValue(&zero[3], 0, 1);
-        g.cnf.fixedValue(&zero[4], 0, 1);
-        g.cnf.fixedValue(&zero[5], 0, 1);
-
         // s0 = (w[i-15] >>> 7) XOR (w[i-15] >>> 18) XOR (w[i-15] >> 3)
         {
             int inputs[3][32][4];
@@ -238,7 +273,7 @@ void collision(int rounds)
             for (auto& entry : prop_rules.xor3) {
                 bool skip = false;
                 for (auto& c : entry.first)
-                    if (c != '-' && c != 'x')
+                    if (c != '-' && c != 'x' && c != '?')
                         skip = true;
                 if (skip)
                     continue;
@@ -264,7 +299,7 @@ void collision(int rounds)
             for (auto& entry : prop_rules.xor3) {
                 bool skip = false;
                 for (auto& c : entry.first)
-                    if (c != '-' && c != 'x')
+                    if (c != '-' && c != 'x' && c != '?')
                         skip = true;
                 if (skip)
                     continue;
@@ -304,13 +339,14 @@ void collision(int rounds)
             for (auto& entry : prop_rules.xor3) {
                 bool skip = false;
                 for (auto& c : entry.first)
-                    if (c != '-' && c != 'x')
+                    if (c != '-' && c != 'x' && c != '?')
                         skip = true;
                 if (skip)
                     continue;
                 g.cnf.impose_rule({ &inputs[0], &inputs[1], &inputs[2] }, { &Dsigma0[i] }, entry);
             }
         }
+
         // g.Sigma1(Dsigma1[i], DE[i + 3]);
         {
             int inputs[3][32][4];
@@ -326,7 +362,7 @@ void collision(int rounds)
             for (auto& entry : prop_rules.xor3) {
                 bool skip = false;
                 for (auto& c : entry.first)
-                    if (c != '-' && c != 'x')
+                    if (c != '-' && c != 'x' && c != '?')
                         skip = true;
                 if (skip)
                     continue;
@@ -334,28 +370,49 @@ void collision(int rounds)
             }
         }
 
+#if !IS_4bit
+        {
+            int output[32], input[32];
+            for (int x = 0; x < 32; x++) {
+                output[x] = Dsigma0[i][x][0];
+                input[x] = DA[i + 3][x][0];
+            }
+
+            g.Sigma0(output, input);
+        }
+        {
+            int output[32], input[32];
+            for (int x = 0; x < 32; x++) {
+                output[x] = Dsigma1[i][x][0];
+                input[x] = DE[i + 3][x][0];
+            }
+
+            g.Sigma1(output, input);
+        }
+#endif
+
         // f1 = IF(E[i+3], E[i+2], E[i+1])
-        // f2 = MAJ(A[i+3], A[i+2], A[i+1])
         g.cnf.newDiff(Df1[i], "Dif_" + to_string(i));
         g.cnf.basic_rules(Df1[i], f.f1[i], g.f1[i]);
         // Add IF difference rules
         for (auto& entry : prop_rules.ch) {
             bool skip = false;
             for (auto& c : entry.first)
-                if (c != '-' && c != 'x')
+                if (c != '-' && c != 'x' && c != '?')
                     skip = true;
             if (skip)
                 continue;
             g.cnf.impose_rule({ &DE[i + 3], &DE[i + 2], &DE[i + 1] }, { &Df1[i] }, entry);
         }
 
+        // f2 = MAJ(A[i+3], A[i+2], A[i+1])
         g.cnf.newDiff(Df2[i], "Dmaj_" + to_string(i));
         g.cnf.basic_rules(Df2[i], f.f2[i], g.f2[i]);
         // Add MAJ difference rules
         for (auto& entry : prop_rules.maj) {
             bool skip = false;
             for (auto& c : entry.first)
-                if (c != '-' && c != 'x')
+                if (c != '-' && c != 'x' && c != '?')
                     skip = true;
             if (skip)
                 continue;
@@ -370,8 +427,10 @@ void collision(int rounds)
         g.cnf.basic_rules(Dr0carry[i], f.r0carry[i], g.r0carry[i]);
         g.cnf.basic_rules(DT[i], f.T[i], g.T[i]);
         g.cnf.newDiff(DK[i], "DK_" + to_string(i));
+
         // Fix the differences
         for (int j = 0; j < 32; j++) {
+#if IS_4bit
             bool is_true = rnd_const[i] >> j & 1;
             if (is_true) {
                 g.cnf.addClause({ -DK[i][j][0] });
@@ -384,6 +443,9 @@ void collision(int rounds)
                 g.cnf.addClause({ -DK[i][j][2] });
                 g.cnf.addClause({ -DK[i][j][3] });
             }
+#else
+            g.cnf.addClause({ -DK[i][j][0] });
+#endif
         }
         g.cnf.diff_add(prop_rules, DT[i], DE[i], Dsigma1[i], Dr0carry[i], Dr0Carry[i], Df1[i], DK[i], DW[i]);
 

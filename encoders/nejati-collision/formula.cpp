@@ -36,7 +36,8 @@ void Formula::newVars(int* x, int n, string name)
         varNames[name + "_" + formulaName] = x[0];
     varCnt += n;
 }
-void Formula::newDiff(int x[32][4], string name)
+
+void Formula::new_4bit_diff(int x[32][4], string name)
 {
     for (int i = 0; i < 32; i++)
         for (int j = 0; j < 4; j++)
@@ -45,6 +46,25 @@ void Formula::newDiff(int x[32][4], string name)
     if (name != "")
         varNames[name + "_" + formulaName] = x[0][0];
     varCnt += 32 * 4;
+}
+
+void Formula::new_1bit_diff(int x[32][4], string name)
+{
+    for (int i = 0; i < 32; i++)
+        x[i][0] = ++varID;
+
+    if (name != "")
+        varNames[name + "_" + formulaName] = x[0][0];
+    varCnt += 32;
+}
+
+void Formula::newDiff(int x[32][4], string name)
+{
+#if IS_4bit
+    new_4bit_diff(x, name);
+#else
+    new_1bit_diff(x, name);
+#endif
 }
 
 void Formula::addClause(vector<int> v)
@@ -115,17 +135,6 @@ void Formula::xor2(int* z, int* x, int* y, int n)
             addClause({ -z[i], x[i], y[i] });
         }
     }
-}
-
-// p -> q
-void Formula::implication(vector<int> p, vector<int> q)
-{
-    vector<int> clause;
-    for (auto& var : p)
-        clause.push_back(-var);
-    for (auto& var : q)
-        clause.push_back(var);
-    addClause(clause);
 }
 
 // TODO: Inject XOR rules if these are difference variables
