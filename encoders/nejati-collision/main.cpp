@@ -217,6 +217,8 @@ void collision(int rounds)
             g.cnf.basic_rules(DW[i], f.w[i], g.w[i]);
         }
     }
+
+#if IS_4bit
     int zero[6]; // GC '0'
     g.cnf.newVars(zero, 6, "zero");
     g.cnf.fixedValue(&zero[0], 0, 1);
@@ -225,6 +227,13 @@ void collision(int rounds)
     g.cnf.fixedValue(&zero[3], 0, 1);
     g.cnf.fixedValue(&zero[4], 0, 1);
     g.cnf.fixedValue(&zero[5], 0, 1);
+#else
+    int zero[3]; // GC '0'
+    g.cnf.newVars(zero, 3, "zero");
+    g.cnf.fixedValue(&zero[0], 0, 1);
+    g.cnf.fixedValue(&zero[1], 0, 1);
+    g.cnf.fixedValue(&zero[2], 0, 1);
+#endif
 
     // Support for built-in differential characters
     vector<string> A, E, W;
@@ -273,7 +282,7 @@ void collision(int rounds)
             for (auto& entry : prop_rules.xor3) {
                 bool skip = false;
                 for (auto& c : entry.first)
-                    if (c != '-' && c != 'x' && c != '?')
+                    if (c != '-' && c != 'x')
                         skip = true;
                 if (skip)
                     continue;
@@ -299,7 +308,7 @@ void collision(int rounds)
             for (auto& entry : prop_rules.xor3) {
                 bool skip = false;
                 for (auto& c : entry.first)
-                    if (c != '-' && c != 'x' && c != '?')
+                    if (c != '-' && c != 'x')
                         skip = true;
                 if (skip)
                     continue;
@@ -339,7 +348,7 @@ void collision(int rounds)
             for (auto& entry : prop_rules.xor3) {
                 bool skip = false;
                 for (auto& c : entry.first)
-                    if (c != '-' && c != 'x' && c != '?')
+                    if (c != '-' && c != 'x')
                         skip = true;
                 if (skip)
                     continue;
@@ -362,7 +371,7 @@ void collision(int rounds)
             for (auto& entry : prop_rules.xor3) {
                 bool skip = false;
                 for (auto& c : entry.first)
-                    if (c != '-' && c != 'x' && c != '?')
+                    if (c != '-' && c != 'x')
                         skip = true;
                 if (skip)
                     continue;
@@ -398,7 +407,7 @@ void collision(int rounds)
         for (auto& entry : prop_rules.ch) {
             bool skip = false;
             for (auto& c : entry.first)
-                if (c != '-' && c != 'x' && c != '?')
+                if (c != '-' && c != 'x')
                     skip = true;
             if (skip)
                 continue;
@@ -412,7 +421,7 @@ void collision(int rounds)
         for (auto& entry : prop_rules.maj) {
             bool skip = false;
             for (auto& c : entry.first)
-                if (c != '-' && c != 'x' && c != '?')
+                if (c != '-' && c != 'x')
                     skip = true;
             if (skip)
                 continue;

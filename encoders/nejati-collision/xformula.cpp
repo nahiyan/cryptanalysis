@@ -452,7 +452,6 @@ void xFormula::impose_1bit_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32
 
 void xFormula::impose_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32][4]> outputs, pair<string, string> rule)
 {
-    return;
 #if IS_4bit
     impose_4bit_rule(inputs, outputs, rule);
 #else
