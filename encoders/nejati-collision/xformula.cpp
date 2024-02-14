@@ -400,11 +400,15 @@ void xFormula::impose_4bit_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32
             if (inputs_diff[x] == '?')
                 continue;
             vector<int> values = get_values(inputs_diff[x]);
-            // TODO: Avoid adding zero constants to the antecedent
             for (int k = 0; k < 4; k++) {
                 if (values[k] == 1)
                     continue;
-                antecedent.push_back((values[k] == 1 ? -1 : 1) * (*inputs[x])[i][k]);
+
+                int id = (*inputs[x])[i][k];
+                if (id == 0)
+                    continue;
+
+                antecedent.push_back((values[k] == 1 ? -1 : 1) * id);
             }
         }
 
@@ -435,8 +439,11 @@ void xFormula::impose_1bit_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32
         for (int x = 0; x < inputs.size(); x++) {
             if (inputs_diff[x] == '?')
                 continue;
+            int id = (*inputs[x])[i][0];
+            if (id == 0)
+                continue;
             assert(inputs_diff[x] == '-' || inputs_diff[x] == 'x');
-            antecedent.push_back((inputs_diff[x] == '-' ? 1 : -1) * (*inputs[x])[i][0]);
+            antecedent.push_back((inputs_diff[x] == '-' ? 1 : -1) * id);
         }
 
         for (int x = 0; x < outputs.size(); x++) {

@@ -275,7 +275,7 @@ void collision(int rounds)
                     if (j < 29)
                         inputs[2][j][k] = DW[i - 15][(j + 3) % 32][k];
                     else
-                        inputs[2][j][k] = zero[2 + k];
+                        inputs[2][j][k] = 0;
                 }
             }
             // Add XOR3 difference rules
@@ -301,7 +301,7 @@ void collision(int rounds)
                     if (j < 22)
                         inputs[2][j][k] = DW[i - 2][(j + 10) % 32][k];
                     else
-                        inputs[2][j][k] = zero[2 + k];
+                        inputs[2][j][k] = 0;
                 }
             }
             // Add XOR3 difference rules
@@ -378,27 +378,6 @@ void collision(int rounds)
                 g.cnf.impose_rule({ &inputs[0], &inputs[1], &inputs[2] }, { &Dsigma1[i] }, entry);
             }
         }
-
-#if !IS_4bit
-        {
-            int output[32], input[32];
-            for (int x = 0; x < 32; x++) {
-                output[x] = Dsigma0[i][x][0];
-                input[x] = DA[i + 3][x][0];
-            }
-
-            g.Sigma0(output, input);
-        }
-        {
-            int output[32], input[32];
-            for (int x = 0; x < 32; x++) {
-                output[x] = Dsigma1[i][x][0];
-                input[x] = DE[i + 3][x][0];
-            }
-
-            g.Sigma1(output, input);
-        }
-#endif
 
         // f1 = IF(E[i+3], E[i+2], E[i+1])
         g.cnf.newDiff(Df1[i], "Dif_" + to_string(i));
