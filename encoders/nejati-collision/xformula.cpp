@@ -370,10 +370,7 @@ void xFormula::basic_4bit_rules(int dx[32], int x[32], int x_[32])
 
 void xFormula::basic_1bit_rules(int dx[32], int x[32], int x_[32])
 {
-    int dx_[32];
-    for (int i = 0; i < 32; i++)
-        dx_[i] = dx[i];
-    xor2(dx_, x, x_, 32);
+    xor2(dx, x, x_, 32);
 }
 
 void xFormula::basic_rules(int dx[32], int x[32], int x_[32])
@@ -434,27 +431,25 @@ inline void xFormula::impose_1bit_rule(vector<int> input_ids, vector<int> output
 {
     string inputs_diff = rule.first, outputs_diff = rule.second;
 
-    for (int i = 0; i < 32; i++) {
-        vector<int> antecedent;
-        for (int x = 0; x < input_ids.size(); x++) {
-            if (inputs_diff[x] == '?')
-                continue;
-            int id = input_ids[x];
-            if (id == 0)
-                continue;
-            assert(inputs_diff[x] == '-' || inputs_diff[x] == 'x');
-            antecedent.push_back((inputs_diff[x] == '-' ? 1 : -1) * id);
-        }
+    vector<int> antecedent;
+    for (int x = 0; x < input_ids.size(); x++) {
+        if (inputs_diff[x] == '?')
+            continue;
+        int id = input_ids[x];
+        if (id == 0)
+            continue;
+        assert(inputs_diff[x] == '-' || inputs_diff[x] == 'x');
+        antecedent.push_back((inputs_diff[x] == '-' ? 1 : -1) * id);
+    }
 
-        for (int x = 0; x < output_ids.size(); x++) {
-            if (outputs_diff[x] == '?')
-                continue;
-            assert(outputs_diff[x] == '-' || outputs_diff[x] == 'x');
-            assert(output_ids[x] > 0);
-            vector<int> clause(antecedent);
-            clause.push_back((outputs_diff[x] == '-' ? -1 : 1) * output_ids[x]);
-            addClause(clause);
-        }
+    for (int x = 0; x < output_ids.size(); x++) {
+        if (outputs_diff[x] == '?')
+            continue;
+        assert(outputs_diff[x] == '-' || outputs_diff[x] == 'x');
+        assert(output_ids[x] > 0);
+        vector<int> clause(antecedent);
+        clause.push_back((outputs_diff[x] == '-' ? -1 : 1) * output_ids[x]);
+        addClause(clause);
     }
 }
 

@@ -290,7 +290,6 @@ void collision(int rounds)
                     continue;
                 else if (input_ids[2] != 0 && entry.first[2] == '0')
                     continue;
-                // printf("c %d: %s -> %s\n", j, entry.first.c_str(), entry.second.c_str());
                 g.cnf.impose_rule(input_ids, output_ids, entry);
             }
         }
