@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <cstddef>
 
-inline vector<int> get_values(char diff)
+inline vector<int> get_values_4bit(char diff)
 {
     assert(diff != '#');
     switch (diff) {
@@ -96,11 +96,11 @@ void xFormula::add(int* z, int* a, int* b, int* t, int* T, int* c, int* d, int* 
     }
 }
 
-void xFormula::comp_4bit(Rules& rules, int z[4], int v[10][4], int n, int t[4], int T[4])
+void xFormula::comp_4bit(Rules& rules, int z, int v[10], int n, int t, int T)
 {
     assert(n >= 2 && n <= 7);
     if (n > 3)
-        assert(T != NULL);
+        assert(T != -1);
 
     unordered_map<string, string>* add_rules;
     if (n == 2)
@@ -127,11 +127,11 @@ void xFormula::comp_4bit(Rules& rules, int z[4], int v[10][4], int n, int t[4], 
         for (char& c : lhs) {
             assert(c == '-' || c == 'x');
             if (c == '-') {
-                antecedent.push_back(v[i][1]);
-                antecedent.push_back(v[i][2]);
+                antecedent.push_back(v[i] + 1);
+                antecedent.push_back(v[i] + 2);
             } else if (c == 'x') {
-                antecedent.push_back(v[i][0]);
-                antecedent.push_back(v[i][3]);
+                antecedent.push_back(v[i] + 0);
+                antecedent.push_back(v[i] + 3);
             }
             i++;
         }
@@ -139,17 +139,17 @@ void xFormula::comp_4bit(Rules& rules, int z[4], int v[10][4], int n, int t[4], 
         for (char& c : rhs) {
             ++i;
 
-            if (i == 0 && (n <= 3 || T == NULL))
+            if (i == 0 && (n <= 3 || T == -1))
                 continue;
 
             assert(n <= 3 ? i != 0 : true);
-            assert(T == NULL ? i != 0 : true);
+            assert(T == -1 ? i != 0 : true);
 
-            vector<int> values = get_values(c);
+            vector<int> values = get_values_4bit(c);
             if (values.size() == 0)
                 continue;
 
-            int* diff;
+            int diff;
             if (i == 0)
                 diff = T;
             else if (i == 1)
@@ -162,20 +162,15 @@ void xFormula::comp_4bit(Rules& rules, int z[4], int v[10][4], int n, int t[4], 
                 vector<int> clause(antecedent);
                 if (values[j] == 1)
                     continue;
-                clause.push_back((values[j] == 1 ? 1 : -1) * diff[j]);
+                clause.push_back((values[j] == 1 ? 1 : -1) * (diff + j));
                 addClause(clause);
             }
         }
     }
 }
 
-void xFormula::diff_4bit_add(Rules& rules, int z[32][4], int a[32][4], int b[32][4], int t[32][4], int T[32][4], int c[32][4], int d[32][4], int e[32][4])
+void xFormula::diff_4bit_add(Rules& rules, int z[32], int a[32], int b[32], int t[32], int T[32], int c[32], int d[32], int e[32])
 {
-    auto set = [](int x[4], int y[4]) {
-        for (int i = 0; i < 4; i++)
-            x[i] = y[i];
-    };
-
     int n = 32;
     int m = 2;
     if (c)
@@ -184,21 +179,21 @@ void xFormula::diff_4bit_add(Rules& rules, int z[32][4], int a[32][4], int b[32]
         m++;
     if (e)
         m++;
-    int v[10][4], k;
+    int v[10], k;
     for (int j = 0; j < 32; j++) {
         k = 0;
-        set(v[k++], a[j]);
-        set(v[k++], b[j]);
+        v[k++] = a[j];
+        v[k++] = b[j];
         if (c)
-            set(v[k++], c[j]);
+            v[k++] = c[j];
         if (d)
-            set(v[k++], d[j]);
+            v[k++] = d[j];
         if (e)
-            set(v[k++], e[j]);
+            v[k++] = e[j];
         if (j > 0)
-            set(v[k++], t[j - 1]);
+            v[k++] = t[j - 1];
         if ((m == 3 && j >= 3) || (j >= 2 && m > 3))
-            set(v[k++], T[j - 2]);
+            v[k++] = T[j - 2];
 
         if (m == 2)
             comp_4bit(rules, z[j], v, k, t[j]);
@@ -242,7 +237,7 @@ void xFormula::comp_1bit(int z, int* v, int n, int t, int T)
     }
 }
 
-void xFormula::diff_1bit_add(Rules& rules, int z[32][4], int a[32][4], int b[32][4], int t[32][4], int T[32][4], int c[32][4], int d[32][4], int e[32][4])
+void xFormula::diff_1bit_add(Rules& rules, int z[32], int a[32], int b[32], int t[32], int T[32], int c[32], int d[32], int e[32])
 {
     int n = 32;
     int m = 2;
@@ -255,28 +250,28 @@ void xFormula::diff_1bit_add(Rules& rules, int z[32][4], int a[32][4], int b[32]
     int v[10], k;
     for (int j = 0; j < 32; j++) {
         k = 0;
-        v[k++] = a[j][0];
-        v[k++] = b[j][0];
+        v[k++] = a[j];
+        v[k++] = b[j];
         if (c)
-            v[k++] = c[j][0];
+            v[k++] = c[j];
         if (d)
-            v[k++] = d[j][0];
+            v[k++] = d[j];
         if (e)
-            v[k++] = e[j][0];
+            v[k++] = e[j];
         if (j > 0)
-            v[k++] = t[j - 1][0];
+            v[k++] = t[j - 1];
         if (j > 1)
             if ((m == 3 && j >= 3) || (m > 3))
-                v[k++] = T[j - 2][0];
+                v[k++] = T[j - 2];
 
         if (m == 2)
-            comp_1bit(z[j][0], v, k, t[j][0]);
+            comp_1bit(z[j], v, k, t[j]);
         else
-            comp_1bit(z[j][0], v, k, t[j][0], T[j][0]);
+            comp_1bit(z[j], v, k, t[j], T[j]);
     }
 }
 
-void xFormula::diff_add(Rules& rules, int z[32][4], int a[32][4], int b[32][4], int t[32][4], int T[32][4], int c[32][4], int d[32][4], int e[32][4])
+void xFormula::diff_add(Rules& rules, int z[32], int a[32], int b[32], int t[32], int T[32], int c[32], int d[32], int e[32])
 {
 #if IS_4bit
     diff_4bit_add(rules, z, a, b, t, T, c, d, e);
@@ -285,103 +280,103 @@ void xFormula::diff_add(Rules& rules, int z[32][4], int a[32][4], int b[32][4], 
 #endif
 }
 
-void xFormula::basic_4bit_rules(int dx[32][4], int x[32], int x_[32])
+void xFormula::basic_4bit_rules(int dx[32], int x[32], int x_[32])
 {
     for (int i = 0; i < 32; i++) {
         // * (0, 0) -> '0'
-        addClause({ x[i], x_[i], dx[i][0] });
+        addClause({ x[i], x_[i], dx[i] + 0 });
 
         // * (1, 0) -> 'u'
-        addClause({ -x[i], x_[i], dx[i][1] });
+        addClause({ -x[i], x_[i], dx[i] + 1 });
 
         // * (0, 1) -> 'n'
-        addClause({ x[i], -x_[i], dx[i][2] });
+        addClause({ x[i], -x_[i], dx[i] + 2 });
 
         // * (1, 1) -> '1'
-        addClause({ -x[i], -x_[i], dx[i][3] });
+        addClause({ -x[i], -x_[i], dx[i] + 3 });
 
         // * (0, ?) -> can't be 'u' or '1'
-        addClause({ x[i], -dx[i][1] });
-        addClause({ x[i], -dx[i][3] });
+        addClause({ x[i], -(dx[i] + 1) });
+        addClause({ x[i], -(dx[i] + 3) });
 
         // * (?, 0) -> can't be 'n' or '1'
-        addClause({ x_[i], -dx[i][2] });
-        addClause({ x_[i], -dx[i][3] });
+        addClause({ x_[i], -(dx[i] + 2) });
+        addClause({ x_[i], -(dx[i] + 3) });
 
         // * (1, ?) -> can't be '0' or 'n'
-        addClause({ -x[i], -dx[i][0] });
-        addClause({ -x[i], -dx[i][2] });
+        addClause({ -x[i], -(dx[i] + 0) });
+        addClause({ -x[i], -(dx[i] + 2) });
 
         // * (?, 1) -> can't be '0' or 'u'
-        addClause({ -x_[i], -dx[i][0] });
-        addClause({ -x_[i], -dx[i][1] });
+        addClause({ -x_[i], -(dx[i] + 0) });
+        addClause({ -x_[i], -(dx[i] + 1) });
 
         // * '-' -> x xnor x'
-        addClause({ dx[i][1], dx[i][2], -x[i], x_[i] });
-        addClause({ dx[i][1], dx[i][2], x[i], -x_[i] });
+        addClause({ dx[i] + 1, dx[i] + 2, -x[i], x_[i] });
+        addClause({ dx[i] + 1, dx[i] + 2, x[i], -x_[i] });
 
         // * 'x' -> x xor x'
-        addClause({ dx[i][0], dx[i][3], -x[i], -x_[i] });
-        addClause({ dx[i][0], dx[i][3], x[i], x_[i] });
+        addClause({ dx[i] + 0, dx[i] + 3, -x[i], -x_[i] });
+        addClause({ dx[i] + 0, dx[i] + 3, x[i], x_[i] });
 
         // * '0' -> ~x and ~x'
-        addClause({ dx[i][1], dx[i][2], dx[i][3], -x[i] });
-        addClause({ dx[i][1], dx[i][2], dx[i][3], -x_[i] });
+        addClause({ dx[i] + 1, dx[i] + 2, dx[i] + 3, -x[i] });
+        addClause({ dx[i] + 1, dx[i] + 2, dx[i] + 3, -x_[i] });
 
         // * 'u' -> x and ~x'
-        addClause({ dx[i][0], dx[i][2], dx[i][3], x[i] });
-        addClause({ dx[i][0], dx[i][2], dx[i][3], -x_[i] });
+        addClause({ dx[i] + 0, dx[i] + 2, dx[i] + 3, x[i] });
+        addClause({ dx[i] + 0, dx[i] + 2, dx[i] + 3, -x_[i] });
 
         // * 'n' -> ~x and x'
-        addClause({ dx[i][0], dx[i][1], dx[i][3], -x[i] });
-        addClause({ dx[i][0], dx[i][1], dx[i][3], x_[i] });
+        addClause({ dx[i] + 0, dx[i] + 1, dx[i] + 3, -x[i] });
+        addClause({ dx[i] + 0, dx[i] + 1, dx[i] + 3, x_[i] });
 
         // * '1' -> x and x'
-        addClause({ dx[i][0], dx[i][1], dx[i][2], x[i] });
-        addClause({ dx[i][0], dx[i][1], dx[i][2], x_[i] });
+        addClause({ dx[i] + 0, dx[i] + 1, dx[i] + 2, x[i] });
+        addClause({ dx[i] + 0, dx[i] + 1, dx[i] + 2, x_[i] });
 
         // * '3' -> ~x'
         // If it can't be 'n' and '1' -> ~x'
-        addClause({ dx[i][2], dx[i][3], -x_[i] });
+        addClause({ dx[i] + 2, dx[i] + 3, -x_[i] });
 
         // * '5' -> ~x
         // If it can't be 'u' and '1' -> ~x
-        addClause({ dx[i][1], dx[i][3], -x[i] });
+        addClause({ dx[i] + 1, dx[i] + 3, -x[i] });
 
         // * '7' -> ~x or ~x'
-        addClause({ dx[i][3], -x[i], -x_[i] });
+        addClause({ dx[i] + 3, -x[i], -x_[i] });
 
         // * 'A' -> x
         // If it can't be '0' and 'n' -> x
-        addClause({ dx[i][0], dx[i][2], x[i] });
+        addClause({ dx[i] + 0, dx[i] + 2, x[i] });
 
         // * 'B' -> x or ~x'
-        addClause({ dx[i][2], x[i], -x_[i] });
+        addClause({ dx[i] + 2, x[i], -x_[i] });
 
         // * 'C' -> x'
         // If it can't be '0' and 'u' -> x'
-        addClause({ dx[i][0], dx[i][1], x_[i] });
+        addClause({ dx[i] + 0, dx[i] + 1, x_[i] });
 
         // * 'D' -> ~x or x'
-        addClause({ dx[i][1], -x[i], x_[i] });
+        addClause({ dx[i] + 1, -x[i], x_[i] });
 
         // * 'E' -> x or x'
-        addClause({ dx[i][0], x[i], x_[i] });
+        addClause({ dx[i] + 0, x[i], x_[i] });
 
         // * Can't be a '#'
-        addClause({ dx[i][0], dx[i][1], dx[i][2], dx[i][3] });
+        addClause({ dx[i] + 0, dx[i] + 1, dx[i] + 2, dx[i] + 3 });
     }
 }
 
-void xFormula::basic_1bit_rules(int dx[32][4], int x[32], int x_[32])
+void xFormula::basic_1bit_rules(int dx[32], int x[32], int x_[32])
 {
     int dx_[32];
     for (int i = 0; i < 32; i++)
-        dx_[i] = dx[i][0];
+        dx_[i] = dx[i];
     xor2(dx_, x, x_, 32);
 }
 
-void xFormula::basic_rules(int dx[32][4], int x[32], int x_[32])
+void xFormula::basic_rules(int dx[32], int x[32], int x_[32])
 {
 #if IS_4bit
     basic_4bit_rules(dx, x, x_);
@@ -390,74 +385,80 @@ void xFormula::basic_rules(int dx[32][4], int x[32], int x_[32])
 #endif
 }
 
-void xFormula::impose_4bit_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32][4]> outputs, pair<string, string> rule)
+inline void xFormula::impose_4bit_rule(vector<int> input_ids, vector<int> output_ids, pair<string, string> rule)
 {
     string inputs_diff = rule.first, outputs_diff = rule.second;
 
-    for (int i = 0; i < 32; i++) {
-        vector<int> antecedent;
-        for (int x = 0; x < inputs.size(); x++) {
-            if (inputs_diff[x] == '?')
+    vector<int> antecedent;
+    for (int x = 0; x < input_ids.size(); x++) {
+        if (inputs_diff[x] == '?')
+            continue;
+        int base_id = input_ids[x];
+        if (base_id == 0)
+            continue;
+
+        vector<int> values = get_values_4bit(inputs_diff[x]);
+        for (int k = 0; k < 4; k++) {
+            if (values[k] == 1)
                 continue;
-            vector<int> values = get_values(inputs_diff[x]);
-            for (int k = 0; k < 4; k++) {
-                if (values[k] == 1)
-                    continue;
 
-                int id = (*inputs[x])[i][k];
-                if (id == 0)
-                    continue;
-
-                antecedent.push_back((values[k] == 1 ? -1 : 1) * id);
-            }
+            int id = base_id + k;
+            antecedent.push_back((values[k] == 1 ? -1 : 1) * id);
         }
+    }
 
-        for (int x = 0; x < outputs.size(); x++) {
-            if (outputs_diff[x] == '?')
-                continue;
-            vector<int> values = get_values(outputs_diff[x]);
-            if (values.size() == 0)
-                continue;
+    for (int x = 0; x < output_ids.size(); x++) {
+        if (outputs_diff[x] == '?')
+            continue;
+        vector<int> values = get_values_4bit(outputs_diff[x]);
+        if (values.size() == 0)
+            continue;
 
-            for (int k = 0; k < 4; k++) {
-                if (values[k] == 1)
-                    continue;
-                vector<int> clause(antecedent);
-                clause.push_back((values[k] == 1 ? 1 : -1) * (*outputs[x])[i][k]);
-                addClause(clause);
-            }
+        int base_id = output_ids[x];
+        assert(base_id > 0);
+        for (int k = 0; k < 4; k++) {
+            if (values[k] == 1)
+                continue;
+            vector<int> clause(antecedent);
+            clause.push_back((values[k] == 1 ? 1 : -1) * (base_id + k));
+            // printf("Clause (%d, %d): ", base_id, x);
+            // for (auto& lit : clause)
+            //     printf("%d ", lit);
+            // printf("\n");
+            addClause(clause);
         }
     }
 }
 
-void xFormula::impose_1bit_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32][4]> outputs, pair<string, string> rule)
+inline void xFormula::impose_1bit_rule(vector<int> input_ids, vector<int> output_ids, pair<string, string> rule)
 {
     string inputs_diff = rule.first, outputs_diff = rule.second;
 
     for (int i = 0; i < 32; i++) {
         vector<int> antecedent;
-        for (int x = 0; x < inputs.size(); x++) {
+        for (int x = 0; x < input_ids.size(); x++) {
             if (inputs_diff[x] == '?')
                 continue;
-            int id = (*inputs[x])[i][0];
+            int id = input_ids[x];
             if (id == 0)
                 continue;
             assert(inputs_diff[x] == '-' || inputs_diff[x] == 'x');
             antecedent.push_back((inputs_diff[x] == '-' ? 1 : -1) * id);
         }
 
-        for (int x = 0; x < outputs.size(); x++) {
+        for (int x = 0; x < output_ids.size(); x++) {
             if (outputs_diff[x] == '?')
                 continue;
             assert(outputs_diff[x] == '-' || outputs_diff[x] == 'x');
+            assert(output_ids[x] > 0);
             vector<int> clause(antecedent);
-            clause.push_back((outputs_diff[x] == '-' ? -1 : 1) * (*outputs[x])[i][0]);
+            clause.push_back((outputs_diff[x] == '-' ? -1 : 1) * output_ids[x]);
             addClause(clause);
         }
     }
 }
 
-void xFormula::impose_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32][4]> outputs, pair<string, string> rule)
+void xFormula::impose_rule(vector<int> inputs, vector<int> outputs, pair<string, string> rule)
 {
 #if IS_4bit
     impose_4bit_rule(inputs, outputs, rule);

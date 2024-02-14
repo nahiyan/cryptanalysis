@@ -80,87 +80,87 @@ void load_rules(string filePath)
     inputFile.close();
 }
 
-void fix_4bit_starting_point(SHA256& block, char& diff, int* dx, int* x, int* x_)
+void fix_4bit_starting_point(SHA256& block, char& diff, int dx, int x, int x_)
 {
     auto& formula = block.cnf;
     switch (diff) {
     case '-':
-        formula.fixedValue(dx + 1, 0, 1);
-        formula.fixedValue(dx + 2, 0, 1);
+        formula.addClause({ -(dx + 1) });
+        formula.addClause({ -(dx + 2) });
         break;
     case 'x':
-        formula.fixedValue(dx + 0, 0, 1);
-        formula.fixedValue(dx + 3, 0, 1);
+        formula.addClause({ -(dx + 0) });
+        formula.addClause({ -(dx + 3) });
         break;
     case '0':
-        formula.fixedValue(x, 0, 1);
-        formula.fixedValue(x_, 0, 1);
-        formula.fixedValue(dx + 0, 1, 1);
-        formula.fixedValue(dx + 1, 0, 1);
-        formula.fixedValue(dx + 2, 0, 1);
-        formula.fixedValue(dx + 3, 0, 1);
+        formula.addClause({ -x });
+        formula.addClause({ -x_ });
+        formula.addClause({ dx + 0 });
+        formula.addClause({ -(dx + 1) });
+        formula.addClause({ -(dx + 2) });
+        formula.addClause({ -(dx + 3) });
         break;
     case 'u':
-        formula.fixedValue(x, 1, 1);
-        formula.fixedValue(x_, 0, 1);
-        formula.fixedValue(dx + 0, 0, 1);
-        formula.fixedValue(dx + 1, 1, 1);
-        formula.fixedValue(dx + 2, 0, 1);
-        formula.fixedValue(dx + 3, 0, 1);
+        formula.addClause({ x });
+        formula.addClause({ -x_ });
+        formula.addClause({ -(dx + 0) });
+        formula.addClause({ dx + 1 });
+        formula.addClause({ -(dx + 2) });
+        formula.addClause({ -(dx + 3) });
         break;
     case 'n':
-        formula.fixedValue(x, 0, 1);
-        formula.fixedValue(x_, 1, 1);
-        formula.fixedValue(dx + 0, 0, 1);
-        formula.fixedValue(dx + 1, 0, 1);
-        formula.fixedValue(dx + 2, 1, 1);
-        formula.fixedValue(dx + 3, 0, 1);
+        formula.addClause({ -x });
+        formula.addClause({ x_ });
+        formula.addClause({ -(dx + 0) });
+        formula.addClause({ -(dx + 1) });
+        formula.addClause({ dx + 2 });
+        formula.addClause({ -(dx + 3) });
         break;
     case '1':
-        formula.fixedValue(x, 1, 1);
-        formula.fixedValue(x_, 1, 1);
-        formula.fixedValue(dx + 0, 0, 1);
-        formula.fixedValue(dx + 1, 0, 1);
-        formula.fixedValue(dx + 2, 0, 1);
-        formula.fixedValue(dx + 3, 1, 1);
+        formula.addClause({ x });
+        formula.addClause({ x_ });
+        formula.addClause({ -(dx + 0) });
+        formula.addClause({ -(dx + 1) });
+        formula.addClause({ -(dx + 2) });
+        formula.addClause({ dx + 3 });
         break;
     }
 }
 
-void fix_1bit_starting_point(SHA256& block, char& diff, int* dx, int* x, int* x_)
+void fix_1bit_starting_point(SHA256& block, char& diff, int dx, int x, int x_)
 {
     auto& formula = block.cnf;
     switch (diff) {
     case '-':
-        formula.fixedValue(dx, 0, 1);
+        formula.addClause({ -dx });
         break;
     case 'x':
-        formula.fixedValue(dx, 1, 1);
+        formula.addClause({ dx });
         break;
     case 'u':
-        formula.fixedValue(x, 1, 1);
-        formula.fixedValue(x_, 0, 1);
-        formula.fixedValue(dx, 1, 1);
+        formula.addClause({ x });
+        formula.addClause({ -x_ });
+        formula.addClause({ dx });
         break;
     case 'n':
-        formula.fixedValue(x, 0, 1);
-        formula.fixedValue(x_, 1, 1);
-        formula.fixedValue(dx, 1, 1);
+        formula.addClause({ -x });
+        formula.addClause({ x_ });
+        formula.addClause({ dx });
         break;
     case '1':
-        formula.fixedValue(x, 1, 1);
-        formula.fixedValue(x_, 1, 1);
-        formula.fixedValue(dx, 0, 1);
+        formula.addClause({ x });
+        formula.addClause({ x_ });
+        formula.addClause({ -dx });
         break;
     case '0':
-        formula.fixedValue(x, 0, 1);
-        formula.fixedValue(x_, 0, 1);
-        formula.fixedValue(dx, 0, 1);
+        formula.addClause({ -x });
+        formula.addClause({ -x_ });
+        formula.addClause({ -dx });
         break;
     }
 }
 
-void fix_starting_point(SHA256& block, char& diff, int* dx, int* x, int* x_)
+void fix_starting_point(SHA256& block, char& diff, int dx, int x, int x_)
 {
 #if IS_4bit
     fix_4bit_starting_point(block, diff, dx, x, x_);
@@ -197,16 +197,16 @@ void collision(int rounds)
 
     assert(cfg_diff_desc);
     /* Differential Path Variables */
-    int DA[70][32][4], DE[70][32][4], DW[70][32][4];
-    int Ds0[64][32][4], Ds1[64][32][4];
-    int Dwcarry[64][32][4], DwCarry[64][32][4];
-    int Dsigma0[64][32][4], Dsigma1[64][32][4];
-    int Df1[64][32][4], Df2[64][32][4];
-    int DT[70][32][4];
-    int Dr0carry[64][32][4], Dr0Carry[64][32][4];
-    int DK[64][32][4];
-    int Dr1carry[64][32][4];
-    int Dr2carry[64][32][4], Dr2Carry[64][32][4];
+    int DA[70][32], DE[70][32], DW[70][32];
+    int Ds0[64][32], Ds1[64][32];
+    int Dwcarry[64][32], DwCarry[64][32];
+    int Dsigma0[64][32], Dsigma1[64][32];
+    int Df1[64][32], Df2[64][32];
+    int DT[70][32];
+    int Dr0carry[64][32], Dr0Carry[64][32];
+    int DK[64][32];
+    int Dr1carry[64][32];
+    int Dr2carry[64][32], Dr2Carry[64][32];
     for (int i = 0; i < rounds + 4; i++) {
         g.cnf.newDiff(DA[i], "DA_" + to_string(i));
         g.cnf.newDiff(DE[i], "DE_" + to_string(i));
@@ -249,11 +249,11 @@ void collision(int rounds)
     for (int i = -4; i < rounds; i++) {
         if (i >= 0)
             for (int j = 0; j < 32; j++)
-                fix_starting_point(g, W[i][31 - j], DW[i][j], &f.w[i][j], &g.w[i][j]);
+                fix_starting_point(g, W[i][31 - j], DW[i][j], f.w[i][j], g.w[i][j]);
 
         for (int j = 0; j < 32; j++) {
-            fix_starting_point(g, A[i + 4][31 - j], DA[i + 4][j], &f.A[i + 4][j], &g.A[i + 4][j]);
-            fix_starting_point(g, E[i + 4][31 - j], DE[i + 4][j], &f.E[i + 4][j], &g.E[i + 4][j]);
+            fix_starting_point(g, A[i + 4][31 - j], DA[i + 4][j], f.A[i + 4][j], g.A[i + 4][j]);
+            fix_starting_point(g, E[i + 4][31 - j], DE[i + 4][j], f.E[i + 4][j], g.E[i + 4][j]);
         }
     }
 
@@ -265,54 +265,62 @@ void collision(int rounds)
         g.cnf.basic_rules(Ds1[i], f.s1[i], g.s1[i]);
 
         // s0 = (w[i-15] >>> 7) XOR (w[i-15] >>> 18) XOR (w[i-15] >> 3)
-        {
-            int inputs[3][32][4];
-            for (int j = 0; j < 32; j++) {
-                // Perform rotations and shifts
-                for (int k = 0; k < 4; k++) {
-                    inputs[0][j][k] = DW[i - 15][(j + 7) % 32][k];
-                    inputs[1][j][k] = DW[i - 15][(j + 18) % 32][k];
-                    if (j < 29)
-                        inputs[2][j][k] = DW[i - 15][(j + 3) % 32][k];
-                    else
-                        inputs[2][j][k] = 0;
-                }
-            }
+        for (int j = 0; j < 32; j++) {
+            vector<int> input_ids(3);
+            // Perform rotations
+            input_ids[0] = DW[i - 15][(j + 7) % 32];
+            input_ids[1] = DW[i - 15][(j + 18) % 32];
+            input_ids[2] = j < 29 ? DW[i - 15][j + 3] : 0;
+            vector<int> output_ids = { Ds0[i][j] };
+
             // Add XOR3 difference rules
             for (auto& entry : prop_rules.xor3) {
                 bool skip = false;
                 for (auto& c : entry.first)
+                    if (c != '-' && c != 'x' && c != '0')
+                        skip = true;
+                for (auto& c : entry.second)
                     if (c != '-' && c != 'x')
                         skip = true;
                 if (skip)
                     continue;
-                g.cnf.impose_rule({ &inputs[0], &inputs[1], &inputs[2] }, { &Ds0[i] }, entry);
+                if (entry.first[0] == '0' || entry.first[1] == '0')
+                    continue;
+                if (input_ids[2] == 0 && entry.first[2] != '0')
+                    continue;
+                else if (input_ids[2] != 0 && entry.first[2] == '0')
+                    continue;
+                // printf("c %d: %s -> %s\n", j, entry.first.c_str(), entry.second.c_str());
+                g.cnf.impose_rule(input_ids, output_ids, entry);
             }
         }
-
         // s1 = (w[i-2] >>> 17) XOR (w[i-2] >>> 19) XOR (w[i-2] >> 10)
-        {
-            int inputs[3][32][4];
-            for (int j = 0; j < 32; j++) {
-                // Perform rotations and shifts
-                for (int k = 0; k < 4; k++) {
-                    inputs[0][j][k] = DW[i - 2][(j + 17) % 32][k];
-                    inputs[1][j][k] = DW[i - 2][(j + 19) % 32][k];
-                    if (j < 22)
-                        inputs[2][j][k] = DW[i - 2][(j + 10) % 32][k];
-                    else
-                        inputs[2][j][k] = 0;
-                }
-            }
+        for (int j = 0; j < 32; j++) {
+            vector<int> input_ids(3);
+            // Perform rotations
+            input_ids[0] = DW[i - 2][(j + 17) % 32];
+            input_ids[1] = DW[i - 2][(j + 19) % 32];
+            input_ids[2] = j < 22 ? DW[i - 2][j + 10] : 0;
+            vector<int> output_ids = { Ds1[i][j] };
+
             // Add XOR3 difference rules
             for (auto& entry : prop_rules.xor3) {
                 bool skip = false;
                 for (auto& c : entry.first)
+                    if (c != '-' && c != 'x' && c != '0')
+                        skip = true;
+                for (auto& c : entry.second)
                     if (c != '-' && c != 'x')
                         skip = true;
                 if (skip)
                     continue;
-                g.cnf.impose_rule({ &inputs[0], &inputs[1], &inputs[2] }, { &Ds1[i] }, entry);
+                if (entry.first[0] == '0' || entry.first[1] == '0')
+                    continue;
+                if (input_ids[2] == 0 && entry.first[2] != '0')
+                    continue;
+                else if (input_ids[2] != 0 && entry.first[2] == '0')
+                    continue;
+                g.cnf.impose_rule(input_ids, output_ids, entry);
             }
         }
 
@@ -334,16 +342,14 @@ void collision(int rounds)
         g.cnf.basic_rules(Dsigma1[i], f.sigma1[i], g.sigma1[i]);
 
         // g.Sigma0(Dsigma0[i], DA[i + 3]);
-        {
-            int inputs[3][32][4];
-            for (int j = 0; j < 32; j++) {
-                // Perform rotations
-                for (int k = 0; k < 4; k++) {
-                    inputs[0][j][k] = DA[i + 3][(j + 2) % 32][k];
-                    inputs[1][j][k] = DA[i + 3][(j + 13) % 32][k];
-                    inputs[2][j][k] = DA[i + 3][(j + 22) % 32][k];
-                }
-            }
+        for (int j = 0; j < 32; j++) {
+            vector<int> input_ids(3);
+            // Perform rotations
+            input_ids[0] = DA[i + 3][(j + 2) % 32];
+            input_ids[1] = DA[i + 3][(j + 13) % 32];
+            input_ids[2] = DA[i + 3][(j + 22) % 32];
+            vector<int> output_ids = { Dsigma0[i][j] };
+
             // Add XOR3 difference rules
             for (auto& entry : prop_rules.xor3) {
                 bool skip = false;
@@ -352,21 +358,19 @@ void collision(int rounds)
                         skip = true;
                 if (skip)
                     continue;
-                g.cnf.impose_rule({ &inputs[0], &inputs[1], &inputs[2] }, { &Dsigma0[i] }, entry);
+                g.cnf.impose_rule(input_ids, output_ids, entry);
             }
         }
 
         // g.Sigma1(Dsigma1[i], DE[i + 3]);
-        {
-            int inputs[3][32][4];
-            for (int j = 0; j < 32; j++) {
-                // Perform rotations
-                for (int k = 0; k < 4; k++) {
-                    inputs[0][j][k] = DE[i + 3][(j + 6) % 32][k];
-                    inputs[1][j][k] = DE[i + 3][(j + 11) % 32][k];
-                    inputs[2][j][k] = DE[i + 3][(j + 25) % 32][k];
-                }
-            }
+        for (int j = 0; j < 32; j++) {
+            vector<int> input_ids(3);
+            // Perform rotations
+            input_ids[0] = DE[i + 3][(j + 6) % 32];
+            input_ids[1] = DE[i + 3][(j + 11) % 32];
+            input_ids[2] = DE[i + 3][(j + 25) % 32];
+            vector<int> output_ids = { Dsigma1[i][j] };
+
             // Add XOR3 difference rules
             for (auto& entry : prop_rules.xor3) {
                 bool skip = false;
@@ -375,7 +379,7 @@ void collision(int rounds)
                         skip = true;
                 if (skip)
                     continue;
-                g.cnf.impose_rule({ &inputs[0], &inputs[1], &inputs[2] }, { &Dsigma1[i] }, entry);
+                g.cnf.impose_rule(input_ids, output_ids, entry);
             }
         }
 
@@ -383,28 +387,48 @@ void collision(int rounds)
         g.cnf.newDiff(Df1[i], "Dif_" + to_string(i));
         g.cnf.basic_rules(Df1[i], f.f1[i], g.f1[i]);
         // Add IF difference rules
-        for (auto& entry : prop_rules.ch) {
-            bool skip = false;
-            for (auto& c : entry.first)
-                if (c != '-' && c != 'x')
-                    skip = true;
-            if (skip)
-                continue;
-            g.cnf.impose_rule({ &DE[i + 3], &DE[i + 2], &DE[i + 1] }, { &Df1[i] }, entry);
+        for (int j = 0; j < 32; j++) {
+            vector<int> input_ids(3);
+            // Perform rotations
+            input_ids[0] = DE[i + 3][j];
+            input_ids[1] = DE[i + 2][j];
+            input_ids[2] = DE[i + 1][j];
+            vector<int> output_ids = { Df1[i][j] };
+
+            // Add CH difference rules
+            for (auto& entry : prop_rules.ch) {
+                bool skip = false;
+                for (auto& c : entry.first)
+                    if (c != '-' && c != 'x')
+                        skip = true;
+                if (skip)
+                    continue;
+                g.cnf.impose_rule(input_ids, output_ids, entry);
+            }
         }
 
         // f2 = MAJ(A[i+3], A[i+2], A[i+1])
         g.cnf.newDiff(Df2[i], "Dmaj_" + to_string(i));
         g.cnf.basic_rules(Df2[i], f.f2[i], g.f2[i]);
         // Add MAJ difference rules
-        for (auto& entry : prop_rules.maj) {
-            bool skip = false;
-            for (auto& c : entry.first)
-                if (c != '-' && c != 'x')
-                    skip = true;
-            if (skip)
-                continue;
-            g.cnf.impose_rule({ &DA[i + 3], &DA[i + 2], &DA[i + 1] }, { &Df2[i] }, entry);
+        for (int j = 0; j < 32; j++) {
+            vector<int> input_ids(3);
+            // Perform rotations
+            input_ids[0] = DA[i + 3][j];
+            input_ids[1] = DA[i + 2][j];
+            input_ids[2] = DA[i + 1][j];
+            vector<int> output_ids = { Df2[i][j] };
+
+            // Add CH difference rules
+            for (auto& entry : prop_rules.maj) {
+                bool skip = false;
+                for (auto& c : entry.first)
+                    if (c != '-' && c != 'x')
+                        skip = true;
+                if (skip)
+                    continue;
+                g.cnf.impose_rule(input_ids, output_ids, entry);
+            }
         }
 
         // Addition: T = E[i] + sigma1 + f1 + k[i] + w[i]
@@ -421,18 +445,18 @@ void collision(int rounds)
 #if IS_4bit
             bool is_true = rnd_const[i] >> j & 1;
             if (is_true) {
-                g.cnf.addClause({ -DK[i][j][0] });
-                g.cnf.addClause({ -DK[i][j][1] });
-                g.cnf.addClause({ -DK[i][j][2] });
-                g.cnf.addClause({ DK[i][j][3] });
+                g.cnf.addClause({ -(DK[i][j] + 0) });
+                g.cnf.addClause({ -(DK[i][j] + 1) });
+                g.cnf.addClause({ -(DK[i][j] + 2) });
+                g.cnf.addClause({ DK[i][j] + 3 });
             } else {
-                g.cnf.addClause({ DK[i][j][0] });
-                g.cnf.addClause({ -DK[i][j][1] });
-                g.cnf.addClause({ -DK[i][j][2] });
-                g.cnf.addClause({ -DK[i][j][3] });
+                g.cnf.addClause({ DK[i][j] + 0 });
+                g.cnf.addClause({ -(DK[i][j] + 1) });
+                g.cnf.addClause({ -(DK[i][j] + 2) });
+                g.cnf.addClause({ -(DK[i][j] + 3) });
             }
 #else
-            g.cnf.addClause({ -DK[i][j][0] });
+            g.cnf.addClause({ -DK[i][j] });
 #endif
         }
         g.cnf.diff_add(prop_rules, DT[i], DE[i], Dsigma1[i], Dr0carry[i], Dr0Carry[i], Df1[i], DK[i], DW[i]);

@@ -22,19 +22,19 @@ public:
     void xor6(int* z, int* a, int* b, int* c, int* d, int* e, int* f, int n = 32);
     void xor7(int* z, int* a, int* b, int* c, int* d, int* e, int* f, int* g, int n = 32);
 
-    void diff_1bit_add(Rules& rules, int z[32][4], int a[32][4], int b[32][4], int t[32][4], int T[32][4] = NULL, int c[32][4] = NULL, int d[32][4] = NULL, int e[32][4] = NULL);
-    void diff_4bit_add(Rules& rules, int z[32][4], int a[32][4], int b[32][4], int t[32][4], int T[32][4] = NULL, int c[32][4] = NULL, int d[32][4] = NULL, int e[32][4] = NULL);
-    void diff_add(Rules& rules, int z[32][4], int a[32][4], int b[32][4], int t[32][4], int T[32][4] = NULL, int c[32][4] = NULL, int d[32][4] = NULL, int e[32][4] = NULL);
+    void diff_1bit_add(Rules& rules, int z[32], int a[32], int b[32], int t[32], int T[32] = NULL, int c[32] = NULL, int d[32] = NULL, int e[32] = NULL);
+    void diff_4bit_add(Rules& rules, int z[32], int a[32], int b[32], int t[32], int T[32] = NULL, int c[32] = NULL, int d[32] = NULL, int e[32] = NULL);
+    void diff_add(Rules& rules, int z[32], int a[32], int b[32], int t[32], int T[32] = NULL, int c[32] = NULL, int d[32] = NULL, int e[32] = NULL);
 
     void comp_1bit(int z, int* v, int n, int t, int T = -1);
-    void comp_4bit(Rules& rules, int z[4], int v[10][4], int n, int t[4], int T[4] = NULL);
+    void comp_4bit(Rules& rules, int z, int v[10], int n, int t, int T = -1);
 
-    void impose_4bit_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32][4]> outputs, pair<string, string> rule);
-    void impose_1bit_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32][4]> outputs, pair<string, string> rule);
-    void impose_rule(vector<int (*)[32][4]> inputs, vector<int (*)[32][4]> outputs, pair<string, string> rule);
-    void basic_4bit_rules(int dx[32][4], int x[32], int x_[32]);
-    void basic_1bit_rules(int dx[32][4], int x[32], int x_[32]);
-    void basic_rules(int dx[32][4], int x[32], int x_[32]);
+    void impose_4bit_rule(vector<int> input_ids, vector<int> output_ids, pair<string, string> rule);
+    void impose_1bit_rule(vector<int> input_ids, vector<int> output_ids, pair<string, string> rule);
+    void impose_rule(vector<int> input_ids, vector<int> output_ids, pair<string, string> rule);
+    void basic_4bit_rules(int dx[32], int x[32], int x_[32]);
+    void basic_1bit_rules(int dx[32], int x[32], int x_[32]);
+    void basic_rules(int dx[32], int x[32], int x_[32]);
 };
 
 #endif
