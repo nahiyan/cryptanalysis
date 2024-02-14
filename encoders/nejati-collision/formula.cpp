@@ -37,28 +37,29 @@ void Formula::newVars(int* x, int n, string name)
     varCnt += n;
 }
 
-void Formula::new_4bit_diff(int x[32][4], string name)
+void Formula::new_4bit_diff(int x[32], string name)
 {
-    for (int i = 0; i < 32; i++)
-        for (int j = 0; j < 4; j++)
-            x[i][j] = ++varID;
+    for (int i = 0; i < 32; i++) {
+        x[i] = ++varID;
+        varID += 3;
+    }
 
     if (name != "")
-        varNames[name + "_" + formulaName] = x[0][0];
+        varNames[name + "_" + formulaName] = x[0];
     varCnt += 32 * 4;
 }
 
-void Formula::new_1bit_diff(int x[32][4], string name)
+void Formula::new_1bit_diff(int x[32], string name)
 {
     for (int i = 0; i < 32; i++)
-        x[i][0] = ++varID;
+        x[i] = ++varID;
 
     if (name != "")
-        varNames[name + "_" + formulaName] = x[0][0];
+        varNames[name + "_" + formulaName] = x[0];
     varCnt += 32;
 }
 
-void Formula::newDiff(int x[32][4], string name)
+void Formula::newDiff(int x[32], string name)
 {
 #if IS_4bit
     new_4bit_diff(x, name);
