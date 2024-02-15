@@ -46,10 +46,18 @@ def get_clauses(file_path):
         lines = result.stdout.split("\n")
         clauses = []
         for line_ in lines:
-            clause_type = "reason" if line_.startswith("Reason clause:") else "blocking" if line_.startswith("Blocking clause:") else ""
+            clause_type = (
+                "reason"
+                if line_.startswith("Reason clause:")
+                else "blocking" if line_.startswith("Blocking clause:") else ""
+            )
             if clause_type == "":
                 continue
-            line = line_.replace("Reason clause: ", "").replace("Blocking clause: ", "").strip()
+            line = (
+                line_.replace("Reason clause: ", "")
+                .replace("Blocking clause: ", "")
+                .strip()
+            )
             lits = [int(lit_) for lit_ in line.split(" ")]
             clause = {"lits": lits, "type": clause_type}
             clauses.append(clause)
@@ -62,6 +70,22 @@ def get_clauses(file_path):
         print(f"Error: {e}")
         return []
 
+
+def is_solved(file_path):
+    # Run the grep command and capture the output
+    result = subprocess.run(
+        [
+            "grep",
+            "^c exit .*",
+            file_path,
+        ],
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+
+    return len(result.stdout) > 0
+
+
 def is_satisfied(clause, assignment):
     for lit in clause:
         var = abs(lit)
@@ -70,13 +94,17 @@ def is_satisfied(clause, assignment):
             return True
     return False
 
+
 def print_clause(clause, assignment):
     print("Reason: " if clause["type"] == "reason" else "Blocking: ", end="")
     for lit in clause["lits"]:
         var = abs(lit)
         value = True if lit > 0 else False
-        print(str(lit) + "(" + ("✓" if assignment[var] == value else "𐄂") + ")", end=" ")
+        print(
+            str(lit) + "(" + ("✓" if assignment[var] == value else "𐄂") + ")", end=" "
+        )
     print()
+
 
 def verify_clauses(sol_log_path, solver_log_path):
     assignment = get_solution(sol_log_path)
@@ -98,3 +126,5 @@ def verify_clauses(sol_log_path, solver_log_path):
 sol_log_path = sys.argv[1]
 solver_log_path = sys.argv[2]
 verify_clauses(sol_log_path, solver_log_path)
+if is_solved(solver_log_path):
+    print("Solved")
