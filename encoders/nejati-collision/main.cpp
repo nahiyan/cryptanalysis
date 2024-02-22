@@ -187,7 +187,9 @@ void collision(int rounds)
     if (cfg_free_start) {
         f.initialBlock = false;
         g.initialBlock = false;
-    }
+        g.cnf.varNames["full_collision"] = 0;
+    } else
+        g.cnf.varNames["full_collision"] = 1;
 
     f.encode();
 
