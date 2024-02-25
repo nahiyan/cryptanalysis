@@ -1,16 +1,23 @@
 from sha256 import _hash
 import sys
 
+iv = [
+    0x6A09E667,
+    0xBB67AE85,
+    0x3C6EF372,
+    0xA54FF53A,
+    0x510E527F,
+    0x9B05688C,
+    0x1F83D9AB,
+    0x5BE0CD19,
+]
+
 
 def gc_to_bin(gc):
     return (
         [0, 0]
         if gc == "0"
-        else [0, 1]
-        if gc == "n"
-        else [1, 0]
-        if gc == "u"
-        else [1, 1]
+        else [0, 1] if gc == "n" else [1, 0] if gc == "u" else [1, 1]
     )
 
 
@@ -59,11 +66,14 @@ def parse_log(order, msg_start, cv_start):
     hashes = [_hash(order, msgs[0], cvs[0]), _hash(order, msgs[1], cvs[1])]
     print("Message (1)", msgs[0])
     print("Message (2)", msgs[1])
-    print("CV (1)", cvs[0])
-    print("CV (2)", cvs[1])
+    print("CV (1)", [format(word, "08x") for word in cvs[0]])
+    print("CV (2)", [format(word, "08x") for word in cvs[0]])
     print("Hash (1)", hashes[0])
     print("Hash (2)", hashes[1])
     print("Verified" if hashes[0] == hashes[1] else "Verification Failed")
+
+    if cvs[0] == iv and cvs[1] == iv:
+        print("Full collision")
 
 
 def get_info(enc_path):
