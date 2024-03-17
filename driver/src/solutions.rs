@@ -1,4 +1,5 @@
 use std::{
+  cmp::Ordering,
   fs,
   io::{BufRead, Write},
   path::Path,
@@ -79,7 +80,18 @@ pub fn parse_sols(input_dir: String) {
         break;
       }
     }
-    sols.sort_by(|a, b| b.name.cmp(&a.name));
+    sols.sort_by(|a, b| {
+      b.name
+        .cmp(&a.name)
+        .then_with(|| b.exit_code.cmp(&a.exit_code))
+        .then_with(|| {
+          if b.process_time.lt(&a.process_time) {
+            Ordering::Less
+          } else {
+            Ordering::Greater
+          }
+        })
+    });
 
     let mut sols_file = fs::File::create("solutions.csv").expect("Failed to write solutions.csv");
     writeln!(sols_file, "names,exit_codes,process_times,time_limits").unwrap();
