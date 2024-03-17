@@ -4,7 +4,6 @@ use std::{
   path::Path,
   process,
 };
-
 use tokio::sync::mpsc;
 
 pub fn parse_sols(input_dir: String) {
@@ -18,7 +17,7 @@ pub fn parse_sols(input_dir: String) {
   let rt = tokio::runtime::Runtime::new().unwrap();
   rt.block_on(async {
     struct Solution {
-      path: String,
+      name: String,
       exit_code: i32,
       process_time: f32,
       time_limit: i32,
@@ -36,7 +35,6 @@ pub fn parse_sols(input_dir: String) {
           .output();
         match output {
           Ok(value) => {
-            // println!("{}", String::from_utf8(value.stdout).unwrap());
             let lines: Vec<String> = value
               .stdout
               .lines()
@@ -46,7 +44,7 @@ pub fn parse_sols(input_dir: String) {
             assert!(lines.len() == 3);
 
             let sol = Solution {
-              path: path.to_string(),
+              name: String::from(Path::new(path).file_name().unwrap().to_str().unwrap()),
               exit_code: if !lines[0].is_empty() {
                 lines[0].parse::<i32>().unwrap()
               } else {
@@ -73,27 +71,32 @@ pub fn parse_sols(input_dir: String) {
     }
 
     // Get the solutions through the channel
-    let mut file = fs::File::create("solutions.csv").expect("Failed to write solutions.csv");
-    writeln!(file, "names,exit_codes,process_times,time_limits").unwrap();
+    let mut sols: Vec<Solution> = Vec::new();
     for _ in 0..tasks_count {
-      if let Some(Solution {
-        path,
-        exit_code,
-        process_time,
-        time_limit,
-      }) = rx.recv().await
-      {
-        let name: &str = Path::new(&path).file_name().unwrap().to_str().unwrap();
-        writeln!(
-          file,
-          "{},{},{:.2},{}",
-          name, exit_code, process_time, time_limit
-        )
-        .unwrap();
+      if let Some(sol) = rx.recv().await {
+        sols.push(sol);
       } else {
         break;
       }
     }
-    file.flush().unwrap();
+    sols.sort_by(|a, b| b.name.cmp(&a.name));
+
+    let mut sols_file = fs::File::create("solutions.csv").expect("Failed to write solutions.csv");
+    writeln!(sols_file, "names,exit_codes,process_times,time_limits").unwrap();
+    for Solution {
+      name,
+      exit_code,
+      process_time,
+      time_limit,
+    } in sols
+    {
+      writeln!(
+        sols_file,
+        "{},{},{:.2},{}",
+        name, exit_code, process_time, time_limit
+      )
+      .unwrap();
+    }
+    sols_file.flush().unwrap();
   });
 }
