@@ -48,7 +48,7 @@ pub fn parse_sols(input_dir: String) {
               exit_code: if !lines[0].is_empty() {
                 lines[0].parse::<i32>().unwrap()
               } else {
-                0
+                -1
               },
               process_time: if !lines[1].is_empty() {
                 lines[1].parse::<f32>().unwrap()
