@@ -199,7 +199,7 @@ void collision(int rounds)
 
     assert(cfg_diff_desc);
     /* Differential Path Variables */
-    int DA[70][32], DE[70][32], DW[70][32];
+    int DA[70][32], DE[70][32], DW[64][32];
     int Ds0[64][32], Ds1[64][32];
     int Dwcarry[64][32], DwCarry[64][32];
     int Dsigma0[64][32], Dsigma1[64][32];
