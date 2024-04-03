@@ -304,7 +304,7 @@ def derive_words_step(word_x, word_y, constant):
     return derived_word_x, derived_word_y
 
 
-def propagate_addition(table, row, name, vars_):
+def propagate_wordwise(table, row, name, vars_):
     underived_indices = []
     for i, var in enumerate(vars_):
         int_diff, err = _int_diff(var)
@@ -422,7 +422,7 @@ def propagate(table, rules):
                 table.ds0[i],
                 table.dw[i - 16],
             ]
-            propagate_addition(table, i, "add_w", add_w_vars)
+            propagate_wordwise(table, i, "add_w", add_w_vars)
 
         # sigma1
         sigma1 = [None] * 32
@@ -451,7 +451,7 @@ def propagate(table, rules):
             table.dch[i],
             table.dw[i],
         ]
-        propagate_addition(table, i, "add_e", add_e_vars)
+        propagate_wordwise(table, i, "add_e", add_e_vars)
 
         # sigma0
         sigma0 = [None] * 32
@@ -479,7 +479,7 @@ def propagate(table, rules):
             table.dsigma0[i],
             table.dmaj[i],
         ]
-        propagate_addition(table, i, "add_a", add_a_vars)
+        propagate_wordwise(table, i, "add_a", add_a_vars)
 
         # Propagate modular addition
         # _, ds, _ = otf_prop_add_words([
