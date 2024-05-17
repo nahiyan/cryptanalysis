@@ -1,8 +1,9 @@
 #include "diff-parser.h"
-#include "retrieve_table.h"
 #include "sha256x.h"
 #include "xformula.h"
 #include <assert.h>
+#include <cstdio>
+#include <cstdlib>
 #include <ctime>
 #include <fstream>
 #include <getopt.h>
@@ -11,6 +12,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <unordered_map>
+#include <utility>
 
 using namespace std;
 
@@ -239,13 +241,9 @@ void collision(int rounds)
 
     // Support for built-in differential characters
     vector<string> A, E, W;
-    if (cfg_diff_const_file == "HARD_CODED") {
-        retrieve_table(rounds, A, E, W);
-    } else {
-        FILE* diff_const_file = fopen(cfg_diff_const_file.c_str(), "r");
-        parse_diff_path(rounds, diff_const_file, A, E, W);
-        fclose(diff_const_file);
-    }
+    FILE* diff_const_file = fopen(cfg_diff_const_file.c_str(), "r");
+    parse_diff_path(rounds, diff_const_file, A, E, W);
+    fclose(diff_const_file);
 
     /* Fixing the differences from the initial path */
     for (int i = -4; i < rounds; i++) {
@@ -474,6 +472,57 @@ void collision(int rounds)
         g.cnf.basic_rules(Dr2Carry[i], f.r2Carry[i], g.r2Carry[i]);
         g.cnf.diff_add(prop_rules, DA[i + 4], DT[i], Dsigma0[i], Dr2carry[i], Dr2Carry[i], Df2[i]);
     }
+
+    // Enforce cardinality constraints
+    // TODO: Add CLI option for cardinality constraints
+    // #if !IS_4bit
+    //     // Cardinality constraints for A, E, and W respectively.
+    //     int hamming_weights[] = { 10, 90, 25 };
+
+    //     // '?' is considered to have unfixed hamming weight.
+    //     int unfixed_hw_count = 0;
+    //     // Vectors for A, E, and W in order by index.
+    //     vector<int> card_ids[3];
+    //     for (int i = -4; i < rounds; i++) {
+    //         for (int j = 0; j < 32; j++) {
+    //             if (A[i + 4][j] == '?')
+    //                 card_ids[0].push_back(DA[i + 4][j]);
+    //             else if (A[i + 4][j] == 'x' || A[i + 4][j] == 'u' || A[i + 4][j] == 'n')
+    //                 hamming_weights[0]--;
+
+    //             if (E[i + 4][j] == '?')
+    //                 card_ids[1].push_back(DE[i + 4][j]);
+    //             else if (E[i + 4][j] == 'x' || E[i + 4][j] == 'u' || E[i + 4][j] == 'n')
+    //                 hamming_weights[1]--;
+
+    //             if (i >= 0) {
+    //                 if (W[i][j] == '?')
+    //                     card_ids[2].push_back(DW[i][j]);
+    //                 else if (W[i][j] == 'x' || W[i][j] == 'u' || W[i][j] == 'n')
+    //                     hamming_weights[2]--;
+    //             }
+    //         }
+    //     }
+
+    //     // Generate the clauses for A, E, and W in order.
+    //     for (int i = 0; i < 3; i++) {
+    //         if (hamming_weights[i] < 0)
+    //             continue;
+
+    //         printf("c Fixing hamming weight[%d] = %d for '?'s\n", i, hamming_weights[i]);
+
+    //         int* ids = (int*)malloc(card_ids[i].size() * sizeof(int));
+    //         for (int j = 0; j < card_ids[i].size(); j++) {
+    //             ids[j] = card_ids[i][j];
+    //         }
+    //         // g.cnf.cardinality_fulladder(ids, (int)card_ids[i].size(), (unsigned)hamming_weights[i]);
+    //         // g.cnf.exactlyK(card_ids[i], hamming_weights[i]);
+    //         g.cnf.cardinality_totalizer(card_ids[i], hamming_weights[i]);
+    //     }
+
+    //     // printf("%ld", card_ids[1].size());
+    //     // exit(0);
+    // #endif
 
     g.cnf.dimacs(rounds);
 }

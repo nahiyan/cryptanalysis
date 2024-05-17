@@ -82,7 +82,6 @@ public:
     void or2(int* z, int* x, int* y, int n = 32); // Two-input OR
     void eq(int* z, int* x, int n = 32); // Equivalence
     void neq(int* z, int* x, int n = 32); // Boolean negation
-    void implication(vector<int> p, vector<int> q);
     void xor2(int* z, int* x, int* y, int n = 32); // Two-input XOR
     void xor3(int* z, int* x, int* y, int* t, int n = 32); // Three-input XOR
     void xor4(int* z, int* a, int* b, int* c, int* d, int n = 32); // Four-input XOR
@@ -97,9 +96,7 @@ public:
     void add4(int* z, int* a, int* b, int* c, int* d, int n = 32); // z = a + b + c + d;
     void add5(int* z, int* a, int* b, int* c, int* d, int* e, int n = 32); // z = a + b + c + d + e;
 
-    void atMostK(int* x, int n, unsigned k); // x[0]+...+x[n-1] <= k
-    void atLeastK(int* x, int n, unsigned k); // x[0]+...+x[n-1] >= k
-    void exactlyK(int* x, int n, unsigned k); // x[0]+...+x[n-1] == k
+    void exactlyK(vector<int> ids, unsigned k); // x[0]+...+x[n-1] == k
 
     int clauseCheck(); // Mainly for debugging. Checks trivial invalid clauses
 
@@ -108,6 +105,9 @@ public:
 
     map<string, unsigned int> varNames; // labels for variable IDs
     string formulaName;
+    void cardinality_fulladder(int* vars, int n, unsigned cardinalValue);
+    void cardinality_espresso(int* vars, int n, unsigned cardinalValue);
+    void cardinality_totalizer(vector<int> ids, int k);
 
 protected:
     int varCnt, varID;
@@ -122,8 +122,6 @@ protected:
     void counter(int* z, int* x, int n);
 
 private:
-    void cardinality_fulladder(int* vars, int n, unsigned cardinalValue);
-    void cardinality_espresso(int* vars, int n, unsigned cardinalValue);
 };
 
 #endif

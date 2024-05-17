@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <math.h>
+#include <sstream>
 #include <stdexcept>
 #include <string.h>
 #include <sys/wait.h>
@@ -205,6 +206,27 @@ void Formula::maj3(int* z, int* x, int* y, int* t, int n)
     }
 }
 
+void Formula::halfadder(int* c, int* s, int* x, int* y, int n)
+{
+    xor2(s, x, y, n);
+    and2(c, x, y, n);
+}
+
+void Formula::fulladder(int* c, int* s, int* x, int* y, int* t, int n)
+{
+    xor3(s, x, y, t, n);
+    maj3(c, x, y, t, n);
+}
+
+void Formula::and2(int* z, int* x, int* y, int n)
+{
+    for (int i = 0; i < n; i++) {
+        addClause({ z[i], -x[i], -y[i] });
+        addClause({ -z[i], x[i] });
+        addClause({ -z[i], y[i] });
+    }
+}
+
 void Formula::espresso(const vector<int>& lhs, const vector<int>& rhs)
 {
     static map<pair<unsigned int, unsigned int>, vector<vector<int>>> cache;
@@ -398,4 +420,182 @@ void Formula::AddFormula(Formula& f)
     clauses.insert(clauses.end(), c.begin(), c.end());
     for (auto e : f.varNames)
         varNames[e.first] = e.second;
+}
+
+void Formula::exactlyK(vector<int> ids, unsigned k)
+{
+    stringstream command_s;
+    command_s << "python card_exact.py -l '";
+
+    // IDs
+    assert(ids.size() > 1);
+    for (auto& id : ids) {
+        assert(id > 0);
+        command_s << id << " ";
+    }
+    command_s << "'";
+
+    // Bound
+    command_s << " -k " << k;
+
+    // Top ID
+    int top_id = getVarCnt();
+    command_s << " -t " << top_id;
+
+    FILE* output = popen(command_s.str().c_str(), "r");
+    int lit;
+    vector<int> clause;
+    while (fscanf(output, "%d", &lit) == 1) {
+        if (lit == 0) {
+            addClause(clause);
+            clause.clear();
+            continue;
+        }
+        clause.push_back(lit);
+        varCnt = max(abs(lit), varCnt);
+        varID = max(abs(lit), varID);
+    }
+    pclose(output);
+}
+
+void Formula::cardinality_fulladder(int* vars, int n, unsigned cardinalValue)
+{
+    unsigned int size = 1 + floor(log2(n));
+    vector<queue<int>> m(size);
+    for (int i = 0; i < n; i++)
+        m[0].push(vars[i]);
+
+    bool oneDeep = false;
+    while (!oneDeep) {
+        oneDeep = true;
+        for (int i = 0; i < m.size(); i++) {
+            if (m[i].size() >= 3) {
+                int x = m[i].front();
+                m[i].pop();
+                int y = m[i].front();
+                m[i].pop();
+                int z = m[i].front();
+                m[i].pop();
+
+                int sum;
+                newVars(&sum, 1);
+                xor3(&sum, &x, &y, &z, 1);
+                m[i].push(sum);
+
+                if (i + 1 < m.size()) {
+                    int carry;
+                    newVars(&carry, 1);
+                    maj3(&carry, &x, &y, &z, 1);
+                    m[i + 1].push(carry);
+                }
+            } else if (m[i].size() >= 2) {
+                int x = m[i].front();
+                m[i].pop();
+                int y = m[i].front();
+                m[i].pop();
+
+                int sum;
+                newVars(&sum, 1);
+                xor2(&sum, &x, &y, 1);
+                m[i].push(sum);
+
+                if (i + 1 < m.size()) {
+                    int carry;
+                    newVars(&carry, 1);
+                    and2(&carry, &x, &y, 1);
+                    m[i + 1].push(carry);
+                }
+            }
+
+            if (m[i].size() > 1)
+                oneDeep = false;
+        }
+    }
+    for (int i = 0; i < m.size(); i++) {
+        int var = m[i].front();
+        unsigned val = (cardinalValue >> i) & 1;
+        fixedValue(&var, val, 1);
+    }
+}
+
+void Formula::cardinality_espresso(int* vars, int n, unsigned cardinalValue)
+{
+    unsigned int size = 1 + floor(log2(n));
+    vector<queue<int>> m(size);
+    for (int i = 0; i < n; i++)
+        m[0].push(vars[i]);
+
+    bool oneDeep = false;
+    while (!oneDeep) {
+        oneDeep = true;
+        for (int i = 0; i < m.size(); i++) {
+            if (m[i].size() >= 2) {
+                int inpSize = m[i].size() > 10 ? 10 : m[i].size();
+                vector<int> addends;
+                for (int j = 0; j < inpSize; j++) {
+                    int x = m[i].front();
+                    m[i].pop();
+                    addends.push_back(x);
+                }
+                unsigned int slen = floor(log2(addends.size()));
+                vector<int> sum(slen + 1);
+                newVars(&sum[0], slen + 1);
+                espresso(addends, sum);
+
+                for (int j = 0; j < slen + 1 && i + j < m.size(); j++)
+                    m[i + j].push(sum[j]);
+            }
+
+            if (m[i].size() > 1)
+                oneDeep = false;
+        }
+    }
+
+    for (int i = 0; i < m.size(); i++) {
+        int var = m[i].front();
+        unsigned val = (cardinalValue >> i) & 1;
+        fixedValue(&var, val, 1);
+    }
+}
+
+void Formula::cardinality_totalizer(vector<int> ids, int k)
+{
+    int top_id = getVarCnt();
+    stringstream command_s;
+    command_s << "python card_exact_tl.py " << ids.size() << " " << k << " " << top_id;
+
+    // IDs
+    assert(ids.size() > 0);
+    for (auto& id : ids)
+        assert(id > 0);
+
+    FILE* output = popen(command_s.str().c_str(), "r");
+    int lit;
+    vector<vector<int>> clauses;
+    vector<int> clause;
+    while (fscanf(output, "%d", &lit) == 1) {
+        if (lit == 0) {
+            clauses.push_back(clause);
+            clause.clear();
+            continue;
+        }
+        clause.push_back(lit);
+    }
+    pclose(output);
+
+    for (int i = 0; i < clauses.size(); i++) {
+        for (int j = 0; j < clauses[i].size(); j++) {
+            int lit = clauses[i][j];
+            int var = abs(lit);
+            // Replace 1...n with the variables ids_0, ..., ids_{n-1}
+            if (var <= ids.size())
+                clauses[i][j] = (lit < 0 ? -1 : 1) * ids[var - 1];
+            top_id = max(var, top_id);
+            varCnt = top_id;
+            varID = top_id;
+        }
+    }
+
+    for (auto& clause : clauses)
+        addClause(clause);
 }
