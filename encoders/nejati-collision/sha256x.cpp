@@ -131,6 +131,7 @@ void SHA256::encode()
         cnf.newVars(r2Carry[i], 32, "add.A.r1_" + to_string(i));
         cnf.newVars(r2carry[i], 32, "add.A.r0_" + to_string(i));
         cnf.add(A[i + 4], T[i], sigma0[i], r2carry[i], r2Carry[i], f2[i]);
+        cnf.addClause({ -r2Carry[i][0] });
     }
 
     /* Final addition */
