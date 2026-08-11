@@ -1,2 +1,6 @@
+.PHONY: cryptanalysis
+
 cryptanalysis:
-	go build && cd encoders/nejati-collision && make && cd ../nejati-preimage && make
+	cd runners/go-driver && go build -o ../../cryptanalysis
+	$(MAKE) -C encoders/nejati-collision
+	$(MAKE) -C encoders/nejati-preimage
