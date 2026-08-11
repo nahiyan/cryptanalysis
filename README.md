@@ -4,6 +4,22 @@
 
 This repository houses a cryptanalysis tool aimed at (pre-image and collision) attacks on hash functions, namely MD4, MD5, and SHA-256, using SAT solvers. Techniques such as the [Dobbertin's attack](https://link.springer.com/content/pdf/10.1007/3-540-69710-1_19.pdf) and [Cube and Conquer using a Lookahead Solver](https://www.cs.utexas.edu/~marijn/publications/cube.pdf) are used to exploit the weakness of hash functions and increase feasibility of the attacks.
 
+The repository is organized around cryptanalytic work rather than around a
+single implementation language:
+
+- `attacks/` contains attack-specific code and material.
+- `encoders/` contains SAT encoders and encoder inputs.
+- `tools/` contains small, standalone research utilities.
+- `runners/` contains the Go and Rust programs that execute or coordinate
+  experiments.
+- `experiments/` is reserved for reproducible experiment definitions.
+- `results/` contains recorded benchmark and experiment results.
+- `third_party/` is reserved for external source moved or imported later.
+
+The existing Go command is under `runners/go-driver` while its reusable parts
+are gradually extracted into standalone tools. The experimental Rust runner is
+under `runners/rust-driver`.
+
 # Prerequisities
 
 To use the cryptanalysis tool, the following executables may be required (depending on your use-case):
@@ -15,7 +31,7 @@ To use the cryptanalysis tool, the following executables may be required (depend
 - [CryptoMiniSAT](https://github.com/msoos/cryptominisat) as `cryptominisat`
 - [MapleSAT](https://github.com/nahiyan/maplesat) as `maplesat`
 - [Glucose](https://github.com/mi-ki/glucose-syrup) as `glucose`
-- [NejatiEncoder](https://github.com/nahiyan/cryptanalysis/tree/master/encoders/nejati) as `nejati_encoder`
+- The modified Nejati preimage and collision encoders under `encoders/`
 - [xnfSAT](https://github.com/Vtec234/xnfsat) as `xnfsat`
 
 Other 3rd party dependencies may be required on use-case, such as `lstech_maple`, `kissat_cf`, `yalsat`, `palsat, etc.
@@ -24,7 +40,13 @@ Other 3rd party dependencies may be required on use-case, such as `lstech_maple`
 
 > You'll require Go 1.18 or newer to build this tool.
 
-Run `go build` in the root directory of this repository to build the `cryptanalysis` executable.
+Run `make` in the repository root to build the Go driver and the modified
+Nejati encoders. To build only the Go driver, run:
+
+```sh
+cd runners/go-driver
+go build -o ../../cryptanalysis
+```
 
 Available commands and arguments can be found via the `--help` flag. For example, `cryptanalysis run --help` will show the instructions for the "run" command.
 
@@ -112,7 +134,8 @@ The operations of the above pipeline are as follows:
 - Select 100 cubes from each cubeset in random order with a seed of 1 (you can exclude the quantity to select all the cubes)
 - Solve the instances with Kissat (with a 10000s timeout) in 16 workers (16 processes of Kissat will be spawned at a time)
 
-You can explore all the possible parameters and pipe types in the [internal/pipeline/main.go](https://github.com/nahiyan/cryptanalysis/blob/33dee9ed742b0afd39ced66f341a0fd0c90bd568/internal/pipeline/main.go) file.
+You can explore all the possible parameters and pipe types in
+`runners/go-driver/internal/pipeline/main.go`.
 
 # Configuration
 
@@ -136,7 +159,8 @@ LocalSearchType = "walksat"
 NejatiEncoder = "/tmp/SAT-encodings/crypto/main"
 ```
 
-You can check out all the possible parameters in the [internal/config/main.go](https://github.com/nahiyan/cryptanalysis/blob/33dee9ed742b0afd39ced66f341a0fd0c90bd568/internal/config/main.go) file.
+You can check out all the possible parameters in
+`runners/go-driver/internal/config/main.go`.
 
 # Encoders
 
@@ -152,7 +176,9 @@ Saeed Nejati wrote his [own encoders and verifiers](https://github.com/saeednj/S
 
 ### Building
 
-Run `make` in the `encoders/nejati/crypto` directory, which should produce an executable named `main`. The documentation for using the encoder can be found through the `--help` or `-h` flag. However, manual invokation is unnecessary as the cryptanalysis tool will handle it directly.
+Run `make` in either `encoders/nejati-preimage` or
+`encoders/nejati-collision`. Manual invocation is normally unnecessary because
+the cryptanalysis tool calls the configured encoder executable directly.
 
 The following set of features is a subset of all that are available:
 
@@ -179,7 +205,8 @@ Cube and conquer is a popular technique for generating assumption cubes that can
 
 ## Benchmark Tool
 
-The benchmark tool is the heart of the project for experimenting with MD4 inversion. It's in `tools/benchmark`, written in Go, and has the following features:
+The Go driver under `runners/go-driver` can coordinate MD4 inversion
+experiments. Its responsibilities include:
 
 - Drive the encoder for generating the encodings/instances
 - Drive lookahead SAT solver[s] for generating cubes
@@ -188,10 +215,15 @@ The benchmark tool is the heart of the project for experimenting with MD4 invers
 - Control the spawning of the instances, limit the max. concurrent instances, and keep track of the progress 
 - Maintain an aggregated log from all the instances in a CSV file
 
-To build the tool, just run `go build`, assuming that you have Go installed in your system already. As with any Go source code, you can run the code using `go run main.go`. For further documentation, simply call with the `--help` flag.
+Build the driver with the root Makefile or run it directly from its module:
+
+```sh
+cd runners/go-driver
+go run . --help
+```
 
 # Credits
 
-- `encoders/nejati` is a modified and trimmed version of https://github.com/saeednj/SAT-encoding
+- `encoders/nejati-preimage` and `encoders/nejati-collision` are modified and trimmed versions of https://github.com/saeednj/SAT-encoding
 - Transalg code templates for MD4, MD5, and SHA-256 were based on that housed in https://gitlab.com/satencodings/satencodings/
 - The threshold finding algorithm is a modified version of that found in https://github.com/olegzaikin/MD4-CnC
