@@ -14,7 +14,6 @@ single implementation language:
   experiments.
 - `experiments/` is reserved for reproducible experiment definitions.
 - `results/` contains recorded benchmark and experiment results.
-- `third_party/` is reserved for external source moved or imported later.
 
 The existing Go command is under `runners/go-driver` while its reusable parts
 are gradually extracted into standalone tools. The experimental Rust runner is
