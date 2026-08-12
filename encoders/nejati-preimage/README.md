@@ -1,42 +1,51 @@
-# Encoding Cryptanalysis of hash functions into SAT
+# Nejati preimage encoder
 
-This folder implements encoding of cryptanalysis of cryptographic hash functions
-into SAT.
+This directory contains a standalone Rust SAT encoder for preimage attacks on
+round-reduced MD4, SHA-1, and SHA-256. It emits DIMACS CNF to standard output.
 
-Three standard hash functions of MD4, SHA-1 and SHA-256 are supported. The main
-implemented attack is preimage (given output of a hash function find an input
-that hashes to that output value).
+The Rust implementation replaces the original C++ executable. The C++ source
+is retained temporarily as a reference while the encoder migration continues.
+Its Boolean formula primitives and embedded Espresso tables live in the small
+`../nejati-common` Rust crate so the collision encoder can reuse them.
 
-## Build and Run
-To build the encoder, run `make`, which builds the executable `main`. For
-available encoding options you can run `./main -h`.  You can specify the type
-of function, number of rounds for a round-reduced version of your function.
-For example:
+## Build
 
-```
-./main --function sha256 --rounds 20 --target random > sha256-20-preimage.cnf
-```
+Build the Rust encoder with:
 
-generates a preimage instance for a 20 round SHA-256 with a randomly generated
-target output. You can also specify the type of adder encodings, which is
-implemented in the `core` encoder. Note that using `espresso` adders requires
-having `espresso` logic minimizer installed.
-
-## Verify
-To verify that the solution found by a SAT solver actually hashes to
-the target, you can use vrifiers for each hash function. First, to build them,
-run `make verify`. For example, consider that you solved the above created
-instance and recorded the solution in `sha256-20-preimage.sol`. To verify the
-solution, you can run:
-
-
-```
-./verify-sha256 20 < sha256-20-preimage.sol
+```sh
+make
 ```
 
-which will print the solution and whether it hashes to the initially given
-output target. The first argument is the number of rounds, which is a required
-argument. The solution file is expected to be in the minisat-style format
-(first line being `SAT` or `UNSAT`, and the next line the assignment to the
-variables, e.g. `-1 2 3 -4 ...`).
+The resulting executable is `./nejati_preimage_encoder`. To compile the old C++
+implementation for comparison, run `make legacy`; its executable is
+`./nejati_preimage_encoder_cpp`.
 
+## Use
+
+For example, generate a 20-round SHA-256 preimage instance with a random target:
+
+```sh
+./nejati_preimage_encoder \
+  --function sha256 \
+  --rounds 20 \
+  --target random > sha256-20-preimage.cnf
+```
+
+Run `./nejati_preimage_encoder --help` for all options. The migrated encoder
+supports:
+
+- MD4 with 1 to 48 rounds
+- SHA-1 with 16 to 80 rounds
+- SHA-256 with 16 to 64 rounds
+- native CNF or XOR clauses
+- random or explicit target values
+- a fixed prefix of a generated message
+- MD4 Dobbertin constraints and relaxed-bit selection
+
+Explicit targets are hexadecimal strings with the full compression-state size:
+32 characters for MD4, 40 for SHA-1, and 64 for SHA-256.
+
+The Rust implementation embeds the minimized Espresso truth-table encodings,
+so running the encoder does not require the external `espresso` executable.
+Only the Espresso adder encoding has been migrated. The legacy counter-chain
+and dot-matrix adders are not available in the Rust executable.

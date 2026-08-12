@@ -19,6 +19,10 @@ The existing Go command is under `runners/go-driver` while its reusable parts
 are gradually extracted into standalone tools. The experimental Rust runner is
 under `runners/rust-driver`.
 
+The Rust encoder implementations share only the low-level SAT formula and
+embedded Espresso tables in `encoders/nejati-common`. Attack construction and
+command-line behavior remain in their standalone encoder directories.
+
 # Prerequisities
 
 To use the cryptanalysis tool, the following executables may be required (depending on your use-case):
@@ -37,7 +41,8 @@ Other 3rd party dependencies may be required on use-case, such as `lstech_maple`
 
 # Building
 
-> You'll require Go 1.18 or newer to build this tool.
+> You need Go 1.18 or newer and a current stable Rust toolchain to build this
+> repository.
 
 Run `make` in the repository root to build the Go driver and the modified
 Nejati encoders. To build only the Go driver, run:
@@ -176,14 +181,18 @@ Saeed Nejati wrote his [own encoders and verifiers](https://github.com/saeednj/S
 ### Building
 
 Run `make` in either `encoders/nejati-preimage` or
-`encoders/nejati-collision`. Manual invocation is normally unnecessary because
-the cryptanalysis tool calls the configured encoder executable directly.
+`encoders/nejati-collision`. The preimage encoder now builds from Rust; its old
+C++ implementation remains available through `make legacy`. The collision
+encoder is still C++ and is the next encoder migration target. Manual
+invocation is normally unnecessary because the cryptanalysis tool calls the
+configured encoder executable directly.
 
 The following set of features is a subset of all that are available:
 
 - XOR clauses
 - Specification of the target hash
-- Counter chain, dot matrix, and espresso adders
+- Embedded Espresso adders in the Rust preimage encoder
+- Counter-chain and dot-matrix adders in the legacy C++ encoders
 - Trimmed n-step version of the hash function
 - Dobbertin's attack in MD4
 - Relaxation of one Dobbertin's constraint out of the 12 by $W - 32$ bits, where $W$ is the word size that is always 32
