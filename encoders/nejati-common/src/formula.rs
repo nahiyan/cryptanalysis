@@ -28,6 +28,14 @@ impl Formula {
         }
     }
 
+    pub fn with_start(use_xor_clauses: bool, first_variable: Var) -> Self {
+        Self {
+            next_var: first_variable,
+            use_xor_clauses,
+            ..Self::default()
+        }
+    }
+
     pub fn variable_count(&self) -> usize {
         self.next_var as usize
     }
@@ -54,6 +62,21 @@ impl Formula {
             self.names.insert(name, vars[0]);
         }
         vars
+    }
+
+    pub fn name(&mut self, name: impl Into<String>, first_variable: Var) {
+        self.names.insert(name.into(), first_variable);
+    }
+
+    pub fn append(&mut self, other: &Self) {
+        self.next_var = self.next_var.max(other.next_var);
+        self.clauses.extend(other.clauses.iter().cloned());
+        self.names.extend(
+            other
+                .names
+                .iter()
+                .map(|(name, variable)| (name.clone(), *variable)),
+        );
     }
 
     pub fn add_clause(&mut self, literals: Vec<Var>) {
@@ -179,6 +202,36 @@ impl Formula {
         }
     }
 
+    pub fn xor_many_bit(&mut self, output: Var, inputs: &[Var]) {
+        assert!((2..=7).contains(&inputs.len()));
+        if self.use_xor_clauses {
+            let mut clause = Vec::with_capacity(inputs.len() + 1);
+            clause.push(-output);
+            clause.extend_from_slice(inputs);
+            self.push_clause(clause, true);
+            return;
+        }
+
+        for assignment in 0..(1usize << inputs.len()) {
+            let parity = assignment.count_ones() & 1 == 1;
+            for output_value in [false, true] {
+                if output_value == parity {
+                    continue;
+                }
+                let mut clause = Vec::with_capacity(inputs.len() + 1);
+                clause.push(if output_value { -output } else { output });
+                for (index, variable) in inputs.iter().copied().enumerate() {
+                    clause.push(if assignment >> index & 1 == 1 {
+                        -variable
+                    } else {
+                        variable
+                    });
+                }
+                self.add_clause(clause);
+            }
+        }
+    }
+
     pub fn add2(&mut self, output: &Word, a: &Word, b: &Word) {
         self.add_operands(output, &[a, b]);
     }
@@ -211,6 +264,32 @@ impl Formula {
                 columns[bit + carry].push(sum[carry]);
             }
 
+            self.emit_adder_template(&columns[bit], &sum);
+        }
+    }
+
+    pub fn add_with_carries(
+        &mut self,
+        output: &Word,
+        operands: &[&Word],
+        carry_low: &Word,
+        carry_high: Option<&Word>,
+    ) {
+        assert!((2..=5).contains(&operands.len()));
+        assert_eq!(carry_high.is_some(), operands.len() > 2);
+        let mut columns = vec![Vec::<Var>::new(); 37];
+        for bit in 0..32 {
+            for operand in operands {
+                columns[bit].push(operand[bit]);
+            }
+
+            let mut sum = vec![output[bit], carry_low[bit]];
+            columns[bit + 1].push(carry_low[bit]);
+            if columns[bit].len() > 3 {
+                let carry_high = carry_high.expect("wide additions require a high carry");
+                sum.push(carry_high[bit]);
+                columns[bit + 2].push(carry_high[bit]);
+            }
             self.emit_adder_template(&columns[bit], &sum);
         }
     }
@@ -264,6 +343,11 @@ impl Formula {
             writeln!(output, "c {name} {first_variable}")?;
         }
         Ok(())
+    }
+
+    pub fn write_dimacs_with_order(&self, mut output: impl Write, rounds: usize) -> io::Result<()> {
+        self.write_dimacs(&mut output)?;
+        writeln!(output, "c order {rounds}")
     }
 }
 
