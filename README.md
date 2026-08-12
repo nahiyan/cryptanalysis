@@ -181,17 +181,16 @@ Saeed Nejati wrote his [own encoders and verifiers](https://github.com/saeednj/S
 ### Building
 
 Run `make` in either `encoders/nejati-preimage` or
-`encoders/nejati-collision`. The preimage encoder now builds from Rust; its old
-C++ implementation remains available through `make legacy`. The collision
-encoder is still C++ and is the next encoder migration target. Manual
-invocation is normally unnecessary because the cryptanalysis tool calls the
-configured encoder executable directly.
+`encoders/nejati-collision`. Both encoders now build from Rust; their old C++
+implementations remain available through `make legacy` for parity comparisons.
+Manual invocation is normally unnecessary because the cryptanalysis tool calls
+the configured encoder executable directly.
 
 The following set of features is a subset of all that are available:
 
 - XOR clauses
 - Specification of the target hash
-- Embedded Espresso adders in the Rust preimage encoder
+- Embedded Espresso adders in the Rust encoders
 - Counter-chain and dot-matrix adders in the legacy C++ encoders
 - Trimmed n-step version of the hash function
 - Dobbertin's attack in MD4
