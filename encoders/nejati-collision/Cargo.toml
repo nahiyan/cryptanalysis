@@ -1,0 +1,17 @@
+[package]
+name = "nejati-collision-encoder"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+nejati-sat = { path = "../nejati-common" }
+
+[[bin]]
+name = "nejati_collision_encoder"
+path = "src/main.rs"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
