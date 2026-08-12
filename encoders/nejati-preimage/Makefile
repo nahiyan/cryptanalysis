@@ -1,16 +1,23 @@
-SRCS = formula.cpp util.cpp hash.cpp sha1.cpp sha256.cpp md4.cpp
-OBJS = $(SRCS:.cpp=.o)
 TARGET = nejati_preimage_encoder
-CFLAGS = -std=c++11 -O2
-MACROS = #-D_DOTMATRIX_ #-D_COMPRESSOR_TEST
+LEGACY_TARGET = nejati_preimage_encoder_cpp
+LEGACY_SRCS = formula.cpp util.cpp hash.cpp sha1.cpp sha256.cpp md4.cpp
+LEGACY_OBJS = $(LEGACY_SRCS:.cpp=.o)
+CXXFLAGS = -std=c++11 -O2
 
-CFLAGS += $(MACROS)
+.PHONY: all rust legacy clean
 
-.cpp.o: $(SRCS)
-	g++ -c $< -o $@ $(CFLAGS)
+all: rust
 
-all: $(OBJS) main.cpp
-	g++ $(OBJS) $(CFLAGS) main.cpp -o $(TARGET)
+rust:
+	cargo build --release
+	cp target/release/$(TARGET) $(TARGET)
+
+legacy: $(LEGACY_OBJS) main.cpp
+	$(CXX) $(LEGACY_OBJS) $(CXXFLAGS) main.cpp -o $(LEGACY_TARGET)
+
+%.o: %.cpp
+	$(CXX) -c $< -o $@ $(CXXFLAGS)
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+	cargo clean
+	rm -f $(LEGACY_OBJS) $(TARGET) $(LEGACY_TARGET)
